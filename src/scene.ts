@@ -5,6 +5,12 @@ import { AnimationBlend, follow, type MovementController } from './controller.ts
 import { ASPECT } from './config.ts';
 import { isAndroidApp } from './settings-store.ts';
 
+const CAMERA_TILT = Math.asin(0.82);
+// Reference: about 11 tiles across the 16-unit room, nearly square on screen.
+// This adjusts floor geometry only; joystick-to-ground mapping is unchanged.
+const FLOOR_TILE_WIDTH = 16 / 11;
+const FLOOR_TILE_DEPTH = FLOOR_TILE_WIDTH / Math.sin(CAMERA_TILT);
+
 const mat = (color: number) => new THREE.MeshStandardMaterial({ color, roughness: 0.94, metalness: 0 });
 const rand = (i: number) => { const n = Math.sin(i * 127.1 + 311.7) * 43758.5453; return n - Math.floor(n); };
 
@@ -17,9 +23,11 @@ function groundCircle(radius: number, color: number, opacity = 1) {
 function buildRoom(size: number, length: number) {
   const group = new THREE.Group();
   const positions: number[] = [], colors: number[] = [], normals: number[] = [];
-  const n = Math.round(size), rows = Math.round(length), tile = size / n, tileZ = length / rows, c = new THREE.Color();
+  const n = Math.ceil(size / FLOOR_TILE_WIDTH), rows = Math.ceil(length / FLOOR_TILE_DEPTH), c = new THREE.Color();
   for (let z = 0; z < rows; z++) for (let x = 0; x < n; x++) {
-    const x0 = -size / 2 + x * tile, z0 = -length / 2 + z * tileZ;
+    const x0 = -size / 2 + x * FLOOR_TILE_WIDTH, z0 = -length / 2 + z * FLOOR_TILE_DEPTH;
+    const tile = Math.min(FLOOR_TILE_WIDTH, size / 2 - x0);
+    const tileZ = Math.min(FLOOR_TILE_DEPTH, length / 2 - z0);
     c.setHSL(0.205 + rand(z * n + x) * 0.008, 0.84, 0.34 + ((x + z) % 2) * 0.035 + rand(x * n + z + 2) * 0.012);
     for (const [dx, dz] of [[0, 0], [0, 1], [1, 1], [0, 0], [1, 1], [1, 0]]) {
       positions.push(x0 + dx * tile, 0, z0 + dz * tileZ);
@@ -103,7 +111,7 @@ export class GameScene {
   private viewWidth = 0;
   private offset = Infinity;
   private aspect = ASPECT;
-  readonly tilt = Math.asin(0.82);
+  readonly tilt = CAMERA_TILT;
 
   constructor(private viewport: HTMLElement, private controller: MovementController) {
     this.cameraZ = controller.position.z;
