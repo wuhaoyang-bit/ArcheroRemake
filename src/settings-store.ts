@@ -2,6 +2,16 @@ import { DEFAULTS, LIMITS, sanitize, type Settings, type SettingKey } from './co
 
 export type SettingsDocument = { version: 1; settings: Settings };
 
+type AndroidSettingsBridge = { readSettings(): string; writeSettings(document: string): string };
+declare global { interface Window { ArcheroAndroid?: AndroidSettingsBridge } }
+export const isAndroidApp = () => typeof window !== 'undefined' && !!window.ArcheroAndroid;
+
+function readBridgeResult(raw: string): { ok: boolean; document?: unknown; error?: string } {
+  const result = JSON.parse(raw);
+  if (!result?.ok) throw new Error(result?.error || '应用本地参数读写失败');
+  return result;
+}
+
 /** Only tuning values are persisted. Input ownership, position and anchor memory are transient. */
 export function parseSettingsDocument(raw: unknown, strict = false): Settings {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('参数文件格式无效');
@@ -25,12 +35,17 @@ export function settingsDocument(settings: Settings): SettingsDocument {
 }
 
 export async function loadSettings(): Promise<Settings> {
+  if (isAndroidApp()) return parseSettingsDocument(readBridgeResult(window.ArcheroAndroid!.readSettings()).document);
   const response = await fetch(`${import.meta.env.BASE_URL}params.json`, { cache: 'no-store' });
   if (!response.ok) throw new Error('无法读取 params.json');
   return parseSettingsDocument(await response.json());
 }
 
 export async function saveSettings(settings: Settings): Promise<void> {
+  if (isAndroidApp()) {
+    readBridgeResult(window.ArcheroAndroid!.writeSettings(JSON.stringify(settingsDocument(settings))));
+    return;
+  }
   const response = await fetch(`${import.meta.env.BASE_URL}__save-params`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

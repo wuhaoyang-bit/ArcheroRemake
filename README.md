@@ -35,6 +35,23 @@ npm run dev:https
 
 WebGPU 需要安全上下文：电脑可使用 localhost；手机通过局域网 IP 访问时需要 HTTPS。开发服务使用自签名证书，手机需要信任该证书；如果浏览器仍不认可该连接，应使用受信任证书的 HTTPS 地址。支持程度以设备实际能否创建 WebGPU 适配器为准。页面会显示初始化失败原因，不会悄悄切换为 WebGL。当前自动化覆盖桌面 WebGPU、手机视口和浏览器多点触摸；**手机真机性能与手感仍需实际设备验收**。
 
+## 离线 Android APK
+
+目标测试机为 REDMI K80 Ultra。APK 直接装入同一次构建的网页、模型和 `public/params.json`，使用系统 WebView 的 WebGPU 渲染，保留相同的竖屏视角、触摸逻辑和调参界面。首次启动读打包的 JSON；点击“保存 JSON”后写入应用私有目录，退出重开仍有效，不需要电脑或服务器。之后电脑修改 JSON 不会自动同步到已安装的 APK。
+
+覆盖安装且签名一致时保留手机已保存参数；卸载或清除应用数据会删除它们。恢复默认与网页规则一致：先恢复当前值，再点击保存。只有参数持久化，角色位置及锚点记忆不保存。
+
+构建需要 JDK 17、Android SDK Platform 36 / Build Tools 36.0.0，并设置 `JAVA_HOME`、`ANDROID_HOME`。当前电脑在忽略目录 `analysis/android-toolchain/` 已准备工具链，脚本会自动识别。
+
+```sh
+npm run android:build
+# 输出 releases/ArcheroRemake-v0.1.0-debug.apk
+```
+
+这是供直接安装测试的 debug 签名包。脚本首次生成的本地测试签名位于 `analysis/android-toolchain/archero-debug.keystore`；请保留它，以便后续覆盖安装。SDK、密钥、构建缓存和 APK 均不纳入 Git。构建前会校验网页资源复制后的每个字节，并保留资源 SHA-256 清单。
+
+手机仍须有支持 WebGPU 的系统 WebView；不支持时显示错误，不降级为 WebGL。相同代码、素材和参数可通过构建校验确认，REDMI K80 Ultra 的实际画面、触摸延迟和帧率仍需真机验收。安装后可断网测试移动、多指接管、保存后重开，以及切到后台再返回时是否正确结束输入。
+
 ## 已实现
 
 - 按下点定位轮盘、首次阈值锁定、越阈值瞬时解锁、边缘限幅；解锁后不重复触发死区。

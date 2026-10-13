@@ -11,7 +11,9 @@
     "preview": "vite preview --host 0.0.0.0",
     "test": "tsx --test tests/*.test.ts",
     "test:browser": "node tools/browser-check.mjs",
-    "test:settings": "node tools/settings-browser-check.mjs"
+    "test:settings": "node tools/settings-browser-check.mjs",
+    "android:sync": "npm run build && tsx tools/sync-android.ts",
+    "android:build": "npm run android:sync && bash tools/build-android.sh && tsx tools/verify-apk.ts"
   },
   "dependencies": {
     "three": "0.186.1"

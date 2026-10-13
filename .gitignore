@@ -27,3 +27,13 @@ __pycache__/
 
 # Interrupted atomic parameter saves
 /public/.params-*.tmp
+
+# Android local toolchain, generated assets, build output and signing material
+/android/.gradle/
+/android/build/
+/android/app/build/
+/android/app/src/main/assets/
+/android/local.properties
+/releases/
+*.keystore
+*.jks

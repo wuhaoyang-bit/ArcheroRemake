@@ -3,6 +3,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { AnimationBlend, follow, type MovementController } from './controller.ts';
 import { ASPECT } from './config.ts';
+import { isAndroidApp } from './settings-store.ts';
 
 const mat = (color: number) => new THREE.MeshStandardMaterial({ color, roughness: 0.94, metalness: 0 });
 const rand = (i: number) => { const n = Math.sin(i * 127.1 + 311.7) * 43758.5453; return n - Math.floor(n); };
@@ -101,7 +102,9 @@ export class GameScene {
 
   async init() {
     if (!window.isSecureContext) throw new Error('请通过 localhost 或 HTTPS 打开页面，才能使用 WebGPU。手机访问请使用 HTTPS 测试地址。');
-    if (!navigator.gpu || !await navigator.gpu.requestAdapter()) throw new Error('当前浏览器未能启用 WebGPU。请使用支持 WebGPU 的浏览器，并确认硬件加速已开启。');
+    if (!navigator.gpu || !await navigator.gpu.requestAdapter()) throw new Error(isAndroidApp()
+      ? '当前 Android WebView 未能启用 WebGPU。请更新系统的 Android System WebView 后重试；若仍不可用，需要检查该设备的 WebGPU 支持。'
+      : '当前浏览器未能启用 WebGPU。请使用支持 WebGPU 的浏览器，并确认硬件加速已开启。');
     this.renderer = new THREE.WebGPURenderer({ antialias: true, powerPreference: 'high-performance' });
     await this.renderer.init();
     if (!('isWebGPUBackend' in this.renderer.backend) || !this.renderer.backend.isWebGPUBackend) {
