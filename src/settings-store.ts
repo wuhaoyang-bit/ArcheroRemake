@@ -1,0 +1,41 @@
+import { DEFAULTS, LIMITS, sanitize, type Settings, type SettingKey } from './config.ts';
+
+export type SettingsDocument = { version: 1; settings: Settings };
+
+/** Only tuning values are persisted. Input ownership, position and anchor memory are transient. */
+export function parseSettingsDocument(raw: unknown, strict = false): Settings {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('参数文件格式无效');
+  const doc = raw as Record<string, unknown>;
+  if (doc.version !== 1) throw new Error('参数文件版本不受支持');
+  if (!doc.settings || typeof doc.settings !== 'object' || Array.isArray(doc.settings)) throw new Error('参数文件缺少 settings');
+  const source = doc.settings as Record<string, unknown>, settings = { ...DEFAULTS };
+  for (const key of Object.keys(DEFAULTS) as SettingKey[]) {
+    const value = source[key];
+    if (value === undefined) continue; // Older files gain newly added parameters from defaults.
+    if (typeof value !== 'number' || !Number.isFinite(value)) throw new Error(`参数 ${key} 必须是有限数字`);
+    if (strict && (value < LIMITS[key][0] || value > LIMITS[key][1])) throw new Error(`参数 ${key} 超出范围`);
+    settings[key] = sanitize(key, value);
+  }
+  return settings;
+}
+
+export function settingsDocument(settings: Settings): SettingsDocument {
+  // Whitelist the schema even when callers pass an object containing runtime state.
+  return { version: 1, settings: parseSettingsDocument({ version: 1, settings }, true) };
+}
+
+export async function loadSettings(): Promise<Settings> {
+  const response = await fetch(`${import.meta.env.BASE_URL}params.json`, { cache: 'no-store' });
+  if (!response.ok) throw new Error('无法读取 params.json');
+  return parseSettingsDocument(await response.json());
+}
+
+export async function saveSettings(settings: Settings): Promise<void> {
+  const response = await fetch(`${import.meta.env.BASE_URL}__save-params`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(settingsDocument(settings)),
+  });
+  const body = await response.json().catch(() => null) as { ok?: boolean; error?: string } | null;
+  if (!response.ok || !body?.ok) throw new Error(body?.error || '保存服务不可用，请通过项目开发服务或 preview 运行');
+}

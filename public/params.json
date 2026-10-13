@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "settings": {
+    "joystickRadius": 64,
+    "unlockDistance": 12,
+    "anchorScale": 0.036,
+    "moveSpeed": 16,
+    "turnSpeed": 1000,
+    "blendDuration": 0.2,
+    "runSpeed": 1.6,
+    "roomSize": 16,
+    "cameraResponse": 9,
+    "cameraOffset": 0,
+    "viewWidth": 18
+  }
+}

@@ -24,3 +24,6 @@ __pycache__/
 
 # Local-only reference analysis and generated frames
 /analysis/
+
+# Interrupted atomic parameter saves
+/public/.params-*.tmp
