@@ -12,9 +12,9 @@ import { MovementController } from '../src/controller.ts';
 
 test('requested defaults match the screenshot, with speed 16 / upper limit 30 and independent Run rate', () => {
   assert.deepEqual(DEFAULTS, {
-    joystickRadius: 64, unlockDistance: 12, anchorScale: 0.036,
+    joystickRadius: 64, unlockDistance: 12, showThreshold: 0, anchorScale: 0.036,
     moveSpeed: 16, turnSpeed: 900, blendDuration: 0.06, runSpeed: 1.6,
-    roomSize: 16, cameraResponse: 9, cameraOffset: 0, viewWidth: 18,
+    roomSize: 16, roomLength: 38, cameraResponse: 9, cameraOffset: 0, viewWidth: 18,
   });
   assert.equal(LIMITS.moveSpeed[1], 30);
   const c = new MovementController(); c.press(1, 0, 0); c.move(1, 40, 0);

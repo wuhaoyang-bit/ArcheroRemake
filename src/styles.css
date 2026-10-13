@@ -116,3 +116,11 @@ input[type=range]::-moz-range-thumb { width: 9px; height: 9px; border-radius: 50
   .icon-button { width: 32px; height: 32px; background: #cde4bd10; border: 1px solid #cde4bd23; border-radius: 50%; color: #cde4bd; font-size: 24px; line-height: 24px; }
   .setting { margin-bottom: 24px; } input[type=range] { height: 4px; margin-top: 18px; } input[type=range]::-webkit-slider-thumb { width: 15px; height: 15px; } .numeric input { font-size: 16px; width: 61px; } .setting-label { font-size: 13px; }
 }
+
+.threshold-toggle { display: flex; align-items: center; gap: 8px; font-size: 12px; cursor: pointer; color: #dce8c8; }
+.threshold-toggle input { accent-color: #bdd985; width: 17px; height: 17px; }
+.threshold-help { font-size: 10px; line-height: 1.7; color: #a1b59b; }
+.joystick .threshold { display: none; left: 0; top: 0; z-index: 4; border: 2px dashed #ffe262; background: #ffd53b38; box-shadow: 0 0 0 1px #58420c99; }
+.joystick.show-threshold .threshold { display: block; }
+.joystick.unlocked .threshold { border-color: #80fff4; background: #26efd52e; }
+.viewport::after { background: linear-gradient(transparent, #f1ffd52b); }

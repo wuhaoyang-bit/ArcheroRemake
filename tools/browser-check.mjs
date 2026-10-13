@@ -93,7 +93,7 @@ try {
     await desktop.evaluate(() => dispatchEvent(new Event('blur'))); assert.equal((await snapshot(desktop)).mode, 'idle'); await desktop.mouse.up();
   });
   await check('UI controls are isolated and room size constrains position without moving camera sideways', async () => {
-    await set(desktop, 'roomSize', 8); assert.equal((await snapshot(desktop)).mode, 'idle');
+    await set(desktop, 'roomSize', 8); await set(desktop, 'roomLength', 8); assert.equal((await snapshot(desktop)).mode, 'idle');
     await desktop.mouse.move(x, y); await desktop.mouse.down(); await desktop.mouse.move(x, y + 60 * scale);
     await desktop.waitForTimeout(1800); await desktop.mouse.up(); await desktop.waitForTimeout(1000);
     let s = await snapshot(desktop); near(s.position.z, 4 - 0.46); near(s.cameraZ, s.position.z, 0.001); near(s.footNdc[1], 0, 0.001);

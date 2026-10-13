@@ -14,15 +14,15 @@ function groundCircle(radius: number, color: number, opacity = 1) {
   return mesh;
 }
 
-function buildRoom(size: number) {
+function buildRoom(size: number, length: number) {
   const group = new THREE.Group();
   const positions: number[] = [], colors: number[] = [], normals: number[] = [];
-  const n = Math.round(size), tile = size / n, c = new THREE.Color();
-  for (let z = 0; z < n; z++) for (let x = 0; x < n; x++) {
-    const x0 = -size / 2 + x * tile, z0 = -size / 2 + z * tile;
-    c.setHSL(0.222 + rand(z * n + x) * 0.012, 0.74, 0.20 + ((x + z) % 2) * 0.017 + rand(x * n + z + 2) * 0.009);
+  const n = Math.round(size), rows = Math.round(length), tile = size / n, tileZ = length / rows, c = new THREE.Color();
+  for (let z = 0; z < rows; z++) for (let x = 0; x < n; x++) {
+    const x0 = -size / 2 + x * tile, z0 = -length / 2 + z * tileZ;
+    c.setHSL(0.205 + rand(z * n + x) * 0.008, 0.84, 0.34 + ((x + z) % 2) * 0.035 + rand(x * n + z + 2) * 0.012);
     for (const [dx, dz] of [[0, 0], [0, 1], [1, 1], [0, 0], [1, 1], [1, 0]]) {
-      positions.push(x0 + dx * tile, 0, z0 + dz * tile);
+      positions.push(x0 + dx * tile, 0, z0 + dz * tileZ);
       normals.push(0, 1, 0); colors.push(c.r, c.g, c.b);
     }
   }
@@ -33,38 +33,46 @@ function buildRoom(size: number) {
   const floor = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 }));
   floor.receiveShadow = true; group.add(floor);
 
-  const base = new THREE.Mesh(new RoundedBoxGeometry(size + 0.48, 0.4, size + 0.48, 2, 0.12), mat(0x87925b));
+  const base = new THREE.Mesh(new RoundedBoxGeometry(size + 0.48, 0.4, length + 0.48, 2, 0.12), mat(0xd3ad63));
   base.position.y = -0.25; base.receiveShadow = true; group.add(base);
-  const count = Math.ceil(size / 0.78), block = new THREE.InstancedMesh(new RoundedBoxGeometry(size / count - 0.04, 0.34, 0.31, 2, 0.06), mat(0xa2af82), count * 4);
+  const across = Math.ceil(size / 0.78), alongCount = Math.ceil(length / 0.78);
+  const count = 2 * (across + alongCount);
+  const block = new THREE.InstancedMesh(new RoundedBoxGeometry(1, 0.34, 0.31, 2, 0.06), mat(0xffffff), count);
   const dummy = new THREE.Object3D();
-  for (let edge = 0; edge < 4; edge++) for (let i = 0; i < count; i++) {
-    const along = -size / 2 + (i + 0.5) * size / count;
-    dummy.position.set(edge < 2 ? along : (edge === 2 ? -1 : 1) * size / 2, 0.1, edge < 2 ? (edge === 0 ? -1 : 1) * size / 2 : along);
-    dummy.rotation.y = edge < 2 ? 0 : Math.PI / 2; dummy.updateMatrix();
-    block.setMatrixAt(edge * count + i, dummy.matrix);
-    block.setColorAt(edge * count + i, new THREE.Color().setHSL(0.22, 0.17, 0.46 + rand(i + edge * count) * 0.10));
+  let index = 0;
+  for (let edge = 0; edge < 4; edge++) {
+    const span = edge < 2 ? size : length, segments = edge < 2 ? across : alongCount;
+    for (let i = 0; i < segments; i++) {
+      const along = -span / 2 + (i + 0.5) * span / segments;
+      dummy.position.set(edge < 2 ? along : (edge === 2 ? -1 : 1) * size / 2, 0.1, edge < 2 ? (edge === 0 ? -1 : 1) * length / 2 : along);
+      dummy.scale.set(span / segments - 0.04, 1, 1);
+      dummy.rotation.y = edge < 2 ? 0 : Math.PI / 2; dummy.updateMatrix();
+      block.setMatrixAt(index, dummy.matrix);
+      block.setColorAt(index, new THREE.Color().setHSL(0.22, 0.28, 0.48 + rand(index) * 0.10));
+      index++;
+    }
   }
   block.castShadow = true; block.receiveShadow = true; group.add(block);
 
-  // All scenery sits outside the walkable square. No interior obstacles.
+  // All scenery sits outside the walkable rectangle. No interior obstacles.
   const trees = 68, trunk = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.12, 0.19, 1.2, 6), mat(0x685439), trees);
-  const crowns = new THREE.InstancedMesh(new THREE.ConeGeometry(0.95, 1.8, 7), mat(0x448b64), trees * 3);
+  const crowns = new THREE.InstancedMesh(new THREE.ConeGeometry(0.95, 1.8, 7), mat(0xffffff), trees * 3);
   for (let i = 0; i < trees; i++) {
     let x: number, z: number;
-    if (i < 44) { x = (i % 2 ? 1 : -1) * (size / 2 + 0.95 + rand(i + 50) * 2.8); z = -size / 2 - 9 + Math.floor(i / 2) * (size + 18) / 21; }
-    else { x = (rand(i + 90) - 0.5) * (size + 12); z = (i % 2 ? 1 : -1) * (size / 2 + 3 + rand(i + 25) * 13); }
+    if (i < 44) { x = (i % 2 ? 1 : -1) * (size / 2 + 0.95 + rand(i + 50) * 2.8); z = -length / 2 - 9 + Math.floor(i / 2) * (length + 18) / 21; }
+    else { x = (rand(i + 90) - 0.5) * (size + 12); z = (i % 2 ? 1 : -1) * (length / 2 + 3 + rand(i + 25) * 13); }
     const s = 0.7 + rand(i + 500) * 0.6;
     dummy.position.set(x, 0.4, z); dummy.rotation.set(0, rand(i) * 6, 0); dummy.scale.setScalar(s); dummy.updateMatrix(); trunk.setMatrixAt(i, dummy.matrix);
     for (let tier = 0; tier < 3; tier++) {
       dummy.position.y = (1.2 + tier * 0.62) * s; dummy.scale.setScalar(s * (1 - tier * 0.18)); dummy.updateMatrix(); crowns.setMatrixAt(i * 3 + tier, dummy.matrix);
-      crowns.setColorAt(i * 3 + tier, new THREE.Color().setHSL(0.37 + rand(i + 7) * 0.045, 0.36, 0.27 + tier * 0.033 + rand(i) * 0.055));
+      crowns.setColorAt(i * 3 + tier, new THREE.Color().setHSL(0.37 + rand(i + 7) * 0.045, 0.52, 0.34 + tier * 0.033 + rand(i) * 0.055));
     }
   }
   trunk.castShadow = true; crowns.castShadow = true; crowns.receiveShadow = true; group.add(trunk, crowns);
 
   const stones = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(0.38, 0), mat(0x9ba08b), 36);
   for (let i = 0; i < 36; i++) {
-    dummy.position.set((i % 2 ? 1 : -1) * (size / 2 + 0.6 + rand(i + 81) * 1.8), 0.09, (rand(i + 68) - 0.5) * (size + 15));
+    dummy.position.set((i % 2 ? 1 : -1) * (size / 2 + 0.6 + rand(i + 81) * 1.8), 0.09, (rand(i + 68) - 0.5) * (length + 15));
     dummy.rotation.set(rand(i), rand(i + 5) * 6, rand(i + 9)); dummy.scale.set(0.6 + rand(i), 0.45 + rand(i + 22) * 0.5, 0.9); dummy.updateMatrix(); stones.setMatrixAt(i, dummy.matrix);
   }
   stones.castShadow = true; stones.receiveShadow = true; group.add(stones);
@@ -91,6 +99,7 @@ export class GameScene {
   run!: THREE.AnimationAction;
   private room!: THREE.Group;
   private roomSize = 0;
+  private roomLength = 0;
   private viewWidth = 0;
   private offset = Infinity;
   private aspect = ASPECT;
@@ -114,20 +123,20 @@ export class GameScene {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMapping = THREE.LinearToneMapping;
     this.renderer.toneMappingExposure = 1;
     this.viewport.prepend(this.renderer.domElement);
-    this.scene.background = new THREE.Color(0xd5e4bd);
-    this.scene.fog = new THREE.Fog(0xd5e4bd, 36, 65);
-    this.scene.add(new THREE.HemisphereLight(0xe1f3ff, 0x829657, 1.45));
-    const sun = new THREE.DirectionalLight(0xfff2d3, 2.3);
+    this.scene.background = new THREE.Color(0xe5f4bd);
+    this.scene.fog = new THREE.Fog(0xe5f4bd, 36, 65);
+    this.scene.add(new THREE.HemisphereLight(0xf5ffe5, 0xb6ca6c, 1.7));
+    const sun = new THREE.DirectionalLight(0xfff4ce, 1.8);
     sun.position.set(-9, 22, -8); sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048); sun.shadow.camera.near = 0.5; sun.shadow.camera.far = 70;
-    sun.shadow.camera.left = sun.shadow.camera.bottom = -24;
-    sun.shadow.camera.right = sun.shadow.camera.top = 24;
+    sun.shadow.camera.left = sun.shadow.camera.bottom = -55;
+    sun.shadow.camera.right = sun.shadow.camera.top = 55;
     sun.shadow.normalBias = 0.045; sun.shadow.bias = -0.0001;
     this.scene.add(sun);
-    const outside = new THREE.Mesh(new THREE.PlaneGeometry(120, 160), mat(0x8fa45e));
+    const outside = new THREE.Mesh(new THREE.PlaneGeometry(120, 160), mat(0xa0c74b));
     outside.rotation.x = -Math.PI / 2; outside.position.y = -0.22; outside.receiveShadow = true; this.scene.add(outside);
     this.setRoom();
     const halo = groundCircle(1.05, 0x63e5d6, 0.15); halo.position.y = 0.025; this.player.add(halo);
@@ -159,7 +168,8 @@ export class GameScene {
   private setRoom() {
     if (this.room) { this.scene.remove(this.room); disposeGroup(this.room); }
     this.roomSize = this.controller.settings.roomSize;
-    this.room = buildRoom(this.roomSize); this.scene.add(this.room);
+    this.roomLength = this.controller.settings.roomLength;
+    this.room = buildRoom(this.roomSize, this.roomLength); this.scene.add(this.room);
   }
 
   resize() {
@@ -181,7 +191,7 @@ export class GameScene {
 
   sync(dt: number) {
     const ctl = this.controller;
-    if (this.roomSize !== ctl.settings.roomSize) this.setRoom();
+    if (this.roomSize !== ctl.settings.roomSize || this.roomLength !== ctl.settings.roomLength) this.setRoom();
     if (this.viewWidth !== ctl.settings.viewWidth || this.offset !== ctl.settings.cameraOffset) this.projection();
     this.player.position.set(ctl.position.x, 0, ctl.position.z);
     this.body.rotation.y = ctl.heading;

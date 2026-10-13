@@ -8,7 +8,7 @@ const arrow = '<svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="
 const settings: { title: string; items: [SettingKey, string, string, string][] }[] = [
   { title: '轮盘与锚点', items: [
     ['joystickRadius', '摇杆半径', 'px', '以 390 像素宽的竖屏为基准，随游戏视口等比缩放。'],
-    ['unlockDistance', '首次解锁距离', 'px', '每次按下或换指后生效。解锁后回到阈值内也不会重新锁定。'],
+    ['unlockDistance', '移动阈值（首次解锁）', 'px', '每次按下或换指后生效。解锁后回到阈值内也不会重新锁定。'],
     ['anchorScale', '地面映射比例', '单位/px', '限制后的摇杆偏移，按同一比例映射到地面两轴。'],
   ] },
   { title: '角色', items: [
@@ -18,7 +18,8 @@ const settings: { title: string; items: [SettingKey, string, string, string][] }
     ['runSpeed', 'Run 动画速度', '倍', '独立控制原地跑步与移动时的 Run 播放速度，不改变位移速度、Idle 或融合时长。'],
   ] },
   { title: '房间与镜头', items: [
-    ['roomSize', '房间边长', '单位', '调整方形房间的可移动范围。'],
+    ['roomSize', '房间宽度', '单位', '调整横向可移动范围。'],
+    ['roomLength', '房间纵向长度', '单位', '调整画面上下方向的可移动范围，独立于宽度。'],
     ['cameraResponse', '跟随响应', '1/s', '越大越快追近。镜头仅纵向跟随，松手后继续收拢。'],
     ['cameraOffset', '脚下目标线', '%', '0 为画面中线，正值向下偏移；镜头保留平滑滞后。'],
     ['viewWidth', '固定视野宽度', '单位', '手动校准构图，游玩中不自动缩放。'],
@@ -33,14 +34,14 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       <div class="settings-scroll">${settings.map(group => `<section class="setting-group"><h2>${group.title}</h2>${group.items.map(([key, name, unit, hint]) => {
         const [min, max, step] = LIMITS[key];
         return `<div class="setting" title="${hint}"><div class="setting-label"><label for="slider-${key}">${name}</label><div class="numeric"><input id="value-${key}" data-setting="${key}" type="number" min="${min}" max="${max}" step="${step}" value="${DEFAULTS[key]}" aria-label="${name}数值"><span>${unit}</span></div></div><input id="slider-${key}" data-setting="${key}" type="range" min="${min}" max="${max}" step="${step}" value="${DEFAULTS[key]}" aria-label="${name}"></div>`;
-      }).join('')}</section>`).join('')}</div>
+      }).join('')}${group.title === '轮盘与锚点' ? '<label class="threshold-toggle"><input id="show-threshold" type="checkbox">显示移动阈值范围</label><p class="threshold-help">黄圈为首次解锁边界，越过后变青色；回圈内不会再次锁定。</p>' : ''}</section>`).join('')}</div>
       <div class="panel-footer"><div class="store-actions"><button id="save-settings" class="text-button save-button" disabled>保存 JSON <span>↓</span></button><button id="restore" class="text-button" disabled>恢复默认 <span>↺</span></button></div><p id="store-status" role="status" aria-live="polite">正在读取参数…</p><p>参数即时生效 · 像素以 390 宽度为基准</p></div>
     </aside>
     <section class="stage" aria-label="游戏测试区域">
       <div class="viewport" id="viewport">
         <div class="game-top"><div class="game-label"><i></i><span>移动试验场</span></div><button id="open-settings" class="mobile-only" data-ui aria-label="打开调试面板">调参 <span>☷</span></button></div>
         <div class="state-pill"><i></i><span id="game-state">准备中</span></div>
-        <div class="joystick" id="joystick" aria-hidden="true"><div class="joystick-ring"><span class="chevron top"></span><span class="chevron right"></span><span class="chevron bottom"></span><span class="chevron left"></span><div class="threshold"></div></div><div class="knob"></div></div>
+        <div class="joystick" id="joystick" aria-hidden="true"><div class="joystick-ring"><span class="chevron top"></span><span class="chevron right"></span><span class="chevron bottom"></span><span class="chevron left"></span></div><div class="knob"></div><div class="threshold"></div></div>
         <div class="game-hint" id="game-hint">按住任意位置，拖动开始移动</div>
         <div class="loading" id="loading"><span class="loader"></span><strong>正在准备试验场</strong><p>加载角色与 WebGPU 渲染器</p></div>
       </div>
@@ -93,6 +94,7 @@ function drawJoystick() {
   joystick.style.left = `${x}px`; joystick.style.top = `${y}px`;
   joystick.style.setProperty('--radius', `${controller.settings.joystickRadius}px`);
   joystick.style.setProperty('--threshold', `${controller.settings.unlockDistance}px`);
+  joystick.classList.toggle('show-threshold', !!controller.settings.showThreshold);
   joystick.classList.toggle('active', active); joystick.classList.toggle('unlocked', controller.unlocked);
   knob.style.transform = `translate(calc(-50% + ${controller.stick.x}px), calc(-50% + ${controller.stick.y}px))`;
   element('game-hint').classList.toggle('hidden', active);
@@ -133,6 +135,7 @@ window.addEventListener('blur', captureRelease);
 document.addEventListener('visibilitychange', () => { if (document.hidden) captureRelease(); lastFrame = 0; });
 
 function syncSettings() {
+  element<HTMLInputElement>('show-threshold').checked = !!controller.settings.showThreshold;
   document.querySelectorAll<HTMLInputElement>('[data-setting]').forEach(input => {
     const key = input.dataset.setting as SettingKey, value = controller.settings[key];
     input.value = String(value);
@@ -145,6 +148,10 @@ document.querySelectorAll<HTMLInputElement>('[data-setting]').forEach(input => {
     controller.set(input.dataset.setting as SettingKey, input.valueAsNumber);
     syncSettings(); settingsChanged();
   });
+});
+element('show-threshold').addEventListener('change', () => {
+  controller.set('showThreshold', element<HTMLInputElement>('show-threshold').checked ? 1 : 0);
+  syncSettings(); settingsChanged();
 });
 element('restore').addEventListener('click', () => {
   for (const key of Object.keys(DEFAULTS) as SettingKey[]) controller.set(key, DEFAULTS[key]);

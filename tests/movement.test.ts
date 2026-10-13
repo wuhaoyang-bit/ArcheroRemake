@@ -97,11 +97,11 @@ test('T24: mapping scale changes anchor reach without changing fixed velocity', 
   assert.deepEqual(c.offset, locked);
 });
 
-test('T26: square walls contain the player; input and run state continue; smaller rooms immediately constrain', () => {
+test('T26: independent rectangular walls contain the player; input and run state continue; smaller rooms immediately constrain', () => {
   const c = moving(40, 40); c.update(20); const edge = DEFAULTS.roomSize / 2 - PLAYER_RADIUS;
-  near(c.position.x, edge); near(c.position.z, edge); assert.equal(c.mode, 'moving'); assert.equal(c.unlocked, true);
-  c.move(1, -40, -40); c.update(20); near(c.position.x, -edge); near(c.position.z, -edge);
-  c.set('roomSize', 8); near(c.position.x, -4 + PLAYER_RADIUS); near(c.position.z, -4 + PLAYER_RADIUS);
+  near(c.position.x, edge); near(c.position.z, DEFAULTS.roomLength / 2 - PLAYER_RADIUS); assert.equal(c.mode, 'moving'); assert.equal(c.unlocked, true);
+  c.move(1, -40, -40); c.update(20); near(c.position.x, -edge); near(c.position.z, -DEFAULTS.roomLength / 2 + PLAYER_RADIUS);
+  c.set('roomSize', 8); near(c.position.z, -DEFAULTS.roomLength / 2 + PLAYER_RADIUS); c.set('roomLength', 8); near(c.position.x, -4 + PLAYER_RADIUS); near(c.position.z, -4 + PLAYER_RADIUS);
   assert.equal(c.mode, 'moving');
 });
 

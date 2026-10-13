@@ -81,13 +81,14 @@ export class MovementController {
   set(key: SettingKey, value: number) {
     this.settings[key] = sanitize(key, value);
     if (this.unlocked && (key === 'joystickRadius' || key === 'anchorScale')) this.mapStick();
-    if (key === 'roomSize') this.constrain();
+    if (key === 'roomSize' || key === 'roomLength') this.constrain();
   }
 
   private constrain() {
     const edge = this.settings.roomSize / 2 - PLAYER_RADIUS;
+    const longitudinalEdge = this.settings.roomLength / 2 - PLAYER_RADIUS;
     this.position.x = Math.max(-edge, Math.min(edge, this.position.x));
-    this.position.z = Math.max(-edge, Math.min(edge, this.position.z));
+    this.position.z = Math.max(-longitudinalEdge, Math.min(longitudinalEdge, this.position.z));
   }
 
   update(dt: number) {
