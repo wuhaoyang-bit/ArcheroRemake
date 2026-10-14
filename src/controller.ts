@@ -1,3 +1,4 @@
+import { remainingCurveAngle, validateCurve, type TurnCurvePoint } from './turn-curve.ts';
 import { DEFAULTS, sanitize, type SettingKey, type Settings } from './config.ts';
 
 export type Mode = 'idle' | 'in-place' | 'moving';
@@ -22,6 +23,7 @@ export class MovementController {
   remembered: GroundVector = { x: 0, z: 0 };
   direction: GroundVector | null = null;
   heading = Math.PI;
+  angularSpeed = 0; // Actual turn magnitude during the latest simulation step, degrees/s.
   get targetHeading() {
     // The retained anchor remains authoritative even while hidden in idle.
     if (Math.hypot(this.offset.x, this.offset.z) > 0) return Math.atan2(this.offset.x, this.offset.z);
@@ -29,7 +31,7 @@ export class MovementController {
   }
 
   constructor(settings: Settings = { ...DEFAULTS }) {
-    this.settings = { ...settings };
+    this.settings = { ...settings, turnCurve: validateCurve(settings.turnCurve) };
     this.position = { x: 0, z: settings.roomSize * 0.27 };
   }
   get anchorVisible() { return this.mode !== 'idle'; }
@@ -117,6 +119,8 @@ export class MovementController {
     if (this.pointerId !== null) this.release(this.pointerId);
   }
 
+  setCurve(points: TurnCurvePoint[]) { this.settings.turnCurve = validateCurve(points); }
+
   set(key: SettingKey, value: number) {
     this.settings[key] = sanitize(key, value);
     if (this.unlocked && (key === 'joystickRadius' || key === 'anchorScale')) this.mapStick();
@@ -140,14 +144,28 @@ export class MovementController {
     }
     let difference = wrapAngle(this.targetHeading - this.heading);
     // Exact left/right reversals have two equally short arcs. Match the observed
-    // upper-screen arc (-Z); leave other directions and non-ties unchanged.
+    // left-to-right upper arc (-Z), right-to-left lower arc (+Z).
+    // Both use negative rotation; non-ties still take the shortest arc.
     const angleEpsilon = 1e-10;
     if (Math.abs(Math.abs(difference) - Math.PI) < angleEpsilon
       && Math.abs(Math.cos(this.heading)) < angleEpsilon) {
-      difference = Math.sign(Math.sin(this.heading)) * Math.PI;
+      difference = -Math.PI;
     }
-    const step = this.settings.turnSpeed * Math.PI / 180 * dt;
-    this.heading = wrapAngle(this.heading + Math.sign(difference) * Math.min(Math.abs(difference), step));
+    let turn: number;
+    if (this.settings.turnModel === 1) {
+      // Frame-rate independent exponential response; intentionally no speed cap.
+      turn = difference * -Math.expm1(-this.settings.turnResponse * dt);
+      if (Math.abs(difference - turn) <= this.settings.turnSnapAngle * Math.PI / 180) turn = difference;
+    } else if (this.settings.turnModel === 2) {
+      const degrees = Math.abs(difference) * 180 / Math.PI;
+      const residual = remainingCurveAngle(degrees, dt, this.settings.turnCurve, this.settings.curveSnapAngle);
+      turn = Math.sign(difference) * (degrees - residual) * Math.PI / 180;
+    } else {
+      const step = this.settings.turnSpeed * Math.PI / 180 * dt;
+      turn = Math.sign(difference) * Math.min(Math.abs(difference), step);
+    }
+    this.angularSpeed = Math.abs(turn) / dt * 180 / Math.PI;
+    this.heading = wrapAngle(this.heading + turn);
   }
 
   snapshot() {
@@ -156,7 +174,7 @@ export class MovementController {
       position: { ...this.position }, stick: { ...this.stick }, offset: { ...this.offset },
       remembered: { ...this.remembered }, direction: this.direction && { ...this.direction },
       anchor: this.anchor, anchorVisible: this.anchorVisible,
-      heading: this.heading, targetHeading: this.targetHeading,
+      heading: this.heading, angularSpeed: this.angularSpeed, targetHeading: this.targetHeading,
     };
   }
 }

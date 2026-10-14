@@ -126,3 +126,26 @@ input[type=range]::-moz-range-thumb { width: 9px; height: 9px; border-radius: 50
 .viewport::after { background: linear-gradient(transparent, #f1ffd52b); }
 
 .debug-toggle { margin-top: 12px; }
+
+.turn-model-field { margin: 0 0 18px; }
+.turn-model-field label { display: block; font-size: 12px; margin-bottom: 8px; }
+.turn-model-field select { width: 100%; padding: 9px; border: 1px solid #466153; border-radius: 6px; background: #20382e; color: #e5efd9; font: inherit; font-size: 12px; }
+.setting[hidden] { display: none; }
+
+.curve-graph { display:block; width:100%; touch-action:none; user-select:none; overflow:visible; }
+.curve-graph text { fill:#c9d9ca; font:16px system-ui; }
+.curve-actions { display:flex; flex-wrap:wrap; gap:6px; }
+.curve-actions button,.curve-close { padding:8px 10px; color:#e2eedb; background:#294137; border:1px solid #526b58; border-radius:5px; cursor:pointer; }
+.curve-actions button:disabled { opacity:.35; cursor:default; }
+.curve-selection { font-size:12px; color:#d5e9c9; }
+.curve-warning,.curve-error { color:#ffc77e; font-size:12px; }
+.curve-dialog,.curve-number-dialog { color:#e2eedb; background:#172e26; border:1px solid #63765b; border-radius:12px; padding:24px; max-height:90dvh; overflow:auto; }
+.curve-dialog { width:min(960px,94vw); }
+.curve-number-dialog { width:min(380px,92vw); }
+.curve-dialog::backdrop,.curve-number-dialog::backdrop { background:#0009; }
+.curve-close { float:right; }
+.curve-number-dialog label { display:block; margin:16px 0; }
+.curve-number-dialog input { display:block; width:100%; box-sizing:border-box; margin-top:8px; padding:10px; background:#10251f; color:white; border:1px solid #60725a; border-radius:4px; }
+.curve-number-dialog input:disabled { opacity:.5; }
+/* Keep the SVG itself as the event target when points redraw mid-click. */
+.curve-graph > * { pointer-events:none; }

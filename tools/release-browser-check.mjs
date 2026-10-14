@@ -20,6 +20,7 @@ try {
   page.on('pageerror', error => errors.push(error.message));
   await page.goto(baseURL);
   await page.waitForFunction(() => window.__ARCHERO__?.snapshot().ready, {}, { timeout: 60000 });
+  if (process.env.TURN_MODEL) await page.locator('#turn-model').selectOption(process.env.TURN_MODEL);
   const cdp = await page.context().newCDPSession(page);
   const rect = await page.locator('#viewport').boundingBox(), scale = rect.width / 390;
   const x = rect.x + rect.width / 2, y = rect.y + rect.height * 0.7, radius = 60 * scale;

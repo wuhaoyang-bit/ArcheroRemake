@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { exponentialCurve } from '../src/turn-curve.ts';
 import assert from 'node:assert/strict';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -13,7 +14,7 @@ import { MovementController } from '../src/controller.ts';
 test('requested defaults match the screenshot, with speed 16 / upper limit 30 and independent Run rate', () => {
   assert.deepEqual(DEFAULTS, {
     joystickRadius: 64, unlockDistance: 12, showThreshold: 0, anchorScale: 0.036,
-    moveSpeed: 16, turnSpeed: 900, blendDuration: 0.06, runSpeed: 1.6,
+    moveSpeed: 16, turnSpeed: 1200, turnModel: 0, turnResponse: 10.4, turnSnapAngle: 0.1, curveSnapAngle: 0.1, turnCurve: exponentialCurve(10.4), blendDuration: 0.06, runSpeed: 1.6,
     roomSize: 16, roomLength: 38, cameraResponse: 9, cameraOffset: 0, viewWidth: 18,
   });
   assert.equal(LIMITS.moveSpeed[1], 30);
@@ -45,7 +46,7 @@ test('HTTP save writes real JSON, is shared across servers, survives restart, an
     const address = server.address(); assert.ok(address && typeof address === 'object');
     return `http://127.0.0.1:${address.port}`;
   }
-  const payload = settingsDocument({ ...DEFAULTS, moveSpeed: 23, runSpeed: 2.5 });
+  const payload = settingsDocument({ ...DEFAULTS, moveSpeed: 23, runSpeed: 2.5, turnModel: 2, turnCurve: [{ angle: 0, speed: 45 }, { angle: 80, speed: 900 }, { angle: 180, speed: 2300 }] });
   const post = (base: string, value: unknown, origin = base) => fetch(`${base}/__save-params`, { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: origin }, body: JSON.stringify(value) });
   try {
     await writeFile(file, JSON.stringify(settingsDocument(DEFAULTS)));
@@ -64,5 +65,15 @@ test('HTTP save writes real JSON, is shared across servers, survives restart, an
   } finally {
     for (const server of servers) if (server.listening) await new Promise<void>(resolve => server.close(() => resolve()));
     await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('turning model settings persist together and old JSON keeps constant behavior', () => {
+  const old = parseSettingsDocument({ version: 1, settings: { turnSpeed: 1200 } });
+  assert.equal(old.turnModel, 0); assert.equal(old.turnResponse, 10.4); assert.equal(old.turnSnapAngle, 0.1);
+  const tuned = { ...old, turnModel: 1, turnResponse: 8.5, turnSnapAngle: 0.05 };
+  assert.deepEqual(parseSettingsDocument(JSON.parse(JSON.stringify(settingsDocument(tuned)))), tuned);
+  for (const value of [0.5, -1, 3]) {
+    assert.throws(() => parseSettingsDocument({ version: 1, settings: { turnModel: value } }));
   }
 });

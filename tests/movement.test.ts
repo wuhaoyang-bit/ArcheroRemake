@@ -44,7 +44,7 @@ test('T07–T09, T25: immediate travel direction is independent of shortest-arc 
   c.update(5); near(wrapAngle(c.heading - c.targetHeading), 0);
 });
 
-test('horizontal reversals turn above; nearby directions still take the shortest arc', () => {
+test('horizontal reversals: left-to-right above, right-to-left below; nearby directions use shortest arc', () => {
   for (const side of [-1, 1]) {
     for (const tilt of [-10, 0, 10]) {
       const c = moving();
@@ -52,8 +52,8 @@ test('horizontal reversals turn above; nearby directions still take the shortest
       const radians = tilt * Math.PI / 180;
       c.move(1, -side * 40 * Math.cos(radians), 40 * Math.sin(radians));
       c.update(90 / c.settings.turnSpeed);
-      // Negative screen Y is above. Exact horizontal ties also pass above.
-      near(Math.cos(c.heading), tilt <= 0 ? -1 : 1);
+      // Exact ties: left-to-right above (-Z), reverse below (+Z).
+      near(Math.cos(c.heading), tilt === 0 ? side : tilt < 0 ? -1 : 1);
       c.release(1);
       const stopped = { ...c.position };
       c.update(1);
@@ -218,4 +218,52 @@ test('cancel and new gestures invalidate pending release; takeover loss cannot s
   c.move(3, 50, 0); c.press(4, 0, 0); c.loseCapture(4);
   c.release(4, { x: 0, y: -1 }); // New finger was still locked.
   near(c.offset.x, 50 * c.settings.anchorScale); near(c.offset.z, 0);
+});
+
+test('exponential response follows angle error without a speed cap and is independent of frame rate', () => {
+  const run = (hz: number) => {
+    const c = moving(0, -60);
+    c.heading = 0; c.set('turnModel', 1); c.release(1);
+    const position = { ...c.position };
+    for (let i = 0; i < hz / 2; i++) c.update(1 / hz);
+    near(Math.abs(wrapAngle(c.targetHeading - c.heading)), Math.PI * Math.exp(-10.4 * 0.5));
+    assert.deepEqual(c.position, position);
+    return c;
+  };
+  near(run(30).heading, run(60).heading); near(run(60).heading, run(144).heading);
+  const c = moving(0, -60); c.heading = 0; c.set('turnModel', 1); c.set('turnSpeed', 90);
+  c.update(1 / 120);
+  near(c.angularSpeed, 180 * -Math.expm1(-10.4 / 120) * 120);
+  assert.ok(c.angularSpeed > 1200); // No hidden dependence on constant-model speed.
+});
+
+test('exponential arrival snaps only inside threshold and continues after release', () => {
+  const c = moving(0, -60); c.heading = 0; c.set('turnModel', 1); c.set('turnSnapAngle', 0.1);
+  c.release(1); const position = { ...c.position };
+  c.update(0.5); assert.ok(Math.abs(wrapAngle(c.heading - c.targetHeading)) > 0);
+  c.update(0.3); near(wrapAngle(c.heading - c.targetHeading), 0);
+  c.update(0.1); near(c.angularSpeed, 0); assert.deepEqual(c.position, position);
+});
+
+test('model changes retain pose, input, anchor, and independent tuning', () => {
+  const c = moving(40, 0); c.set('turnSpeed', 1200); c.set('turnResponse', 7); c.update(0.01);
+  const before = c.snapshot(); c.set('turnModel', 1);
+  assert.deepEqual(c.snapshot(), before);
+  c.update(0.01); assert.notEqual(c.heading, before.heading);
+  const exponentialPose = c.snapshot(); c.set('turnModel', 0);
+  assert.deepEqual(c.snapshot(), exponentialPose);
+  near(c.settings.turnSpeed, 1200); near(c.settings.turnResponse, 7);
+  c.update(0.01); near(c.angularSpeed, 1200);
+});
+
+test('exponential and custom curves use directional horizontal ties and shortest non-ties', () => {
+  for (const model of [1, 2]) for (const side of [-1, 1]) {
+    for (const tilt of [-10, 0, 10]) {
+      const c = moving(); c.set('turnModel', model); c.heading = side * Math.PI / 2;
+      const angle = tilt * Math.PI / 180;
+      c.move(1, -side * 40 * Math.cos(angle), 40 * Math.sin(angle));
+      c.update(0.01);
+      assert.equal(Math.sign(Math.cos(c.heading)), tilt === 0 ? side : tilt < 0 ? -1 : 1);
+    }
+  }
 });

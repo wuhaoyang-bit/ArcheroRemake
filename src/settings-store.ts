@@ -1,3 +1,4 @@
+import { exponentialCurve, validateCurve } from './turn-curve.ts';
 import { DEFAULTS, LIMITS, sanitize, type Settings, type SettingKey } from './config.ts';
 
 export type SettingsDocument = { version: 1; settings: Settings };
@@ -19,13 +20,16 @@ export function parseSettingsDocument(raw: unknown, strict = false): Settings {
   if (doc.version !== 1) throw new Error('参数文件版本不受支持');
   if (!doc.settings || typeof doc.settings !== 'object' || Array.isArray(doc.settings)) throw new Error('参数文件缺少 settings');
   const source = doc.settings as Record<string, unknown>, settings = { ...DEFAULTS };
-  for (const key of Object.keys(DEFAULTS) as SettingKey[]) {
+  for (const key of Object.keys(LIMITS) as SettingKey[]) {
     const value = source[key];
     if (value === undefined) continue; // Older files gain newly added parameters from defaults.
     if (typeof value !== 'number' || !Number.isFinite(value)) throw new Error(`参数 ${key} 必须是有限数字`);
+    if (key === 'turnModel' && value !== 0 && value !== 1 && value !== 2) throw new Error('转向模型必须为 0（匀速）、1（指数跟随）或 2（自定义曲线）');
     if (strict && (value < LIMITS[key][0] || value > LIMITS[key][1])) throw new Error(`参数 ${key} 超出范围`);
     settings[key] = sanitize(key, value);
   }
+  settings.turnCurve = source.turnCurve === undefined ? exponentialCurve(settings.turnResponse) : validateCurve(source.turnCurve);
+  if (source.curveSnapAngle === undefined) settings.curveSnapAngle = settings.turnSnapAngle;
   return settings;
 }
 

@@ -3,12 +3,30 @@
   "settings": {
     "joystickRadius": 64,
     "unlockDistance": 20,
-    "showThreshold": 0,
+    "showThreshold": 1,
     "anchorScale": 0.036,
     "moveSpeed": 16,
     "turnSpeed": 1200,
+    "turnModel": 2,
+    "turnResponse": 15.4,
+    "turnSnapAngle": 0.1,
+    "curveSnapAngle": 0.1,
+    "turnCurve": [
+      {
+        "angle": 0,
+        "speed": 600
+      },
+      {
+        "angle": 30,
+        "speed": 1215
+      },
+      {
+        "angle": 180,
+        "speed": 1215
+      }
+    ],
     "blendDuration": 0.2,
-    "runSpeed": 2,
+    "runSpeed": 2.5,
     "roomSize": 16,
     "roomLength": 38,
     "cameraResponse": 9,
