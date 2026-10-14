@@ -57,6 +57,7 @@ npm run android:build
 - 按下点定位轮盘、首次阈值锁定、越阈值瞬时解锁、边缘限幅；解锁后不重复触发死区。
 - 待机／原地跑步／真正移动，与摇杆锁定状态分开管理。
 - 固定速度、立即位移、身体按最短角度转向；松手后身体继续转完。
+- 正常松手以该事件携带的最终鼠标／触点坐标直接计算锚点（经过半径限制与地面映射，不读取摇杆显示位置），再立即停止位移；目标朝向始终由锚点决定，待机时也继续转完；旧手指松开和取消操作不会覆盖当前方向。失去指针捕获时立即停止位移，但保留同次操作的收尾信息，仍接受随后到达的最终松手坐标；新按下、取消或窗口失焦会清除待收尾信息。
 - 可见移动锚点、角色相对偏移记忆、松手隐藏；精确居中时保留最后方向继续移动。
 - 最新手指接管；移动中换指延续旧方向，直到新摇杆解锁；旧指永不恢复控制。
 - Idle／Run 骨骼动画融合；中途反向融合从当前权重继续，原地跑步进入移动不重启动画。
@@ -100,6 +101,8 @@ npm run build
 
 ```sh
 npm run test:browser
+# 松手坐标比最后一次移动更新时，最终朝向与锚点记忆的专项回归：
+npm run test:release
 # 两个开发服务都运行时，同时验证 HTTPS 入口：
 HTTPS_URL=https://localhost:5174 npm run test:browser
 # JSON 保存、刷新恢复、跨浏览器共享和 Run 倍率：
@@ -109,6 +112,8 @@ HTTPS_URL=https://localhost:5174 npm run test:settings
 macOS 默认使用 `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`。其他路径可设置 `CHROME_PATH`；也可 `npx playwright install chromium` 后使用 Playwright 浏览器。`BASE_URL` 可覆盖默认开发地址。测试的 WebGPU 开关仅用于无头浏览器，应用本身不依赖该启动参数。
 
 状态测试覆盖阈值、位移、转向、锚点、换指、精确居中、动画融合、房间约束和帧率一致性。浏览器检查通过真实指针事件及 Chrome 多点触摸事件验证输入、画面比例、镜头投影、控件隔离和 HTTPS 加载。截图和结果写入本地 `analysis/v1-checks/`，不纳入 Git。
+
+松手专项检查通过 Chrome 输入事件直接发送新的松手坐标，不补发最后一次移动，覆盖重复释放、不同最终方向、锚点记忆、精确居中及取消操作。结果写入本地 `analysis/release-checks/`。
 
 生产构建输出到 `dist/`，可部署到 HTTPS 静态服务器；`npm run preview` 在本机预览构建。开发时的只读检查接口不会出现在生产构建中。
 

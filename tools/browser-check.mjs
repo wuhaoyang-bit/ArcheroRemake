@@ -139,6 +139,20 @@ try {
     await touch('touchMove', [[3, 200, 680]]); await mobile.waitForTimeout(130); assert.deepEqual((await snapshot(mobile)).position, stop);
     await touch('touchEnd', []);
   });
+  await check('Trusted touch release commits its final coordinate before remembering the anchor', async () => {
+    await mobile.evaluate(() => window.addEventListener('pointerup', event => {
+      window.__lastRelease = { x: event.clientX, y: event.clientY, trusted: event.isTrusted };
+    }, { once: true }));
+    await touch('touchStart', [[6, 130, 640]]);
+    await touch('touchMove', [[6, 100, 640]]);
+    await touch('touchEnd', [[6, 130, 580]]);
+    const released = await mobile.evaluate(() => window.__lastRelease);
+    assert.equal(released.trusted, true); near(released.x, 130); near(released.y, 580);
+    const s = await snapshot(mobile), r = await mobile.locator('#viewport').boundingBox();
+    near(Math.abs(s.targetHeading), Math.PI); near(s.remembered.x, 0);
+    near(s.remembered.z, -Math.min(60 / (r.width / 390), s.settings.joystickRadius) * s.settings.anchorScale);
+    assert.equal(s.mode, 'idle'); assert.equal(s.anchorVisible, false);
+  });
   await check('Touch cancellation and viewport resizing leave no stuck input', async () => {
     await touch('touchStart', [[5, 190, 620]]); await touch('touchMove', [[5, 190, 570]]);
     await touch('touchCancel', []); assert.equal((await snapshot(mobile)).mode, 'idle');

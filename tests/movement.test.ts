@@ -44,6 +44,25 @@ test('T07–T09, T25: immediate travel direction is independent of shortest-arc 
   c.update(5); near(wrapAngle(c.heading - c.targetHeading), 0);
 });
 
+test('horizontal reversals turn above; nearby directions still take the shortest arc', () => {
+  for (const side of [-1, 1]) {
+    for (const tilt of [-10, 0, 10]) {
+      const c = moving();
+      c.heading = side * Math.PI / 2;
+      const radians = tilt * Math.PI / 180;
+      c.move(1, -side * 40 * Math.cos(radians), 40 * Math.sin(radians));
+      c.update(90 / c.settings.turnSpeed);
+      // Negative screen Y is above. Exact horizontal ties also pass above.
+      near(Math.cos(c.heading), tilt <= 0 ? -1 : 1);
+      c.release(1);
+      const stopped = { ...c.position };
+      c.update(1);
+      near(wrapAngle(c.heading - c.targetHeading), 0);
+      assert.deepEqual(c.position, stopped);
+    }
+  }
+});
+
 test('T10: release remembers relative offset, independent of facing and world position; new level clears memory', () => {
   const c = moving(30, -40); c.update(0.2); const offset = { ...c.offset }, oldWorld = c.anchor;
   c.release(1); c.position.x += 1; c.press(2, 5, 10);
@@ -136,4 +155,67 @@ test('movement and turning remain frame-rate independent and reject invalid inpu
   const a = simulate(30), b = simulate(144); near(a.position.x, b.position.x); near(a.position.z, b.position.z); near(a.heading, b.heading);
   a.move(1, NaN, Infinity); const p = { ...a.position }; a.update(NaN); assert.deepEqual(a.position, p);
   a.set('moveSpeed', -9); assert.equal(a.settings.moveSpeed, 1); a.set('moveSpeed', NaN); assert.equal(a.settings.moveSpeed, DEFAULTS.moveSpeed);
+});
+
+test('release maps final pointer directly to anchor despite a stale visual stick; idle follows that anchor', () => {
+  const c = moving(-30, -40);
+  c.heading = 0;
+  c.stick = { x: 60, y: 0 }; // A displayed stick must not decide release direction.
+  const position = { ...c.position };
+  c.release(1, { x: 0, y: -200 });
+  near(c.offset.x, 0);
+  near(c.offset.z, -c.settings.joystickRadius * c.settings.anchorScale);
+  assert.deepEqual(c.remembered, c.offset);
+  assert.equal(c.anchorVisible, false);
+  c.update(1);
+  near(wrapAngle(c.heading - Math.PI), 0);
+  assert.deepEqual(c.position, position);
+  // Even in idle the target is derived from the anchor, not a cached input angle.
+  c.offset = { x: 1, z: 0 };
+  c.update(1);
+  near(c.heading, Math.PI / 2);
+  assert.deepEqual(c.position, position);
+});
+
+test('final pointer respects ownership and takeover lock; cancellation retains the anchor', () => {
+  const c = moving(-30, -40), offset = { ...c.offset };
+  c.press(2, 10, 10);
+  c.release(1, { x: 200, y: 0 });
+  assert.equal(c.pointerId, 2);
+  assert.deepEqual(c.offset, offset);
+  c.release(2, { x: 1, y: 0 });
+  assert.deepEqual(c.remembered, offset);
+  c.press(3, 10, 10);
+  c.release(3, { x: 200, y: 0 });
+  near(c.offset.x, c.settings.joystickRadius * c.settings.anchorScale);
+  near(c.offset.z, 0);
+  c.press(4, 0, 0); c.cancel();
+  near(c.remembered.x, c.settings.joystickRadius * c.settings.anchorScale);
+});
+
+test('capture loss stops travel but accepts the same gesture final coordinate exactly once', () => {
+  const c = moving(-30, -40), stopped = { ...c.position };
+  c.loseCapture(1);
+  assert.equal(c.mode, 'idle');
+  c.update(0.1); assert.deepEqual(c.position, stopped);
+  c.move(1, 40, 0); // Late drag cannot resume or overwrite the anchor.
+  c.release(1, { x: 0, y: -60 });
+  near(c.offset.x, 0); near(c.offset.z, -60 * c.settings.anchorScale);
+  assert.deepEqual(c.remembered, c.offset);
+  c.update(1); near(wrapAngle(c.heading - Math.PI), 0);
+  assert.deepEqual(c.position, stopped);
+  c.release(1, { x: 60, y: 0 }); near(c.offset.x, 0);
+});
+
+test('cancel and new gestures invalidate pending release; takeover loss cannot stop current owner', () => {
+  const c = moving(-30, -40), original = { ...c.offset };
+  c.loseCapture(1); c.cancel(); c.release(1, { x: 60, y: 0 });
+  assert.deepEqual(c.offset, original);
+  c.press(2, 0, 0); c.move(2, -30, -40); c.loseCapture(2);
+  c.press(3, 100, 100); c.release(2, { x: 60, y: 0 });
+  assert.equal(c.pointerId, 3); assert.deepEqual(c.offset, original);
+  c.loseCapture(2); assert.equal(c.pointerId, 3);
+  c.move(3, 50, 0); c.press(4, 0, 0); c.loseCapture(4);
+  c.release(4, { x: 0, y: -1 }); // New finger was still locked.
+  near(c.offset.x, 50 * c.settings.anchorScale); near(c.offset.z, 0);
 });

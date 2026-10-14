@@ -100,6 +100,12 @@ export class GameScene {
   player = new THREE.Group();
   body = new THREE.Group();
   anchor = new THREE.Group();
+  showHeading = false;
+  showIdleAnchor = false;
+  showAnchorOutline = false;
+  anchorOutline = new THREE.Mesh(new THREE.RingGeometry(0.235, 0.275, 48),
+    new THREE.MeshBasicMaterial({ color: 0x9ff5ff, depthTest: false, depthWrite: false, side: THREE.DoubleSide }));
+  headingGuide = new THREE.Group();
   cameraZ: number;
   blend = new AnimationBlend();
   mixer!: THREE.AnimationMixer;
@@ -152,7 +158,23 @@ export class GameScene {
     ring.rotation.x = -Math.PI / 2; ring.position.y = 0.03; this.player.add(ring, this.body); this.scene.add(this.player);
     const glow = groundCircle(0.30, 0x52d9f1, 0.22), rim = groundCircle(0.23, 0x3fbddf), core = groundCircle(0.125, 0xf0ffff);
     glow.position.y = 0.055; rim.position.y = 0.06; core.position.y = 0.065;
+    // Overlay only the perimeter; leave the normal anchor fill depth-tested.
+    this.anchorOutline.rotation.x = -Math.PI / 2;
+    this.anchorOutline.position.y = 0.07;
+    this.anchorOutline.renderOrder = 101;
+    this.anchorOutline.visible = false;
+    this.anchor.add(this.anchorOutline);
     this.anchor.add(glow, rim, core); this.anchor.visible = false; this.scene.add(this.anchor);
+
+    // A narrow ground strip is a readable line on both WebGPU desktop and mobile.
+    const headingLine = new THREE.Mesh(new THREE.PlaneGeometry(0.055, 2.8),
+      new THREE.MeshBasicMaterial({ color: 0xff647a, depthTest: false, depthWrite: false, side: THREE.DoubleSide }));
+    headingLine.rotation.x = -Math.PI / 2;
+    headingLine.position.set(0, 0.085, 1.4);
+    headingLine.renderOrder = 100;
+    this.headingGuide.add(headingLine);
+    this.headingGuide.visible = false;
+    this.player.add(this.headingGuide);
 
     const gltf = await new GLTFLoader().loadAsync(`${import.meta.env.BASE_URL}models/rogue.glb`);
     for (const name of ['Knife', 'Knife_Offhand', '1H_Crossbow', '2H_Crossbow', 'Throwable']) {
@@ -204,7 +226,10 @@ export class GameScene {
     this.player.position.set(ctl.position.x, 0, ctl.position.z);
     this.body.rotation.y = ctl.heading;
     const target = ctl.anchor;
-    this.anchor.position.set(target.x, 0, target.z); this.anchor.visible = ctl.anchorVisible;
+    this.anchor.position.set(target.x, 0, target.z); this.anchor.visible = ctl.anchorVisible || this.showIdleAnchor;
+    this.anchorOutline.visible = this.showAnchorOutline;
+    this.headingGuide.visible = this.showHeading;
+    this.headingGuide.rotation.y = ctl.heading;
     this.blend.setTarget(ctl.mode === 'idle' ? 0 : 1, ctl.settings.blendDuration);
     const weight = this.blend.update(dt);
     this.idle.setEffectiveWeight(1 - weight); this.run.setEffectiveWeight(weight);

@@ -12,6 +12,7 @@ export class MovementController {
   settings: Settings;
   mode: Mode = 'idle';
   pointerId: number | null = null;
+  private pendingRelease: { id: number; unlocked: boolean } | null = null;
   unlocked = false;
   center = { x: 0, y: 0 };
   raw = { x: 0, y: 0 };
@@ -21,7 +22,11 @@ export class MovementController {
   remembered: GroundVector = { x: 0, z: 0 };
   direction: GroundVector | null = null;
   heading = Math.PI;
-  targetHeading = Math.PI;
+  get targetHeading() {
+    // The retained anchor remains authoritative even while hidden in idle.
+    if (Math.hypot(this.offset.x, this.offset.z) > 0) return Math.atan2(this.offset.x, this.offset.z);
+    return this.direction ? Math.atan2(this.direction.x, this.direction.z) : Math.PI;
+  }
 
   constructor(settings: Settings = { ...DEFAULTS }) {
     this.settings = { ...settings };
@@ -31,6 +36,7 @@ export class MovementController {
   get anchor() { return { x: this.position.x + this.offset.x, z: this.position.z + this.offset.z }; }
 
   press(id: number, x: number, y: number) {
+    this.pendingRelease = null;
     // Taking over does not reset the movement mode or the remembered direction.
     if (this.mode === 'idle') {
       this.mode = 'in-place';
@@ -54,20 +60,50 @@ export class MovementController {
     this.mapStick();
   }
 
-  private mapStick() {
-    const length = Math.hypot(this.raw.x, this.raw.y);
+  private clampInput(dx: number, dy: number) {
+    const length = Math.hypot(dx, dy);
     const scale = length === 0 ? 0 : Math.min(1, this.settings.joystickRadius / length);
-    this.stick = { x: this.raw.x * scale, y: this.raw.y * scale };
-    this.offset = { x: this.stick.x * this.settings.anchorScale, z: this.stick.y * this.settings.anchorScale };
-    // Deliberately no second dead zone. Exact zero retains only the last direction.
-    if (length > 0) {
-      this.direction = { x: this.raw.x / length, z: this.raw.y / length };
-      this.targetHeading = Math.atan2(this.direction.x, this.direction.z);
-    }
+    return { x: dx * scale, y: dy * scale };
   }
 
-  release(id: number) {
+  private mapAnchor(input: { x: number; y: number }) {
+    this.offset = { x: input.x * this.settings.anchorScale, z: input.y * this.settings.anchorScale };
+    this.syncAnchorDirection();
+  }
+
+  private syncAnchorDirection() {
+    const length = Math.hypot(this.offset.x, this.offset.z);
+    // Exact zero retains the last nonzero direction, as agreed.
+    if (length > 0) this.direction = { x: this.offset.x / length, z: this.offset.z / length };
+  }
+
+  private mapStick() {
+    this.stick = this.clampInput(this.raw.x, this.raw.y);
+    this.mapAnchor(this.stick);
+  }
+
+  canRelease(id: number) {
+    return id === this.pointerId || (this.pointerId === null && id === this.pendingRelease?.id);
+  }
+
+  loseCapture(id: number) {
     if (id !== this.pointerId) return;
+    const pending = { id, unlocked: this.unlocked };
+    // Stop immediately, but capture loss can precede the authoritative pointerup.
+    this.release(id);
+    this.pendingRelease = pending;
+  }
+
+  release(id: number, finalInput?: { x: number; y: number }) {
+    if (!this.canRelease(id)) return;
+    const unlocked = id === this.pointerId ? this.unlocked : this.pendingRelease!.unlocked;
+    this.pendingRelease = null;
+    // Final pointer displacement maps directly to the anchor, bypassing the
+    // visual stick. A still-locked gesture retains its previous anchor.
+    if (finalInput && Number.isFinite(finalInput.x) && Number.isFinite(finalInput.y)
+      && (unlocked || Math.hypot(finalInput.x, finalInput.y) > this.settings.unlockDistance)) {
+      this.mapAnchor(this.clampInput(finalInput.x, finalInput.y));
+    }
     this.remembered = { ...this.offset };
     this.pointerId = null;
     this.mode = 'idle';
@@ -76,7 +112,10 @@ export class MovementController {
     this.stick = { x: 0, y: 0 };
   }
 
-  cancel() { if (this.pointerId !== null) this.release(this.pointerId); }
+  cancel() {
+    this.pendingRelease = null;
+    if (this.pointerId !== null) this.release(this.pointerId);
+  }
 
   set(key: SettingKey, value: number) {
     this.settings[key] = sanitize(key, value);
@@ -93,12 +132,20 @@ export class MovementController {
 
   update(dt: number) {
     if (!Number.isFinite(dt) || dt <= 0) return;
+    this.syncAnchorDirection();
     if (this.mode === 'moving' && this.direction) {
       this.position.x += this.direction.x * this.settings.moveSpeed * dt;
       this.position.z += this.direction.z * this.settings.moveSpeed * dt;
       this.constrain();
     }
-    const difference = wrapAngle(this.targetHeading - this.heading);
+    let difference = wrapAngle(this.targetHeading - this.heading);
+    // Exact left/right reversals have two equally short arcs. Match the observed
+    // upper-screen arc (-Z); leave other directions and non-ties unchanged.
+    const angleEpsilon = 1e-10;
+    if (Math.abs(Math.abs(difference) - Math.PI) < angleEpsilon
+      && Math.abs(Math.cos(this.heading)) < angleEpsilon) {
+      difference = Math.sign(Math.sin(this.heading)) * Math.PI;
+    }
     const step = this.settings.turnSpeed * Math.PI / 180 * dt;
     this.heading = wrapAngle(this.heading + Math.sign(difference) * Math.min(Math.abs(difference), step));
   }

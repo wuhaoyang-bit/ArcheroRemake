@@ -34,7 +34,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       <div class="settings-scroll">${settings.map(group => `<section class="setting-group"><h2>${group.title}</h2>${group.items.map(([key, name, unit, hint]) => {
         const [min, max, step] = LIMITS[key];
         return `<div class="setting" title="${hint}"><div class="setting-label"><label for="slider-${key}">${name}</label><div class="numeric"><input id="value-${key}" data-setting="${key}" type="number" min="${min}" max="${max}" step="${step}" value="${DEFAULTS[key]}" aria-label="${name}数值"><span>${unit}</span></div></div><input id="slider-${key}" data-setting="${key}" type="range" min="${min}" max="${max}" step="${step}" value="${DEFAULTS[key]}" aria-label="${name}"></div>`;
-      }).join('')}${group.title === '轮盘与锚点' ? '<label class="threshold-toggle"><input id="show-threshold" type="checkbox">显示移动阈值范围</label><p class="threshold-help">黄圈为首次解锁边界，越过后变青色；回圈内不会再次锁定。</p>' : ''}</section>`).join('')}</div>
+      }).join('')}${group.title === '轮盘与锚点' ? '<label class="threshold-toggle"><input id="show-threshold" type="checkbox">显示移动阈值范围</label><p class="threshold-help">黄圈为首次解锁边界，越过后变青色；回圈内不会再次锁定。</p>' : ''}</section>`).join('')}<section class="setting-group"><h2>朝向调试</h2><label class="threshold-toggle"><input id="show-heading" type="checkbox">显示角色朝向线</label><label class="threshold-toggle debug-toggle"><input id="show-idle-anchor" type="checkbox">待机时也显示移动锚点</label><label class="threshold-toggle debug-toggle"><input id="show-anchor-outline" type="checkbox">锚点遮挡轮廓</label><p class="threshold-help">粉红直线代表角色当前朝向；蓝点代表移动锚点；遮挡轮廓让浅蓝圆环透过角色显示。开关仅用于本次页面调试。</p></section></div>
       <div class="panel-footer"><div class="store-actions"><button id="save-settings" class="text-button save-button" disabled>保存 JSON <span>↓</span></button><button id="restore" class="text-button" disabled>恢复默认 <span>↺</span></button></div><p id="store-status" role="status" aria-live="polite">正在读取参数…</p><p>参数即时生效 · 像素以 390 宽度为基准</p></div>
     </aside>
     <section class="stage" aria-label="游戏测试区域">
@@ -49,7 +49,8 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <aside class="panel right-panel" data-ui aria-label="实时状态">
       <div class="panel-heading"><div><span class="eyebrow">LIVE INSPECTOR</span><h2 class="large-heading">每一步，都看得见</h2></div><span class="live-dot"></span></div>
       <section class="status-card"><span class="eyebrow">角色状态</span><strong id="mode-label">待机</strong><div class="state-track"><span data-mode="idle">待机</span><span data-mode="in-place">原地跑步</span><span data-mode="moving">移动</span></div></section>
-      <dl class="telemetry"><div><dt>当前控制点</dt><dd id="pointer-label">—</dd></div><div><dt>摇杆锁定</dt><dd id="lock-label">—</dd></div><div><dt>摇杆偏移</dt><dd id="stick-label">0.0 / 0.0</dd></div><div><dt>锚点偏移</dt><dd id="anchor-label">0.00 / 0.00</dd></div><div><dt>角色坐标</dt><dd id="position-label">0.00 / 0.00</dd></div><div><dt>剩余转角</dt><dd id="angle-label">0.0°</dd></div><div><dt>镜头纵向差</dt><dd id="camera-label">0.000</dd></div></dl>
+      <dl class="telemetry"><div><dt>当前控制点</dt><dd id="pointer-label">—</dd></div><div><dt>摇杆锁定</dt><dd id="lock-label">—</dd></div><div><dt>摇杆偏移</dt><dd id="stick-label">0.0 / 0.0</dd></div><div><dt>角色朝向</dt><dd id="heading-label">0.0°</dd></div><div><dt>锚点方向</dt><dd id="anchor-heading-label">—</dd></div><div><dt>锚点相对 X / Z</dt><dd id="anchor-label">0.00 / 0.00</dd></div><div><dt>角色坐标</dt><dd id="position-label">0.00 / 0.00</dd></div><div><dt>剩余转角</dt><dd id="angle-label">0.0°</dd></div><div><dt>镜头纵向差</dt><dd id="camera-label">0.000</dd></div></dl>
+      <p class="threshold-help">角度：上 0°、右 90°、下 180°、左 270°。相对坐标为地面单位，X 向右、Z 向下。</p>
       <section class="blend-meter"><div><span>Idle</span><span id="blend-label">100% / 0%</span><span>Run</span></div><div class="meter"><i id="blend-fill"></i></div></section>
       <section class="guide"><span class="eyebrow">试试这些动作</span><div><b>01</b><p>轻按，微微拖动<small>阈值内原地跑步，摇杆保持居中</small></p></div><div><b>02</b><p>越过阈值，再回拉<small>解锁后持续移动，不再重复解锁</small></p></div><div><b>03</b><p>手机上，用第二指接管<small>移动延续，新摇杆等待首次解锁</small></p></div></section>
       <div class="renderer-info"><span><i></i> WEBGPU</span><span id="fps-label">— FPS</span></div>
@@ -100,9 +101,9 @@ function drawJoystick() {
   element('game-hint').classList.toggle('hidden', active);
 }
 
-function captureRelease() {
-  const id = controller.pointerId;
-  controller.cancel();
+function captureRelease(finalInput?: { x: number; y: number }, id = controller.pointerId) {
+  if (id !== null) controller.release(id, finalInput);
+  else controller.cancel();
   if (id !== null && viewport.hasPointerCapture(id)) viewport.releasePointerCapture(id);
   drawJoystick(); updateTelemetry();
 }
@@ -116,22 +117,33 @@ viewport.addEventListener('pointerdown', event => {
   viewport.setPointerCapture(event.pointerId);
   drawJoystick(); updateTelemetry();
 });
+function updatePointerPosition(event: PointerEvent) {
+  // Pointer capture preserves control outside the portrait viewport.
+  controller.move(event.pointerId, (event.clientX - controller.center.x) / viewScale, (event.clientY - controller.center.y) / viewScale);
+}
 viewport.addEventListener('pointermove', event => {
   if (event.pointerId !== controller.pointerId) return;
   event.preventDefault();
-  // Pointer capture preserves control outside the portrait viewport.
-  controller.move(event.pointerId, (event.clientX - controller.center.x) / viewScale, (event.clientY - controller.center.y) / viewScale);
+  updatePointerPosition(event);
   drawJoystick();
 });
 function endPointer(event: PointerEvent) {
-  if (event.pointerId !== controller.pointerId) return;
-  captureRelease();
+  if (!controller.canRelease(event.pointerId)) return;
+  // Commit the final pointer position directly to the anchor, not the visual stick.
+  captureRelease(event.type === 'pointerup' ? {
+    x: (event.clientX - controller.center.x) / viewScale,
+    y: (event.clientY - controller.center.y) / viewScale,
+  } : undefined, event.pointerId);
 }
-viewport.addEventListener('pointerup', endPointer);
-viewport.addEventListener('pointercancel', endPointer);
-viewport.addEventListener('lostpointercapture', endPointer);
+// Capture may already be lost, so terminal events can target outside the viewport.
+window.addEventListener('pointerup', endPointer, true);
+window.addEventListener('pointercancel', endPointer, true);
+viewport.addEventListener('lostpointercapture', event => {
+  controller.loseCapture(event.pointerId);
+  drawJoystick(); updateTelemetry();
+});
 viewport.addEventListener('contextmenu', event => event.preventDefault());
-window.addEventListener('blur', captureRelease);
+window.addEventListener('blur', () => captureRelease());
 document.addEventListener('visibilitychange', () => { if (document.hidden) captureRelease(); lastFrame = 0; });
 
 function syncSettings() {
@@ -148,6 +160,15 @@ document.querySelectorAll<HTMLInputElement>('[data-setting]').forEach(input => {
     controller.set(input.dataset.setting as SettingKey, input.valueAsNumber);
     syncSettings(); settingsChanged();
   });
+});
+element('show-heading').addEventListener('change', () => {
+  game.showHeading = element<HTMLInputElement>('show-heading').checked;
+});
+element('show-anchor-outline').addEventListener('change', () => {
+  game.showAnchorOutline = element<HTMLInputElement>('show-anchor-outline').checked;
+});
+element('show-idle-anchor').addEventListener('change', () => {
+  game.showIdleAnchor = element<HTMLInputElement>('show-idle-anchor').checked;
 });
 element('show-threshold').addEventListener('change', () => {
   controller.set('showThreshold', element<HTMLInputElement>('show-threshold').checked ? 1 : 0);
@@ -172,6 +193,10 @@ saveButton.addEventListener('click', async () => {
 element('open-settings').addEventListener('click', () => document.body.classList.add('settings-open'));
 element('close-settings').addEventListener('click', () => document.body.classList.remove('settings-open'));
 
+const displayAngle = (heading: number) => {
+  const degrees = ((180 - heading * 180 / Math.PI) % 360 + 360) % 360;
+  return `${(Math.round(degrees * 10) / 10 % 360).toFixed(1)}°`;
+};
 function updateTelemetry() {
   element('mode-label').textContent = element('game-state').textContent = modeNames[controller.mode];
   viewport.dataset.mode = controller.mode;
@@ -179,7 +204,10 @@ function updateTelemetry() {
   element('pointer-label').textContent = controller.pointerId === null ? '—' : `#${controller.pointerId}`;
   element('lock-label').textContent = controller.pointerId === null ? '等待按下' : controller.unlocked ? '已解锁' : '已锁定';
   element('stick-label').textContent = `${controller.stick.x.toFixed(1)} / ${controller.stick.y.toFixed(1)}`;
-  element('anchor-label').textContent = `${controller.offset.x.toFixed(2)} / ${controller.offset.z.toFixed(2)}`;
+  element('heading-label').textContent = displayAngle(controller.heading);
+  element('anchor-heading-label').textContent = Math.hypot(controller.offset.x, controller.offset.z) > 0
+    ? displayAngle(Math.atan2(controller.offset.x, controller.offset.z)) : '与角色重合';
+  element('anchor-label').textContent = `${controller.offset.x.toFixed(3)} / ${controller.offset.z.toFixed(3)}`;
   element('position-label').textContent = `${controller.position.x.toFixed(2)} / ${controller.position.z.toFixed(2)}`;
   element('angle-label').textContent = `${(Math.abs(wrapAngle(controller.targetHeading - controller.heading)) * 180 / Math.PI).toFixed(1)}°`;
   element('camera-label').textContent = (controller.position.z - game.cameraZ).toFixed(3);
@@ -225,7 +253,7 @@ async function start() {
     game.renderer.setAnimationLoop(frame);
     if (import.meta.env.DEV) {
       Object.assign(window, { __ARCHERO__: {
-        snapshot: () => ({ ...controller.snapshot(), settings: { ...controller.settings }, center: { ...controller.center }, cameraZ: game.cameraZ, cameraX: game.camera.position.x, footNdc: game.player.position.clone().project(game.camera).toArray(), anchorNdc: game.anchor.position.clone().project(game.camera).toArray(), runWeight: game.blend.weight, runTime: game.run.time, runTimeScale: game.run.getEffectiveTimeScale(), idleTimeScale: game.idle.getEffectiveTimeScale(), renderer: 'webgpu', ready }),
+        snapshot: () => ({ ...controller.snapshot(), settings: { ...controller.settings }, center: { ...controller.center }, cameraZ: game.cameraZ, cameraX: game.camera.position.x, footNdc: game.player.position.clone().project(game.camera).toArray(), anchorNdc: game.anchor.position.clone().project(game.camera).toArray(), runWeight: game.blend.weight, runTime: game.run.time, runTimeScale: game.run.getEffectiveTimeScale(), idleTimeScale: game.idle.getEffectiveTimeScale(), debug: { headingVisible: game.headingGuide.visible, heading: game.headingGuide.rotation.y, anchorVisible: game.anchor.visible, anchorOutlineVisible: game.anchor.visible && game.anchorOutline.visible }, renderer: 'webgpu', ready }),
       } });
     }
   } catch (error) {

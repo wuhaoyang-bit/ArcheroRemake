@@ -124,3 +124,5 @@ input[type=range]::-moz-range-thumb { width: 9px; height: 9px; border-radius: 50
 .joystick.show-threshold .threshold { display: block; }
 .joystick.unlocked .threshold { border-color: #80fff4; background: #26efd52e; }
 .viewport::after { background: linear-gradient(transparent, #f1ffd52b); }
+
+.debug-toggle { margin-top: 12px; }
