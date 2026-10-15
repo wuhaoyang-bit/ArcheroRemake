@@ -5,7 +5,7 @@
     "unlockDistance": 20,
     "showThreshold": 1,
     "anchorScale": 0.036,
-    "moveSpeed": 16,
+    "moveSpeed": 14,
     "turnSpeed": 1200,
     "turnModel": 2,
     "turnResponse": 17.6,
@@ -17,7 +17,7 @@
         "speed": 260
       },
       {
-        "angle": 40,
+        "angle": 30,
         "speed": 1215
       },
       {
