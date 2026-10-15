@@ -15,13 +15,11 @@ const settings: { title: string; items: [SettingKey, string, string, string][] }
   { title: '角色', items: [
     ['moveSpeed', '移动速度', '单位/s', '真正移动时立即使用固定速度，与身体朝向和摇杆幅度无关。'],
     ['turnSpeed', '匀速转向速度', '°/s', '仅匀速模型使用；保留原有固定角速度实验参数。'],
-    ['turnResponse', '转向响应系数', '1/s', '仅原有指数跟随使用：越大追近越快；不限制最大角速度。'],
-    ['curveSnapAngle', '曲线到位角度阈值', '°', '仅自定义曲线使用，独立于指数模型；到位时对齐目标。'],
-    ['turnSnapAngle', '到位角度阈值', '°', '仅原有指数跟随使用：剩余角度小于此值时对齐目标，不影响摇杆阈值和锚点。'],
-    ['dampingResponse', '指数阻尼响应系数', '1/s', '新模型的独立参数；默认 50/s，以 60 FPS 下 180° 转向第 9 帧进入 0.1° 为校准目标。'],
-    ['dampingSnapAngle', '指数阻尼到位阈值', '°', '剩余角度进入阈值后对齐；仅影响身体转向，不改变锚点。'],
-    ['velocitySmoothTime', '阻尼平滑时间', 's', '越小追近越快；默认 0.03039 秒。保留同向角速度状态，目标反向时清除反向惯性以维持最短路径。'],
-    ['velocitySnapAngle', '速度阻尼到位阈值', '°', '进入阈值后对齐并清零角速度状态；松手本身不会清零该状态。'],
+    ['curveSnapAngle', '曲线到位角度阈值', '°', '仅自定义曲线使用；到位时对齐目标。'],
+    ['slerpResponse', 'Slerp 追赶系数', '1/s', '每步插值比例 = 系数 × dt，限制到 0～1。默认按 60 FPS、120 Hz 子步，第 9 帧到位校准。'],
+    ['slerpSnapAngle', 'Slerp 到位阈值', '°', '剩余角度进入阈值后对齐目标；不改变锚点。'],
+    ['smoothTime', 'SmoothDampAngle 平滑时间', 's', '越小越快；不是固定完成时长。默认 0.03039 秒。'],
+    ['smoothSnapAngle', 'SmoothDampAngle 到位阈值', '°', '到位后清零角速度；松手仍继续转身。反向时清除反向惯性，以保持既定最短路径。'],
     ['blendDuration', '动画融合', 's', 'Idle 与 Run 的姿态融合时长，不影响实际位移。'],
     ['runSpeed', 'Run 动画速度', '倍', '独立控制原地跑步与移动时的 Run 播放速度，不改变位移速度、Idle 或融合时长。'],
   ] },
@@ -39,7 +37,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <main class="workspace">
     <aside class="panel left-panel" data-ui aria-label="参数调试">
       <div class="panel-heading"><div><span class="eyebrow">TUNING</span><h1>找到你的手感<span class="title-dot">.</span></h1></div><button class="icon-button mobile-only" id="close-settings" aria-label="关闭调试面板">×</button></div>
-      <div class="settings-scroll">${settings.map(group => `<section class="setting-group"><h2>${group.title}</h2>${group.title === '角色' ? '<div class="turn-model-field"><label for="turn-model">旋转角速度模型</label><select id="turn-model" disabled><option value="0">匀速转向</option><option value="1">指数跟随（原有实验）</option><option value="2">自定义转向曲线</option><option value="3">指数阻尼（独立参数）</option><option value="4">带速度状态的阻尼</option></select><p id="turn-model-hint" class="threshold-help"></p><div id="turn-curve-editor" hidden></div></div>' : ''}${group.items.map(([key, name, unit, hint]) => {
+      <div class="settings-scroll">${settings.map(group => `<section class="setting-group"><h2>${group.title}</h2>${group.title === '角色' ? '<div class="turn-model-field"><label for="turn-model">旋转角速度模型</label><select id="turn-model" disabled><option value="0">匀速转向</option><option value="2">自定义转向曲线</option><option value="5">Slerp</option><option value="6">SmoothDampAngle</option></select><p id="turn-model-hint" class="threshold-help"></p><div id="turn-curve-editor" hidden></div></div>' : ''}${group.items.map(([key, name, unit, hint]) => {
         const [min, max, step] = LIMITS[key];
         return `<div class="setting" title="${hint}"><div class="setting-label"><label for="slider-${key}">${name}</label><div class="numeric"><input id="value-${key}" data-setting="${key}" type="number" min="${min}" max="${max}" step="${step}" value="${DEFAULTS[key]}" aria-label="${name}数值"><span>${unit}</span></div></div><input id="slider-${key}" data-setting="${key}" type="range" min="${min}" max="${max}" step="${step}" value="${DEFAULTS[key]}" aria-label="${name}"></div>`;
       }).join('')}${group.title === '轮盘与锚点' ? '<label class="threshold-toggle"><input id="show-threshold" type="checkbox">显示移动阈值范围</label><p class="threshold-help">黄圈为首次解锁边界，越过后变青色；回圈内不会再次锁定。</p>' : ''}</section>`).join('')}<section class="setting-group"><h2>朝向调试</h2><label class="threshold-toggle"><input id="show-heading" type="checkbox">显示角色朝向线</label><label class="threshold-toggle debug-toggle"><input id="show-idle-anchor" type="checkbox">待机时也显示移动锚点</label><label class="threshold-toggle debug-toggle"><input id="show-anchor-outline" type="checkbox">锚点遮挡轮廓</label><p class="threshold-help">粉红直线代表角色当前朝向；蓝点代表移动锚点；遮挡轮廓让浅蓝圆环透过角色显示。开关仅用于本次页面调试。</p></section></div>
@@ -47,7 +45,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     </aside>
     <section class="stage" aria-label="游戏测试区域">
       <div class="viewport" id="viewport">
-        <div class="game-top"><div class="game-label"><i></i><span>移动试验场</span></div><button id="open-settings" class="mobile-only" data-ui aria-label="打开调试面板">调参 <span>☷</span></button></div>
+        <div class="game-top"><div class="game-label"><i></i><span id="training-label">移动试验场</span></div><div class="training-actions"><button id="switch-training" data-ui disabled>障碍物训练场</button><button id="open-settings" class="mobile-only" data-ui aria-label="打开调试面板">调参 <span>☷</span></button></div></div><div id="training-result" role="status" aria-live="polite" hidden></div>
         <div class="state-pill"><i></i><span id="game-state">准备中</span></div>
         <div class="joystick" id="joystick" aria-hidden="true"><div class="joystick-ring"><span class="chevron top"></span><span class="chevron right"></span><span class="chevron bottom"></span><span class="chevron left"></span></div><div class="knob"></div><div class="threshold"></div></div>
         <div class="game-hint" id="game-hint">按住任意位置，拖动开始移动</div>
@@ -73,7 +71,7 @@ const controller = new MovementController();
 const game = new GameScene(viewport, controller);
 const curveEditor = new TurnCurveEditor(element('turn-curve-editor'), () => controller.settings, points => {
   controller.setCurve(points); settingsChanged();
-}, () => { controller.set('curveSnapAngle', controller.settings.turnSnapAngle); syncSettings(); settingsChanged(); });
+}, () => { controller.set('curveSnapAngle', DEFAULTS.curveSnapAngle); syncSettings(); settingsChanged(); });
 const modeNames = { idle: '待机', 'in-place': '原地跑步', moving: '移动中' };
 let ready = false, uiTime = 0, frameCount = 0, fpsTime = 0, lastFrame = 0, viewScale = 1;
 let savedSettings = '', saving = false;
@@ -119,6 +117,19 @@ function captureRelease(finalInput?: { x: number; y: number }, id = controller.p
   drawJoystick(); updateTelemetry();
 }
 
+let resultTimer: ReturnType<typeof setTimeout> | undefined;
+element('switch-training').addEventListener('click', () => {
+  captureRelease();
+  controller.setTraining(controller.training === 'free' ? 'obstacles' : 'free');
+  game.cameraZ = controller.position.z;
+  clearTimeout(resultTimer); element('training-result').hidden = true;
+  const obstacles = controller.training === 'obstacles';
+  element('training-label').textContent = obstacles ? '障碍物训练场' : '移动试验场';
+  element('switch-training').textContent = obstacles ? '返回普通训练场' : '障碍物训练场';
+  element('game-hint').textContent = obstacles ? '沿曲线依次经过白圈 · 通过后变绿' : '按住任意位置，拖动开始移动';
+  game.sync(0); drawJoystick(); updateTelemetry();
+});
+
 viewport.addEventListener('pointerdown', event => {
   if (!ready || (event.target as HTMLElement).closest('[data-ui]')) return;
   if (event.pointerType !== 'mouse' && event.pointerType !== 'touch') return;
@@ -160,17 +171,16 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) captu
 function syncSettings() {
   const model = controller.settings.turnModel;
   element<HTMLSelectElement>('turn-model').value = String(model);
-  element('turn-model-hint').textContent = [
-    '固定角速度、最短路径。其他模型的参数独立保留。',
-    '角差越大转得越快，接近时减速。其他模型的参数独立保留。',
-    '根据剩余角度查曲线速度。横轴从左侧 180° 到右侧 0°。',
-    '与原有指数跟随公式相同，参数独立。180° 固定目标，默认以 60 FPS 第 9 帧进入 0.1° 校准，前 4 帧会超过 90°。',
-    '保留角速度状态，平滑加减速。180° 固定目标、从静止开始，默认 60 FPS 第 9 帧进入 0.1°；反向输入仍取最短路径。',
-  ][model];
+  element('turn-model-hint').textContent = ({
+    0: '固定角速度、最短路径。',
+    2: '根据剩余角度查曲线速度。横轴从左侧 180° 到右侧 0°。',
+    5: '从当前朝向向最新目标做球面插值，越接近越慢。默认 180° 转向第 4 帧约 173.6°，第 9 帧到位（60 FPS）。',
+    6: 'Unity SmoothDampAngle 递推，保留角速度。默认 180° 转向第 4 帧约 168°，第 9 帧到位（60 FPS）。反向时沿用最短路径保护。',
+  } as Record<number, string>)[model];
   element('turn-curve-editor').hidden = model !== 2;
   const owners: Partial<Record<SettingKey, number>> = {
-    turnSpeed: 0, turnResponse: 1, turnSnapAngle: 1, curveSnapAngle: 2,
-    dampingResponse: 3, dampingSnapAngle: 3, velocitySmoothTime: 4, velocitySnapAngle: 4,
+    turnSpeed: 0, curveSnapAngle: 2, slerpResponse: 5, slerpSnapAngle: 5,
+    smoothTime: 6, smoothSnapAngle: 6,
   };
   for (const key of Object.keys(owners) as SettingKey[]) {
     element('slider-' + key).closest<HTMLElement>('.setting')!.hidden = owners[key] !== model;
@@ -243,7 +253,7 @@ function updateTelemetry() {
     ? displayAngle(Math.atan2(controller.offset.x, controller.offset.z)) : '与角色重合';
   element('anchor-label').textContent = `${controller.offset.x.toFixed(3)} / ${controller.offset.z.toFixed(3)}`;
   element('position-label').textContent = `${controller.position.x.toFixed(2)} / ${controller.position.z.toFixed(2)}`;
-  element('turn-model-label').textContent = ['匀速', '原有指数跟随', '自定义曲线', '指数阻尼', '带速度状态的阻尼'][controller.settings.turnModel];
+  element('turn-model-label').textContent = ({ 0: '匀速', 2: '自定义曲线', 5: 'Slerp', 6: 'SmoothDampAngle' } as Record<number, string>)[controller.settings.turnModel];
   element('angular-speed-label').textContent = `${controller.angularSpeed.toFixed(1)}°/s`;
   element('angle-label').textContent = `${(Math.abs(wrapAngle(controller.targetHeading - controller.heading)) * 180 / Math.PI).toFixed(1)}°`;
   element('camera-label').textContent = (controller.position.z - game.cameraZ).toFixed(3);
@@ -259,7 +269,18 @@ function frame(time: number) {
   const dt = remaining;
   while (remaining > 0) {
     const step = Math.min(remaining, 1 / 120);
-    controller.update(step); game.sync(step); remaining -= step;
+    const completed = controller.completions, pointer = controller.pointerId;
+    controller.update(step);
+    if (controller.completions !== completed) {
+      if (pointer !== null && viewport.hasPointerCapture(pointer)) viewport.releasePointerCapture(pointer);
+      game.cameraZ = controller.position.z;
+      const message = element('training-result');
+      message.textContent = `训练成功！已完成 ${controller.completions} 次 · 新一轮开始`;
+      message.hidden = false; clearTimeout(resultTimer);
+      resultTimer = setTimeout(() => { message.hidden = true; }, 2200);
+      drawJoystick(); updateTelemetry();
+    }
+    game.sync(step); remaining -= step;
   }
   game.render();
   uiTime += dt; fpsTime += dt; frameCount++;
@@ -287,7 +308,7 @@ async function start() {
   element<HTMLButtonElement>('restore').disabled = false; saveButton.disabled = false;
   try {
     await game.init();
-    ready = true; element('loading').remove(); updateTelemetry();
+    ready = true; element<HTMLButtonElement>('switch-training').disabled = false; element('loading').remove(); updateTelemetry();
     game.renderer.setAnimationLoop(frame);
     if (import.meta.env.DEV) {
       Object.assign(window, { __ARCHERO__: {

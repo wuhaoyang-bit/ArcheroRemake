@@ -14,8 +14,8 @@ import { MovementController } from '../src/controller.ts';
 test('requested defaults match the screenshot, with speed 16 / upper limit 30 and independent Run rate', () => {
   assert.deepEqual(DEFAULTS, {
     joystickRadius: 64, unlockDistance: 12, showThreshold: 0, anchorScale: 0.036,
-    moveSpeed: 16, turnSpeed: 1200, turnModel: 0, turnResponse: 10.4, turnSnapAngle: 0.1, curveSnapAngle: 0.1, turnCurve: exponentialCurve(10.4), blendDuration: 0.06, runSpeed: 1.6,
-    dampingResponse: 50, dampingSnapAngle: 0.1, velocitySmoothTime: 0.03039, velocitySnapAngle: 0.1,
+    moveSpeed: 16, turnSpeed: 1200, turnModel: 0, curveSnapAngle: 0.1, turnCurve: exponentialCurve(10.4), blendDuration: 0.06, runSpeed: 1.6,
+    slerpResponse: 40.872, slerpSnapAngle: 0.1, smoothTime: 0.03039, smoothSnapAngle: 0.1,
     roomSize: 16, roomLength: 38, cameraResponse: 9, cameraOffset: 0, viewWidth: 18,
   });
   assert.equal(LIMITS.moveSpeed[1], 30);
@@ -69,34 +69,24 @@ test('HTTP save writes real JSON, is shared across servers, survives restart, an
   }
 });
 
-test('turning model settings persist together and old JSON keeps constant behavior', () => {
-  const old = parseSettingsDocument({ version: 1, settings: { turnSpeed: 1200 } });
-  assert.equal(old.turnModel, 0); assert.equal(old.turnResponse, 10.4); assert.equal(old.turnSnapAngle, 0.1);
-  const tuned = { ...old, turnModel: 1, turnResponse: 8.5, turnSnapAngle: 0.05 };
-  assert.deepEqual(parseSettingsDocument(JSON.parse(JSON.stringify(settingsDocument(tuned)))), tuned);
-  for (const value of [0.5, -1, 5, 3.5]) {
-    assert.throws(() => parseSettingsDocument({ version: 1, settings: { turnModel: value } }));
+test('new models round-trip, retired selections migrate, constant and custom experiments survive', () => {
+  const curve = [{ angle: 0, speed: 260 }, { angle: 30, speed: 1215 }, { angle: 180, speed: 1720 }];
+  for (const turnModel of [0, 2, 5, 6]) {
+    const tuned = { ...DEFAULTS, turnModel, turnSpeed: 1210, turnCurve: curve,
+      slerpResponse: 30, slerpSnapAngle: .2, smoothTime: .04, smoothSnapAngle: .3 };
+    assert.deepEqual(parseSettingsDocument(settingsDocument(tuned)), tuned);
   }
-});
-
-test('new damping models load defaults into old JSON and retain all independent experiments', () => {
-  const legacy = parseSettingsDocument({ version: 1, settings: {
-    turnModel: 2, turnResponse: 15.4, turnSpeed: 1200,
-    turnCurve: [{ angle: 0, speed: 260 }, { angle: 25, speed: 1215 }, { angle: 180, speed: 1215 }],
-  } });
-  assert.equal(legacy.dampingResponse, 50);
-  assert.equal(legacy.velocitySmoothTime, .03039);
-  for (const turnModel of [3, 4]) {
-    const document = settingsDocument({
-      ...legacy, turnModel, dampingResponse: 37.5, dampingSnapAngle: .15,
-      velocitySmoothTime: .042, velocitySnapAngle: .08,
-    });
-    const restored = parseSettingsDocument(JSON.parse(JSON.stringify(document)));
-    assert.deepEqual(restored, document.settings);
-    assert.deepEqual(restored.turnCurve, legacy.turnCurve);
-    assert.equal(restored.turnResponse, 15.4); assert.equal(restored.turnSpeed, 1200);
-    assert.equal('dampingVelocity' in document.settings, false);
+  for (const turnModel of [1, 3, 4]) {
+    const migrated = parseSettingsDocument({version: 1, settings: {turnModel, turnSpeed: 1210,
+      turnCurve: curve, turnResponse: 17.6, dampingResponse: 20, velocitySmoothTime: .04}});
+    assert.equal(migrated.turnModel, 0);
+    assert.equal(migrated.turnSpeed, 1210);
+    assert.deepEqual(migrated.turnCurve, curve);
+    assert.equal(migrated.slerpResponse, 40.872);
+    assert.equal('turnResponse' in settingsDocument(migrated).settings, false);
+    assert.equal('velocitySmoothTime' in settingsDocument(migrated).settings, false);
   }
-  assert.throws(() => parseSettingsDocument({ version: 1, settings: { velocitySmoothTime: 0 } }, true));
-  assert.throws(() => parseSettingsDocument({ version: 1, settings: { dampingResponse: Infinity } }));
+  for (const value of [-1, .5, 7]) assert.throws(() => parseSettingsDocument({version: 1, settings: {turnModel: value}}));
+  assert.throws(() => parseSettingsDocument({version: 1, settings: {smoothTime: 0}}, true));
+  assert.throws(() => parseSettingsDocument({version: 1, settings: {slerpResponse: Infinity}}));
 });

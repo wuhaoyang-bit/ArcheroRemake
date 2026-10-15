@@ -149,3 +149,8 @@ input[type=range]::-moz-range-thumb { width: 9px; height: 9px; border-radius: 50
 .curve-number-dialog input:disabled { opacity:.5; }
 /* Keep the SVG itself as the event target when points redraw mid-click. */
 .curve-graph > * { pointer-events:none; }
+
+.training-actions { display:flex; align-items:center; gap:6px; pointer-events:auto; }
+#switch-training { border:1px solid #efffca66; border-radius:9px; background:#264b35dc; color:#fff9dc; padding:9px 10px; font-size:10px; cursor:pointer; touch-action:manipulation; }
+#switch-training:disabled { opacity:.45; }
+#training-result { position:absolute; z-index:4; top:24%; left:5%; right:5%; padding:16px 10px; border-radius:14px; background:#245b42ed; color:#fff4b6; text-align:center; font-size:13px; box-shadow:0 5px 30px #17382444; pointer-events:none; }

@@ -220,44 +220,29 @@ test('cancel and new gestures invalidate pending release; takeover loss cannot s
   near(c.offset.x, 50 * c.settings.anchorScale); near(c.offset.z, 0);
 });
 
-test('exponential response follows angle error without a speed cap and is independent of frame rate', () => {
-  const run = (hz: number) => {
-    const c = moving(0, -60);
-    c.heading = 0; c.set('turnModel', 1); c.release(1);
-    const position = { ...c.position };
-    for (let i = 0; i < hz / 2; i++) c.update(1 / hz);
-    near(Math.abs(wrapAngle(c.targetHeading - c.heading)), Math.PI * Math.exp(-10.4 * 0.5));
-    assert.deepEqual(c.position, position);
-    return c;
-  };
-  near(run(30).heading, run(60).heading); near(run(60).heading, run(144).heading);
-  const c = moving(0, -60); c.heading = 0; c.set('turnModel', 1); c.set('turnSpeed', 90);
+test('Slerp follows the anchor without the constant speed cap and finishes after release', () => {
+  const c = moving(0, -60); c.heading = 0; c.set('turnModel', 5); c.set('turnSpeed', 90);
   c.update(1 / 120);
-  near(c.angularSpeed, 180 * -Math.expm1(-10.4 / 120) * 120);
-  assert.ok(c.angularSpeed > 1200); // No hidden dependence on constant-model speed.
-});
-
-test('exponential arrival snaps only inside threshold and continues after release', () => {
-  const c = moving(0, -60); c.heading = 0; c.set('turnModel', 1); c.set('turnSnapAngle', 0.1);
+  near(c.angularSpeed, 180 * c.settings.slerpResponse);
   c.release(1); const position = { ...c.position };
-  c.update(0.5); assert.ok(Math.abs(wrapAngle(c.heading - c.targetHeading)) > 0);
-  c.update(0.3); near(wrapAngle(c.heading - c.targetHeading), 0);
-  c.update(0.1); near(c.angularSpeed, 0); assert.deepEqual(c.position, position);
+  for (let i = 0; i < 30; i++) c.update(1 / 120);
+  near(wrapAngle(c.heading - c.targetHeading), 0);
+  assert.deepEqual(c.position, position);
 });
 
 test('model changes retain pose, input, anchor, and independent tuning', () => {
-  const c = moving(40, 0); c.set('turnSpeed', 1200); c.set('turnResponse', 7); c.update(0.01);
-  const before = c.snapshot(); c.set('turnModel', 1);
+  const c = moving(40, 0); c.set('turnSpeed', 1200); c.set('slerpResponse', 7); c.update(0.01);
+  const before = c.snapshot(); c.set('turnModel', 5);
   assert.deepEqual(c.snapshot(), before);
   c.update(0.01); assert.notEqual(c.heading, before.heading);
   const exponentialPose = c.snapshot(); c.set('turnModel', 0);
   assert.deepEqual(c.snapshot(), exponentialPose);
-  near(c.settings.turnSpeed, 1200); near(c.settings.turnResponse, 7);
+  near(c.settings.turnSpeed, 1200); near(c.settings.slerpResponse, 7);
   c.update(0.01); near(c.angularSpeed, 1200);
 });
 
 test('all gradual models use directional horizontal ties and shortest non-ties', () => {
-  for (const model of [1, 2, 3, 4]) for (const side of [-1, 1]) {
+  for (const model of [0, 2, 5, 6]) for (const side of [-1, 1]) {
     for (const tilt of [-10, 0, 10]) {
       const c = moving(); c.set('turnModel', model); c.heading = side * Math.PI / 2;
       const angle = tilt * Math.PI / 180;
@@ -269,7 +254,7 @@ test('all gradual models use directional horizontal ties and shortest non-ties',
 });
 
 test('new defaults enter 0.1 degrees on frame nine at 60 FPS, using real 120 Hz substeps', () => {
-  for (const model of [3, 4]) {
+  for (const model of [5, 6]) {
     const c = moving(0, -60); c.heading = 0; c.set('turnModel', model); c.release(1);
     const stop = { ...c.position };
     const angles: number[] = [];
@@ -280,15 +265,15 @@ test('new defaults enter 0.1 degrees on frame nine at 60 FPS, using real 120 Hz 
     assert.ok(180 - angles[7] > 0.1);
     near(angles[8], 180);
     // Accepted compromise: prioritize total time, not the original 90° at frame four.
-    assert.ok(angles[3] > (model === 3 ? 173 : 167));
-    assert.ok(angles[3] < (model === 3 ? 174 : 169));
+    assert.ok(angles[3] > (model === 5 ? 173 : 167));
+    assert.ok(angles[3] < (model === 5 ? 174 : 169));
     assert.deepEqual(c.position, stop);
     c.update(1 / 60); near(c.angularSpeed, 0); near(c.snapshot().dampingVelocity, 0);
   }
 });
 
 test('new models preserve movement and finish from the final released anchor', () => {
-  for (const model of [3, 4]) {
+  for (const model of [5, 6]) {
     const c = moving(0, -60); c.heading = 0; c.set('turnModel', model);
     const before = { ...c.position }; c.update(1 / 120);
     near(c.position.z, before.z - c.settings.moveSpeed / 120);
@@ -303,7 +288,7 @@ test('new models preserve movement and finish from the final released anchor', (
 });
 
 test('velocity state survives release and same-target takeover, resets on switching and opposite arcs', () => {
-  const c = moving(); c.set('turnModel', 4); c.update(1 / 120);
+  const c = moving(); c.set('turnModel', 6); c.update(1 / 120);
   const velocity = c.snapshot().dampingVelocity;
   assert.ok(velocity < 0);
   c.press(2, 10, 20); near(c.snapshot().dampingVelocity, velocity);
@@ -311,28 +296,15 @@ test('velocity state survives release and same-target takeover, resets on switch
   const before = c.heading; c.update(1 / 120);
   assert.ok(wrapAngle(c.heading - before) < 0);
   const pose = c.snapshot();
-  c.set('turnModel', 3);
+  c.set('turnModel', 5);
   const switched = c.snapshot(); near(switched.dampingVelocity, 0);
   for (const key of ['position', 'offset', 'remembered', 'heading', 'pointerId', 'mode'] as const) {
     assert.deepEqual(switched[key], pose[key]);
   }
-  c.set('turnModel', 4); near(c.snapshot().dampingVelocity, 0);
+  c.set('turnModel', 6); near(c.snapshot().dampingVelocity, 0);
   c.update(1 / 120); assert.ok(c.snapshot().dampingVelocity < 0);
   c.press(3, 0, 0); c.move(3, -60, 0);
   const heading = c.heading; c.update(1 / 120);
   assert.ok(wrapAngle(c.heading - heading) > 0); // Never drifts down the old, longer arc.
   assert.ok(c.snapshot().dampingVelocity > 0);
-});
-
-test('legacy and newly calibrated exponentials share a formula but not stored parameters', () => {
-  const legacy = moving(0, -60), calibrated = moving(0, -60);
-  legacy.heading = calibrated.heading = 0;
-  legacy.set('turnModel', 1); legacy.set('turnResponse', 15.4);
-  calibrated.set('turnModel', 3); calibrated.set('dampingResponse', 15.4);
-  for (let i = 0; i < 60; i++) {
-    legacy.update(1 / 120); calibrated.update(1 / 120);
-    near(legacy.heading, calibrated.heading);
-  }
-  calibrated.set('dampingResponse', 50);
-  near(legacy.settings.turnResponse, 15.4); near(calibrated.settings.turnResponse, DEFAULTS.turnResponse);
 });

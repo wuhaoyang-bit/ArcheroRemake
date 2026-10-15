@@ -1,6 +1,7 @@
+import { trainingCourse, moveAroundObstacles, CHECKPOINT_RADIUS } from './training.ts';
 import { remainingCurveAngle, validateCurve, type TurnCurvePoint } from './turn-curve.ts';
 import { DEFAULTS, sanitize, type SettingKey, type Settings } from './config.ts';
-import { exponentialTurn, velocityDampedTurn } from './turn-damping.ts';
+import { slerpTurn, smoothDampAngleTurn } from './turn-damping.ts';
 
 export type Mode = 'idle' | 'in-place' | 'moving';
 export type GroundVector = { x: number; z: number };
@@ -12,6 +13,38 @@ export const follow = (current: number, target: number, response: number, dt: nu
 /** Pure input/movement state. The visual model and camera never drive this state. */
 export class MovementController {
   settings: Settings;
+  training: 'free' | 'obstacles' = 'free';
+  completions = 0;
+  passedCheckpoints = 0;
+  private courseCache?: ReturnType<typeof trainingCourse>;
+  private courseKey = '';
+  get course() {
+    const key = `${this.settings.roomSize}/${this.settings.roomLength}`;
+    if (!this.courseCache || key !== this.courseKey) {
+      this.courseCache = trainingCourse(this.settings.roomSize, this.settings.roomLength); this.courseKey = key;
+    }
+    return this.courseCache;
+  }
+  private checkTrainingProgress() {
+    const next = this.course.checkpoints[this.passedCheckpoints];
+    if (next && Math.hypot(this.position.x-next.x, this.position.z-next.z) <= CHECKPOINT_RADIUS) this.passedCheckpoints++;
+  }
+  setTraining(training: 'free' | 'obstacles') {
+    this.training = training;
+    this.completions = 0;
+    this.restartTraining();
+  }
+  restartTraining() {
+    this.passedCheckpoints = 0;
+    this.cancel();
+    this.pointerId = null; this.pendingRelease = null;
+    this.mode = 'idle'; this.unlocked = false;
+    this.offset = {x: 0, z: 0}; this.remembered = {x: 0, z: 0}; this.direction = null;
+    this.raw = {x: 0, y: 0}; this.stick = {x: 0, y: 0};
+    this.heading = Math.PI; this.angularSpeed = 0; this.dampedVelocity = 0;
+    this.position = {x: 0, z: this.training === 'obstacles' ? this.course.startZ : this.settings.roomSize * .27};
+    this.constrain();
+  }
   mode: Mode = 'idle';
   pointerId: number | null = null;
   private pendingRelease: { id: number; unlocked: boolean } | null = null;
@@ -129,7 +162,9 @@ export class MovementController {
     if (key === 'turnModel' && next !== this.settings.turnModel) this.dampedVelocity = 0;
     this.settings[key] = next;
     if (this.unlocked && (key === 'joystickRadius' || key === 'anchorScale')) this.mapStick();
-    if (key === 'roomSize' || key === 'roomLength') this.constrain();
+    if (key === 'roomSize' || key === 'roomLength') {
+      if (this.training === 'obstacles') this.restartTraining(); else this.constrain();
+    }
   }
 
   private constrain() {
@@ -143,9 +178,13 @@ export class MovementController {
     if (!Number.isFinite(dt) || dt <= 0) return;
     this.syncAnchorDirection();
     if (this.mode === 'moving' && this.direction) {
-      this.position.x += this.direction.x * this.settings.moveSpeed * dt;
-      this.position.z += this.direction.z * this.settings.moveSpeed * dt;
+      const dx = this.direction.x * this.settings.moveSpeed * dt, dz = this.direction.z * this.settings.moveSpeed * dt;
+      if (this.training === 'obstacles') moveAroundObstacles(this.position, dx, dz, this.course.obstacles, PLAYER_RADIUS, () => this.checkTrainingProgress());
+      else { this.position.x += dx; this.position.z += dz; }
       this.constrain();
+      if (this.training === 'obstacles' && this.position.z <= this.course.finishZ) {
+        this.completions++; this.restartTraining(); return;
+      }
     }
     let difference = wrapAngle(this.targetHeading - this.heading);
     // Exact left/right reversals have two equally short arcs. Match the observed
@@ -157,23 +196,19 @@ export class MovementController {
       difference = -Math.PI;
     }
     let turn: number;
-    if (this.settings.turnModel === 1) {
-      // Frame-rate independent exponential response; intentionally no speed cap.
-      turn = difference * -Math.expm1(-this.settings.turnResponse * dt);
-      if (Math.abs(difference - turn) <= this.settings.turnSnapAngle * Math.PI / 180) turn = difference;
-    } else if (this.settings.turnModel === 2) {
+    if (this.settings.turnModel === 2) {
       const degrees = Math.abs(difference) * 180 / Math.PI;
       const residual = remainingCurveAngle(degrees, dt, this.settings.turnCurve, this.settings.curveSnapAngle);
       turn = Math.sign(difference) * (degrees - residual) * Math.PI / 180;
-    } else if (this.settings.turnModel === 3) {
-      turn = exponentialTurn(difference, this.settings.dampingResponse, this.settings.dampingSnapAngle * Math.PI / 180, dt);
-    } else if (this.settings.turnModel === 4) {
+    } else if (this.settings.turnModel === 5) {
+      turn = slerpTurn(difference, this.settings.slerpResponse, this.settings.slerpSnapAngle * Math.PI / 180, dt);
+    } else if (this.settings.turnModel === 6) {
       // Preserve the existing shortest-path contract when input reverses: discard
       // velocity pointing away from the new target. Same-direction speed carries on.
       if (difference * this.dampedVelocity < 0) this.dampedVelocity = 0;
-      const next = velocityDampedTurn(
-        difference, this.dampedVelocity, this.settings.velocitySmoothTime,
-        this.settings.velocitySnapAngle * Math.PI / 180, dt,
+      const next = smoothDampAngleTurn(
+        difference, this.dampedVelocity, this.settings.smoothTime,
+        this.settings.smoothSnapAngle * Math.PI / 180, dt,
       );
       turn = next.turn;
       this.dampedVelocity = next.velocity;
@@ -187,6 +222,7 @@ export class MovementController {
 
   snapshot() {
     return {
+      training: this.training, completions: this.completions, passedCheckpoints: this.passedCheckpoints,
       mode: this.mode, pointerId: this.pointerId, unlocked: this.unlocked,
       position: { ...this.position }, stick: { ...this.stick }, offset: { ...this.offset },
       remembered: { ...this.remembered }, direction: this.direction && { ...this.direction },

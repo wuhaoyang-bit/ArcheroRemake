@@ -1,3 +1,4 @@
+import { buildTraining } from './training-scene.ts';
 import * as THREE from 'three/webgpu';
 import { loadCharacter } from './character.ts';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
@@ -112,6 +113,8 @@ export class GameScene {
   idle!: THREE.AnimationAction;
   run!: THREE.AnimationAction;
   private room!: THREE.Group;
+  private trainingMode = 'free';
+  private trainingVisual?: THREE.Group;
   private roomSize = 0;
   private roomLength = 0;
   private viewWidth = 0;
@@ -191,7 +194,11 @@ export class GameScene {
     if (this.room) { this.scene.remove(this.room); disposeGroup(this.room); }
     this.roomSize = this.controller.settings.roomSize;
     this.roomLength = this.controller.settings.roomLength;
-    this.room = buildRoom(this.roomSize, this.roomLength); this.scene.add(this.room);
+    this.trainingMode = this.controller.training;
+    this.room = buildRoom(this.roomSize, this.roomLength);
+    this.trainingVisual = this.trainingMode === 'obstacles' ? buildTraining(this.roomSize, this.roomLength) : undefined;
+    if (this.trainingVisual) this.room.add(this.trainingVisual);
+    this.scene.add(this.room);
   }
 
   resize() {
@@ -213,8 +220,9 @@ export class GameScene {
 
   sync(dt: number) {
     const ctl = this.controller;
-    if (this.roomSize !== ctl.settings.roomSize || this.roomLength !== ctl.settings.roomLength) this.setRoom();
+    if (this.trainingMode !== ctl.training || this.roomSize !== ctl.settings.roomSize || this.roomLength !== ctl.settings.roomLength) this.setRoom();
     if (this.viewWidth !== ctl.settings.viewWidth || this.offset !== ctl.settings.cameraOffset) this.projection();
+    this.trainingVisual?.userData.setProgress(ctl.passedCheckpoints, dt);
     this.player.position.set(ctl.position.x, 0, ctl.position.z);
     this.body.rotation.y = ctl.heading;
     const target = ctl.anchor;

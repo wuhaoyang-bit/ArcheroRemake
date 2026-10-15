@@ -5,11 +5,9 @@
     "unlockDistance": 20,
     "showThreshold": 1,
     "anchorScale": 0.036,
-    "moveSpeed": 14.5,
+    "moveSpeed": 13,
     "turnSpeed": 1210,
     "turnModel": 2,
-    "turnResponse": 17.6,
-    "turnSnapAngle": 0.112,
     "curveSnapAngle": 0.1,
     "turnCurve": [
       {
@@ -29,10 +27,10 @@
         "speed": 1720
       }
     ],
-    "dampingResponse": 20.12,
-    "dampingSnapAngle": 0.159,
-    "velocitySmoothTime": 0.04426,
-    "velocitySnapAngle": 0.271,
+    "slerpResponse": 40.872,
+    "slerpSnapAngle": 0.1,
+    "smoothTime": 0.03039,
+    "smoothSnapAngle": 0.1,
     "blendDuration": 0.25,
     "runSpeed": 1,
     "roomSize": 16,

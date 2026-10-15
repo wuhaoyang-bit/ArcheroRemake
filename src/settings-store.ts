@@ -24,14 +24,14 @@ export function parseSettingsDocument(raw: unknown, strict = false): Settings {
     const value = source[key];
     if (value === undefined) continue; // Older files gain newly added parameters from defaults.
     if (typeof value !== 'number' || !Number.isFinite(value)) throw new Error(`参数 ${key} 必须是有限数字`);
-    if (key === 'turnModel' && (!Number.isInteger(value) || value < 0 || value > 4)) {
-      throw new Error('转向模型必须为 0（匀速）、1（原有指数跟随）、2（自定义曲线）、3（指数阻尼）或 4（带速度状态的阻尼）');
+    if (key === 'turnModel' && (![0, 1, 2, 3, 4, 5, 6].includes(value))) {
+      throw new Error('转向模型编号无效');
     }
     if (strict && (value < LIMITS[key][0] || value > LIMITS[key][1])) throw new Error(`参数 ${key} 超出范围`);
     settings[key] = sanitize(key, value);
   }
-  settings.turnCurve = source.turnCurve === undefined ? exponentialCurve(settings.turnResponse) : validateCurve(source.turnCurve);
-  if (source.curveSnapAngle === undefined) settings.curveSnapAngle = settings.turnSnapAngle;
+  settings.turnCurve = source.turnCurve === undefined ? exponentialCurve(typeof source.turnResponse === 'number' && Number.isFinite(source.turnResponse) ? Math.max(0.1, Math.min(60, source.turnResponse)) : 10.4) : validateCurve(source.turnCurve);
+  if (source.curveSnapAngle === undefined) settings.curveSnapAngle = typeof source.turnSnapAngle === 'number' ? sanitize('curveSnapAngle', source.turnSnapAngle) : DEFAULTS.curveSnapAngle;
   return settings;
 }
 

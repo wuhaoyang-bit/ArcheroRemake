@@ -17,7 +17,7 @@ export class TurnCurveEditor {
     this.surfaces = [root, this.expanded.querySelector<HTMLElement>('.curve-large')!];
     for (const surface of this.surfaces) {
       surface.innerHTML = `<svg class="curve-graph" viewBox="0 0 720 400" role="img" aria-label="角度差与转向角速度曲线"></svg>
-        <p class="curve-selection"></p><div class="curve-actions"><button data-curve="edit">编辑数值</button><button data-curve="delete">删除点</button>${surface === root ? '<button data-curve="expand">放大编辑</button>' : ''}<button data-curve="generate">从当前指数参数生成曲线</button></div>
+        <p class="curve-selection"></p><div class="curve-actions"><button data-curve="edit">编辑数值</button><button data-curve="delete">删除点</button>${surface === root ? '<button data-curve="expand">放大编辑</button>' : ''}<button data-curve="generate">恢复默认曲线</button></div>
         <p class="threshold-help">双击空位加点；点击选点，拖动调整；双击点编辑数值。0° / 180° 端点只能改速度，不能删除。相邻点以直线连接。</p><p class="curve-warning"></p>`;
       surface.querySelector('[data-curve="edit"]')!.addEventListener('click', () => this.edit());
       surface.querySelector('[data-curve="delete"]')!.addEventListener('click', () => {
@@ -26,7 +26,7 @@ export class TurnCurveEditor {
       });
       surface.querySelector('[data-curve="expand"]')?.addEventListener('click', () => this.expanded.showModal());
       surface.querySelector('[data-curve="generate"]')!.addEventListener('click', () => {
-        this.commit(exponentialCurve(this.read().turnResponse)); this.regenerated();
+        this.commit(exponentialCurve(10.4)); this.regenerated();
       });
       const svg = surface.querySelector<SVGSVGElement>('svg')!;
       const coords = (event: MouseEvent) => { const r = svg.getBoundingClientRect(); return { x: (event.clientX-r.left)*720/r.width, y: (event.clientY-r.top)*400/r.height }; };

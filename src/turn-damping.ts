@@ -1,7 +1,13 @@
-/** Angles and angular velocities use radians. The caller supplies the chosen shortest arc. */
-export function exponentialTurn(error: number, response: number, snapAngle: number, dt: number): number {
+import { Quaternion } from 'three';
+
+// Relative yaw quaternions keep the caller's chosen 180-degree tie direction.
+const from = new Quaternion(), to = new Quaternion(), result = new Quaternion();
+/** Unity-style Slerp(current, target, Clamp01(response * dt)), angles in radians. */
+export function slerpTurn(error: number, response: number, snapAngle: number, dt: number): number {
   if (!Number.isFinite(dt) || dt <= 0) return 0;
-  const turn = error * -Math.expm1(-response * dt);
+  to.set(0, Math.sin(error / 2), 0, Math.cos(error / 2));
+  result.slerpQuaternions(from, to, Math.min(1, Math.max(0, response * dt)));
+  const turn = 2 * Math.atan2(result.y, result.w);
   return Math.abs(error - turn) <= snapAngle ? error : turn;
 }
 
@@ -12,7 +18,7 @@ export type DampedTurn = { turn: number; velocity: number };
  * The velocity is signed and must persist between updates, including after pointer release.
  * Source: UnityCsReference / Runtime/Export/Math/Mathf.cs (SmoothDampAngle / SmoothDamp).
  */
-export function velocityDampedTurn(
+export function smoothDampAngleTurn(
   error: number, velocity: number, smoothTime: number, snapAngle: number, dt: number,
 ): DampedTurn {
   if (!Number.isFinite(dt) || dt <= 0) return { turn: 0, velocity };
