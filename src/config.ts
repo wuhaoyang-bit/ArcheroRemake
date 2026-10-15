@@ -1,3 +1,4 @@
+import { DEFAULT_ANCHOR_CURVE } from './anchor-follow.ts';
 import { exponentialCurve } from './turn-curve.ts';
 export const DESIGN_WIDTH = 390;
 export const ASPECT = 9 / 19.5;
@@ -7,6 +8,8 @@ export const DEFAULTS = {
   unlockDistance: 12,
   showThreshold: 0,
   anchorScale: 0.036,
+  anchorFollow: 1,
+  anchorCurve: DEFAULT_ANCHOR_CURVE,
   moveSpeed: 16,
   turnSpeed: 1200,
   turnModel: 0, // Stable IDs: 0 constant, 2 curve, 5 Slerp, 6 SmoothDampAngle.
@@ -26,10 +29,11 @@ export const DEFAULTS = {
   viewWidth: 18,
 };
 export type Settings = typeof DEFAULTS;
-export type SettingKey = Exclude<keyof Settings, 'turnCurve'>;
+export type SettingKey = Exclude<keyof Settings, 'turnCurve' | 'anchorCurve'>;
 export const LIMITS: Record<SettingKey, [number, number, number]> = {
   joystickRadius: [32, 100, 1], unlockDistance: [1, 40, 1],
   showThreshold: [0, 1, 1],
+  anchorFollow: [0, 1, 1],
   anchorScale: [0.005, 0.08, 0.001], moveSpeed: [1, 30, 0.1],
   turnModel: [0, 6, 1], curveSnapAngle: [0.001, 5, 0.001],
   slerpResponse: [0.1, 120, 0.001], slerpSnapAngle: [0.001, 5, 0.001],

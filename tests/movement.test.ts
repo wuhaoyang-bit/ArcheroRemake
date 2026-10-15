@@ -5,7 +5,7 @@ import { DEFAULTS } from '../src/config.ts';
 
 const near = (actual: number, expected: number, epsilon = 1e-9) => assert.ok(Math.abs(actual - expected) < epsilon, `${actual} != ${expected}`);
 // Fixed test fixture: behavior expectations do not depend on the latest tuning defaults.
-const moving = (dx = 40, dy = 0) => { const c = new MovementController({ ...DEFAULTS, moveSpeed: 6, anchorScale: 0.032 }); c.press(1, 100, 200); c.move(1, dx, dy); return c; };
+const moving = (dx = 40, dy = 0) => { const c = new MovementController({ ...DEFAULTS, anchorFollow: 0, moveSpeed: 6, anchorScale: 0.032 }); c.press(1, 100, 200); c.move(1, dx, dy); return c; };
 
 test('T01–T03: first press runs in place; strict threshold unlocks with full first-step speed', () => {
   const c = new MovementController(), start = { ...c.position };

@@ -1,3 +1,4 @@
+import { validateAnchorCurve } from './anchor-follow.ts';
 import { exponentialCurve, validateCurve } from './turn-curve.ts';
 import { DEFAULTS, LIMITS, sanitize, type Settings, type SettingKey } from './config.ts';
 
@@ -32,6 +33,7 @@ export function parseSettingsDocument(raw: unknown, strict = false): Settings {
   }
   settings.turnCurve = source.turnCurve === undefined ? exponentialCurve(typeof source.turnResponse === 'number' && Number.isFinite(source.turnResponse) ? Math.max(0.1, Math.min(60, source.turnResponse)) : 10.4) : validateCurve(source.turnCurve);
   if (source.curveSnapAngle === undefined) settings.curveSnapAngle = typeof source.turnSnapAngle === 'number' ? sanitize('curveSnapAngle', source.turnSnapAngle) : DEFAULTS.curveSnapAngle;
+  settings.anchorCurve = validateAnchorCurve(source.anchorCurve ?? DEFAULTS.anchorCurve);
   return settings;
 }
 

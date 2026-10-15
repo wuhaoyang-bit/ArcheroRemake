@@ -1,0 +1,48 @@
+import {chromium} from '@playwright/test';
+import assert from 'node:assert/strict';
+import {mkdir} from 'node:fs/promises';
+await mkdir('analysis/anchor-follow-checks',{recursive:true});
+let saved={version:1,settings:{turnModel:0,turnSpeed:1200}};
+const browser=await chromium.launch({executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',headless:true,args:['--enable-unsafe-webgpu']});
+try {
+ const page=await browser.newPage({viewport:{width:1440,height:1100}}),errors=[];
+ page.on('pageerror',e=>errors.push(e.message));
+ await page.route('**/params.json',r=>r.fulfill({json:saved}));
+ await page.route('**/__save-params',async r=>{saved=r.request().postDataJSON();await r.fulfill({json:{ok:true}});});
+ await page.goto('http://localhost:5173');
+ const ready=()=>page.waitForFunction(()=>window.__ARCHERO__?.snapshot().ready);
+ await ready();
+ const root=page.locator('#anchor-curve-editor');await root.scrollIntoViewIfNeeded();
+ assert.equal(await page.locator('#anchor-follow').isChecked(),true);
+ await root.locator('[data-anchor="add"]').click();
+ const dialog=page.locator('dialog[open]');
+ await dialog.locator('[name="distance"]').fill('1');await dialog.locator('[name="speed"]').fill('60');await dialog.locator('[type="submit"]').click();
+ await page.locator('#save-settings').click();await page.waitForFunction(()=>document.querySelector('#store-status').textContent.includes('已写入'));
+ assert.deepEqual(saved.settings.anchorCurve.at(-1),{distance:1,speed:60});
+ await page.reload();await ready();
+ assert.deepEqual(await page.evaluate(()=>window.__ARCHERO__.snapshot().settings.anchorCurve.at(-1)),{distance:1,speed:60});
+ const bounds=await page.locator('#viewport').boundingBox();
+ await page.mouse.move(bounds.x+bounds.width/2,bounds.y+bounds.height*.6);await page.mouse.down();
+ const states=await page.evaluate(()=>{
+  const v=document.querySelector('#viewport'),r=v.getBoundingClientRect(),x=r.x+r.width/2,y=r.y+r.height*.6;
+  const id=window.__ARCHERO__.snapshot().pointerId;
+  const send=(type,dx,dy)=>v.dispatchEvent(new PointerEvent(type,{pointerId:id,pointerType:'mouse',button:0,buttons:type==='pointerup'?0:1,clientX:x+dx,clientY:y+dy,bubbles:true}));
+  send('pointermove',60,0);const first=window.__ARCHERO__.snapshot();
+  send('pointermove',60,2);const dragging=window.__ARCHERO__.snapshot();
+  send('pointerup',0,-60);const released=window.__ARCHERO__.snapshot();
+  return {first,dragging,released};
+ });
+ await page.mouse.up();
+ assert.deepEqual(states.first.offset,states.first.targetOffset);
+ assert.deepEqual(states.dragging.offset,states.first.offset);assert.notDeepEqual(states.dragging.offset,states.dragging.targetOffset);
+ assert.deepEqual(states.released.offset,states.released.targetOffset);assert.equal(states.released.mode,'idle');
+ await root.scrollIntoViewIfNeeded();await page.screenshot({path:'analysis/anchor-follow-checks/desktop.png',fullPage:true});
+ await page.setViewportSize({width:390,height:844});await page.locator('#open-settings').click();
+ await root.scrollIntoViewIfNeeded();await root.locator('[data-anchor="expand"]').click();
+ assert.equal(await page.locator('.curve-dialog[open]').count(),1);
+ await page.screenshot({path:'analysis/anchor-follow-checks/mobile.png'});
+ await page.locator('.curve-dialog[open] .curve-close').click();await page.locator('#anchor-follow').uncheck();
+ await page.locator('#save-settings').click();await page.waitForFunction(()=>document.querySelector('#store-status').textContent.includes('已写入'));
+ assert.equal(saved.settings.anchorFollow,0);assert.deepEqual(errors,[]);
+ console.log('PASS: anchor curve editing, isolated JSON persistence, unlock/drag/release, mobile expanded editor and switch.');
+}finally{await browser.close();}

@@ -1,3 +1,4 @@
+import { remainingAnchorDistance, validateAnchorCurve, type AnchorCurvePoint } from './anchor-follow.ts';
 import { trainingCourse, moveAroundObstacles, CHECKPOINT_RADIUS } from './training.ts';
 import { remainingCurveAngle, validateCurve, type TurnCurvePoint } from './turn-curve.ts';
 import { DEFAULTS, sanitize, type SettingKey, type Settings } from './config.ts';
@@ -39,6 +40,7 @@ export class MovementController {
     this.cancel();
     this.pointerId = null; this.pendingRelease = null;
     this.mode = 'idle'; this.unlocked = false;
+    this.targetOffset = {x: 0, z: 0};
     this.offset = {x: 0, z: 0}; this.remembered = {x: 0, z: 0}; this.direction = null;
     this.raw = {x: 0, y: 0}; this.stick = {x: 0, y: 0};
     this.heading = Math.PI; this.angularSpeed = 0; this.dampedVelocity = 0;
@@ -54,6 +56,7 @@ export class MovementController {
   stick = { x: 0, y: 0 };
   position: GroundVector;
   offset: GroundVector = { x: 0, z: 0 };
+  targetOffset: GroundVector = { x: 0, z: 0 };
   remembered: GroundVector = { x: 0, z: 0 };
   direction: GroundVector | null = null;
   heading = Math.PI;
@@ -66,7 +69,7 @@ export class MovementController {
   }
 
   constructor(settings: Settings = { ...DEFAULTS }) {
-    this.settings = { ...settings, turnCurve: validateCurve(settings.turnCurve) };
+    this.settings = { ...settings, turnCurve: validateCurve(settings.turnCurve), anchorCurve: validateAnchorCurve(settings.anchorCurve) };
     this.position = { x: 0, z: settings.roomSize * 0.27 };
   }
   get anchorVisible() { return this.mode !== 'idle'; }
@@ -79,6 +82,7 @@ export class MovementController {
       this.mode = 'in-place';
       this.offset = { ...this.remembered };
     }
+    this.targetOffset = { ...this.offset }; // Freeze actual anchor during a new locked gesture.
     this.pointerId = id;
     this.center = { x, y };
     this.raw = { x: 0, y: 0 };
@@ -88,13 +92,14 @@ export class MovementController {
 
   move(id: number, dx: number, dy: number) {
     if (id !== this.pointerId || !Number.isFinite(dx) || !Number.isFinite(dy)) return;
+    const startsMoving = this.mode === 'in-place';
     this.raw = { x: dx, y: dy };
     if (!this.unlocked) {
       if (Math.hypot(dx, dy) <= this.settings.unlockDistance) return;
       this.unlocked = true;
       this.mode = 'moving';
     }
-    this.mapStick();
+    this.mapStick(startsMoving);
   }
 
   private clampInput(dx: number, dy: number) {
@@ -103,9 +108,22 @@ export class MovementController {
     return { x: dx * scale, y: dy * scale };
   }
 
-  private mapAnchor(input: { x: number; y: number }) {
-    this.offset = { x: input.x * this.settings.anchorScale, z: input.y * this.settings.anchorScale };
-    this.syncAnchorDirection();
+  private mapAnchor(input: { x: number; y: number }, immediate = false) {
+    this.targetOffset = { x: input.x * this.settings.anchorScale, z: input.y * this.settings.anchorScale };
+    if (immediate || !this.settings.anchorFollow) {
+      this.offset = { ...this.targetOffset };
+      this.syncAnchorDirection();
+    }
+  }
+
+  private followAnchor(dt: number) {
+    if (this.mode !== 'moving' || !this.unlocked || !this.settings.anchorFollow) return;
+    const dx = this.targetOffset.x-this.offset.x, dz = this.targetOffset.z-this.offset.z;
+    const distance = Math.hypot(dx,dz);
+    if (distance === 0) return;
+    const remaining = remainingAnchorDistance(distance,dt,this.settings.anchorCurve);
+    const fraction = 1-remaining/distance;
+    this.offset.x += dx*fraction; this.offset.z += dz*fraction;
   }
 
   private syncAnchorDirection() {
@@ -114,9 +132,9 @@ export class MovementController {
     if (length > 0) this.direction = { x: this.offset.x / length, z: this.offset.z / length };
   }
 
-  private mapStick() {
+  private mapStick(immediate = false) {
     this.stick = this.clampInput(this.raw.x, this.raw.y);
-    this.mapAnchor(this.stick);
+    this.mapAnchor(this.stick, immediate);
   }
 
   canRelease(id: number) {
@@ -139,8 +157,9 @@ export class MovementController {
     // visual stick. A still-locked gesture retains its previous anchor.
     if (finalInput && Number.isFinite(finalInput.x) && Number.isFinite(finalInput.y)
       && (unlocked || Math.hypot(finalInput.x, finalInput.y) > this.settings.unlockDistance)) {
-      this.mapAnchor(this.clampInput(finalInput.x, finalInput.y));
+      this.mapAnchor(this.clampInput(finalInput.x, finalInput.y), true);
     }
+    this.targetOffset = { ...this.offset }; // Cancellation/locked release leaves no pending follow.
     this.remembered = { ...this.offset };
     this.pointerId = null;
     this.mode = 'idle';
@@ -154,6 +173,8 @@ export class MovementController {
     if (this.pointerId !== null) this.release(this.pointerId);
   }
 
+  setAnchorCurve(points: AnchorCurvePoint[]) { this.settings.anchorCurve = validateAnchorCurve(points); }
+
   setCurve(points: TurnCurvePoint[]) { this.settings.turnCurve = validateCurve(points); }
 
   set(key: SettingKey, value: number) {
@@ -161,6 +182,7 @@ export class MovementController {
     // Changing model starts fresh velocity state, without changing pose, input, or anchor.
     if (key === 'turnModel' && next !== this.settings.turnModel) this.dampedVelocity = 0;
     this.settings[key] = next;
+    if (key === 'anchorFollow' && !next) { this.offset = {...this.targetOffset}; this.syncAnchorDirection(); }
     if (this.unlocked && (key === 'joystickRadius' || key === 'anchorScale')) this.mapStick();
     if (key === 'roomSize' || key === 'roomLength') {
       if (this.training === 'obstacles') this.restartTraining(); else this.constrain();
@@ -176,6 +198,7 @@ export class MovementController {
 
   update(dt: number) {
     if (!Number.isFinite(dt) || dt <= 0) return;
+    this.followAnchor(dt);
     this.syncAnchorDirection();
     if (this.mode === 'moving' && this.direction) {
       const dx = this.direction.x * this.settings.moveSpeed * dt, dz = this.direction.z * this.settings.moveSpeed * dt;
@@ -224,7 +247,7 @@ export class MovementController {
     return {
       training: this.training, completions: this.completions, passedCheckpoints: this.passedCheckpoints,
       mode: this.mode, pointerId: this.pointerId, unlocked: this.unlocked,
-      position: { ...this.position }, stick: { ...this.stick }, offset: { ...this.offset },
+      position: { ...this.position }, stick: { ...this.stick }, offset: { ...this.offset }, targetOffset: { ...this.targetOffset },
       remembered: { ...this.remembered }, direction: this.direction && { ...this.direction },
       anchor: this.anchor, anchorVisible: this.anchorVisible,
       heading: this.heading, angularSpeed: this.angularSpeed, targetHeading: this.targetHeading,

@@ -3,8 +3,23 @@
   "settings": {
     "joystickRadius": 64,
     "unlockDistance": 20,
-    "showThreshold": 1,
+    "showThreshold": 0,
     "anchorScale": 0.036,
+    "anchorFollow": 1,
+    "anchorCurve": [
+      {
+        "distance": 0,
+        "speed": 0
+      },
+      {
+        "distance": 0.049538,
+        "speed": 7.289476
+      },
+      {
+        "distance": 0.051,
+        "speed": 107.169973
+      }
+    ],
     "moveSpeed": 13,
     "turnSpeed": 1210,
     "turnModel": 2,
