@@ -1,3 +1,4 @@
+import { movementMultiplier, validateMoveCurve } from './move-speed.ts';
 import { remainingAnchorDistance, validateAnchorCurve, type AnchorCurvePoint } from './anchor-follow.ts';
 import { trainingCourse, moveAroundObstacles, CHECKPOINT_RADIUS } from './training.ts';
 import { remainingCurveAngle, validateCurve, type TurnCurvePoint } from './turn-curve.ts';
@@ -39,7 +40,7 @@ export class MovementController {
     this.passedCheckpoints = 0;
     this.cancel();
     this.pointerId = null; this.pendingRelease = null;
-    this.mode = 'idle'; this.unlocked = false;
+    this.mode = 'idle'; this.movementSpeed = 0; this.unlocked = false;
     this.targetOffset = {x: 0, z: 0};
     this.offset = {x: 0, z: 0}; this.remembered = {x: 0, z: 0}; this.direction = null;
     this.raw = {x: 0, y: 0}; this.stick = {x: 0, y: 0};
@@ -47,6 +48,10 @@ export class MovementController {
     this.position = {x: 0, z: this.training === 'obstacles' ? this.course.startZ : this.settings.roomSize * .27};
     this.constrain();
   }
+  movementAngleError = 0;
+  movementSpeedRatio = 1;
+  movementBaseSpeed = 0;
+  movementSpeed = 0; // Commanded units/s, before walls or obstacle collision.
   mode: Mode = 'idle';
   pointerId: number | null = null;
   private pendingRelease: { id: number; unlocked: boolean } | null = null;
@@ -69,7 +74,7 @@ export class MovementController {
   }
 
   constructor(settings: Settings = { ...DEFAULTS }) {
-    this.settings = { ...settings, turnCurve: validateCurve(settings.turnCurve), anchorCurve: validateAnchorCurve(settings.anchorCurve) };
+    this.settings = { ...settings, turnCurve: validateCurve(settings.turnCurve), anchorCurve: validateAnchorCurve(settings.anchorCurve), moveCurve: validateMoveCurve(settings.moveCurve) };
     this.position = { x: 0, z: settings.roomSize * 0.27 };
   }
   get anchorVisible() { return this.mode !== 'idle'; }
@@ -162,7 +167,7 @@ export class MovementController {
     this.targetOffset = { ...this.offset }; // Cancellation/locked release leaves no pending follow.
     this.remembered = { ...this.offset };
     this.pointerId = null;
-    this.mode = 'idle';
+    this.mode = 'idle'; this.movementSpeed = 0;
     this.unlocked = false;
     this.raw = { x: 0, y: 0 };
     this.stick = { x: 0, y: 0 };
@@ -174,6 +179,8 @@ export class MovementController {
   }
 
   setAnchorCurve(points: AnchorCurvePoint[]) { this.settings.anchorCurve = validateAnchorCurve(points); }
+
+  setMoveCurve(points: TurnCurvePoint[]) { this.settings.moveCurve = validateMoveCurve(points); }
 
   setCurve(points: TurnCurvePoint[]) { this.settings.turnCurve = validateCurve(points); }
 
@@ -200,8 +207,14 @@ export class MovementController {
     if (!Number.isFinite(dt) || dt <= 0) return;
     this.followAnchor(dt);
     this.syncAnchorDirection();
+    this.movementSpeed = 0;
     if (this.mode === 'moving' && this.direction) {
-      const dx = this.direction.x * this.settings.moveSpeed * dt, dz = this.direction.z * this.settings.moveSpeed * dt;
+      const angle = Math.abs(wrapAngle(this.targetHeading-this.heading))*180/Math.PI;
+      this.movementAngleError = angle;
+      this.movementSpeedRatio = this.settings.moveModel === 1 ? movementMultiplier(angle,this.settings.moveCurve) : 1;
+      this.movementBaseSpeed = this.settings.moveSpeed;
+      this.movementSpeed = this.movementBaseSpeed * this.movementSpeedRatio;
+      const dx = this.direction.x * this.movementSpeed * dt, dz = this.direction.z * this.movementSpeed * dt;
       if (this.training === 'obstacles') moveAroundObstacles(this.position, dx, dz, this.course.obstacles, PLAYER_RADIUS, () => this.checkTrainingProgress());
       else { this.position.x += dx; this.position.z += dz; }
       this.constrain();
@@ -250,7 +263,8 @@ export class MovementController {
       position: { ...this.position }, stick: { ...this.stick }, offset: { ...this.offset }, targetOffset: { ...this.targetOffset },
       remembered: { ...this.remembered }, direction: this.direction && { ...this.direction },
       anchor: this.anchor, anchorVisible: this.anchorVisible,
-      heading: this.heading, angularSpeed: this.angularSpeed, targetHeading: this.targetHeading,
+      movementAngleError: this.movementAngleError, movementSpeedRatio: this.movementSpeedRatio, movementBaseSpeed: this.movementBaseSpeed,
+      movementSpeed: this.movementSpeed, heading: this.heading, angularSpeed: this.angularSpeed, targetHeading: this.targetHeading,
       dampingVelocity: this.dampedVelocity * 180 / Math.PI,
     };
   }

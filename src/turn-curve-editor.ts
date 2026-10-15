@@ -7,16 +7,17 @@ export class TurnCurveEditor {
   private form = document.createElement('dialog');
   private surfaces: HTMLElement[];
   private drag: { angle: number; max: number; moved: boolean; x: number; y: number } | null = null;
-  constructor(private root: HTMLElement, private read: () => Settings,
-    private change: (points: TurnCurvePoint[]) => void, private regenerated: () => void) {
+  constructor(private root: HTMLElement, private read: () => Pick<Settings, 'turnCurve'>,
+    private change: (points: TurnCurvePoint[]) => void, private regenerated: () => void,
+    private options = {title:'转向速度曲线',speedLabel:'角速度',unit:'°/s',defaults:exponentialCurve(10.4),warning:'存在非零角度的零速度点：转向可能停在该角度。'}) {
     this.expanded.className = 'curve-dialog';
     this.expanded.dataset.ui = '';
-    this.expanded.innerHTML = '<button class="curve-close">关闭</button><h2>转向速度曲线</h2><div class="curve-large"></div>';
+    this.expanded.innerHTML = `<button class="curve-close">关闭</button><h2>${options.title}</h2><div class="curve-large"></div>`;
     document.body.append(this.expanded, this.form);
     this.form.className = 'curve-number-dialog'; this.form.dataset.ui = '';
     this.surfaces = [root, this.expanded.querySelector<HTMLElement>('.curve-large')!];
     for (const surface of this.surfaces) {
-      surface.innerHTML = `<svg class="curve-graph" viewBox="0 0 720 400" role="img" aria-label="角度差与转向角速度曲线"></svg>
+      surface.innerHTML = `<svg class="curve-graph" viewBox="0 0 720 400" role="img" aria-label="${options.title}"></svg>
         <p class="curve-selection"></p><div class="curve-actions"><button data-curve="edit">编辑数值</button><button data-curve="delete">删除点</button>${surface === root ? '<button data-curve="expand">放大编辑</button>' : ''}<button data-curve="generate">恢复默认曲线</button></div>
         <p class="threshold-help">双击空位加点；点击选点，拖动调整；双击点编辑数值。0° / 180° 端点只能改速度，不能删除。相邻点以直线连接。</p><p class="curve-warning"></p>`;
       surface.querySelector('[data-curve="edit"]')!.addEventListener('click', () => this.edit());
@@ -26,7 +27,7 @@ export class TurnCurveEditor {
       });
       surface.querySelector('[data-curve="expand"]')?.addEventListener('click', () => this.expanded.showModal());
       surface.querySelector('[data-curve="generate"]')!.addEventListener('click', () => {
-        this.commit(exponentialCurve(10.4)); this.regenerated();
+        this.commit(this.options.defaults); this.regenerated();
       });
       const svg = surface.querySelector<SVGSVGElement>('svg')!;
       const coords = (event: MouseEvent) => { const r = svg.getBoundingClientRect(); return { x: (event.clientX-r.left)*720/r.width, y: (event.clientY-r.top)*400/r.height }; };
@@ -73,7 +74,7 @@ export class TurnCurveEditor {
   private edit(){
     const point=this.read().turnCurve.find(p=>p.angle===this.selected); if(!point)return;
     const endpoint=point.angle===0||point.angle===180;
-    this.form.innerHTML=`<form><h2>编辑控制点</h2><label>角度差（°）<input name="angle" type="number" min="0" max="180" step="any" value="${point.angle}" ${endpoint?'disabled':''} required></label><label>角速度（°/s）<input name="speed" type="number" min="0" step="any" value="${point.speed}" required></label><p class="curve-error"></p><div class="curve-actions"><button type="submit">应用</button><button type="button" class="curve-cancel">取消</button></div></form>`;
+    this.form.innerHTML=`<form><h2>编辑控制点</h2><label>角度差（°）<input name="angle" type="number" min="0" max="180" step="any" value="${point.angle}" ${endpoint?'disabled':''} required></label><label>${this.options.speedLabel}（${this.options.unit}）<input name="speed" type="number" min="0" step="any" value="${point.speed}" required></label><p class="curve-error"></p><div class="curve-actions"><button type="submit">应用</button><button type="button" class="curve-cancel">取消</button></div></form>`;
     this.form.querySelector('.curve-cancel')!.addEventListener('click',()=>this.form.close());
     this.form.querySelector('form')!.addEventListener('submit',event=>{
       event.preventDefault();
@@ -92,12 +93,12 @@ export class TurnCurveEditor {
       surface.querySelector('svg')!.innerHTML=`<rect x="70" y="45" width="620" height="300" fill="#102b25"/>
         ${[0,1,2,3,4].map(i=>{const y=345-i*75;return `<path d="M70 ${y}H690" stroke="#365148"/><text x="62" y="${y+5}" text-anchor="end">${Math.round(max*i/4)}</text>`;}).join('')}
         ${[180,150,120,90,60,30,0].map(a=>`<text x="${this.x(a)}" y="370" text-anchor="middle">${a}°</text>`).join('')}
-        <text x="70" y="25">角速度（°/s）</text><text x="690" y="395" text-anchor="end">角度差：180° → 0°</text>
+        <text x="70" y="25">${this.options.speedLabel}（${this.options.unit}）</text><text x="690" y="395" text-anchor="end">角度差：180° → 0°</text>
         <path d="${points.map((p,i)=>`${i?'L':'M'}${this.x(p.angle)} ${this.y(p.speed,max)}`).join(' ')}" fill="none" stroke="#b6e284" stroke-width="3"/>
         ${points.map(p=>`<circle cx="${this.x(p.angle)}" cy="${this.y(p.speed,max)}" r="${p.angle===this.selected?8:6}" fill="${p.angle===this.selected?'#fff':'#b6e284'}" stroke="#20362d" stroke-width="2"/>`).join('')}`;
-      surface.querySelector('.curve-selection')!.textContent=`已选：${selected.angle}° · ${Number(selected.speed.toFixed(3))}°/s${selected.angle===0||selected.angle===180?'（端点速度可编辑）':''}`;
+      surface.querySelector('.curve-selection')!.textContent=`已选：${selected.angle}° · ${Number(selected.speed.toFixed(3))}${this.options.unit}${selected.angle===0||selected.angle===180?'（端点速度可编辑）':''}`;
       (surface.querySelector('[data-curve="delete"]') as HTMLButtonElement).disabled=this.selected===0||this.selected===180;
-      surface.querySelector('.curve-warning')!.textContent=points.some(p=>p.angle>0&&p.speed===0)?'存在非零角度的零速度点：转向可能停在该角度。':'';
+      surface.querySelector('.curve-warning')!.textContent=points.some(p=>p.angle>0&&p.speed===0)?this.options.warning:'';
     }
   }
 }

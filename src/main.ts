@@ -14,7 +14,7 @@ const settings: { title: string; items: [SettingKey, string, string, string][] }
     ['anchorScale', '地面映射比例', '单位/px', '限制后的摇杆偏移，按同一比例映射到地面两轴。'],
   ] },
   { title: '角色', items: [
-    ['moveSpeed', '移动速度', '单位/s', '真正移动时立即使用固定速度，与身体朝向和摇杆幅度无关。'],
+    ['moveSpeed', '基础移动速度', '单位/s', '恒速模型直接使用；曲线模型乘以当前角度差对应的速度百分比。移动方向始终由实际锚点决定。'],
     ['turnSpeed', '匀速转向速度', '°/s', '仅匀速模型使用；保留原有固定角速度实验参数。'],
     ['curveSnapAngle', '曲线到位角度阈值', '°', '仅自定义曲线使用；到位时对齐目标。'],
     ['slerpResponse', 'Slerp 追赶系数', '1/s', '每步插值比例 = 系数 × dt，限制到 0～1。默认按 60 FPS、120 Hz 子步，第 9 帧到位校准。'],
@@ -41,7 +41,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       <div class="settings-scroll">${settings.map(group => `<section class="setting-group"><h2>${group.title}</h2>${group.title === '角色' ? '<div class="turn-model-field"><label for="turn-model">旋转角速度模型</label><select id="turn-model" disabled><option value="0">匀速转向</option><option value="2">自定义转向曲线</option><option value="5">Slerp</option><option value="6">SmoothDampAngle</option></select><p id="turn-model-hint" class="threshold-help"></p><div id="turn-curve-editor" hidden></div></div>' : ''}${group.items.map(([key, name, unit, hint]) => {
         const [min, max, step] = LIMITS[key];
         return `<div class="setting" title="${hint}"><div class="setting-label"><label for="slider-${key}">${name}</label><div class="numeric"><input id="value-${key}" data-setting="${key}" type="number" min="${min}" max="${max}" step="${step}" value="${DEFAULTS[key]}" aria-label="${name}数值"><span>${unit}</span></div></div><input id="slider-${key}" data-setting="${key}" type="range" min="${min}" max="${max}" step="${step}" value="${DEFAULTS[key]}" aria-label="${name}"></div>`;
-      }).join('')}${group.title === '轮盘与锚点' ? '<label class="threshold-toggle"><input id="show-threshold" type="checkbox">显示移动阈值范围</label><p class="threshold-help">黄圈为首次解锁边界，越过后变青色；回圈内不会再次锁定。</p>' : ''}</section>`).join('')}<section class="setting-group"><h2>锚点防抖</h2><label class="threshold-toggle"><input id="anchor-follow" type="checkbox">启用锚点跟随</label><div id="anchor-curve-editor"></div></section><section class="setting-group"><h2>朝向调试</h2><label class="threshold-toggle"><input id="show-heading" type="checkbox">显示角色朝向线</label><label class="threshold-toggle debug-toggle"><input id="show-idle-anchor" type="checkbox">待机时也显示移动锚点</label><label class="threshold-toggle debug-toggle"><input id="show-anchor-outline" type="checkbox">锚点遮挡轮廓</label><p class="threshold-help">粉红直线代表角色当前朝向；蓝点代表移动锚点；遮挡轮廓让浅蓝圆环透过角色显示。开关仅用于本次页面调试。</p></section></div>
+      }).join('')}${group.title === '轮盘与锚点' ? '<label class="threshold-toggle"><input id="show-threshold" type="checkbox">显示移动阈值范围</label><p class="threshold-help">黄圈为首次解锁边界，越过后变青色；回圈内不会再次锁定。</p>' : ''}</section>`).join('')}<section class="setting-group"><h2>移动速度模型</h2><div class="turn-model-field"><label for="move-model">移动速度模型</label><select id="move-model" disabled><option value="0">恒定移动速度</option><option value="1">角度差曲线</option></select><p class="threshold-help">身体与实际锚点方向的最短角度差 → 基础移动速度百分比。100% 保持当前速度，80% 为当前速度的八成。默认全程 100%。</p></div><div id="move-curve-editor" hidden></div></section><section class="setting-group"><h2>锚点防抖</h2><label class="threshold-toggle"><input id="anchor-follow" type="checkbox">启用锚点跟随</label><div id="anchor-curve-editor"></div></section><section class="setting-group"><h2>朝向调试</h2><label class="threshold-toggle"><input id="show-heading" type="checkbox">显示角色朝向线</label><label class="threshold-toggle debug-toggle"><input id="show-idle-anchor" type="checkbox">待机时也显示移动锚点</label><label class="threshold-toggle debug-toggle"><input id="show-anchor-outline" type="checkbox">锚点遮挡轮廓</label><p class="threshold-help">粉红直线代表角色当前朝向；蓝点代表移动锚点；遮挡轮廓让浅蓝圆环透过角色显示。开关仅用于本次页面调试。</p></section></div>
       <div class="panel-footer"><div class="store-actions"><button id="save-settings" class="text-button save-button" disabled>保存 JSON <span>↓</span></button><button id="restore" class="text-button" disabled>恢复默认 <span>↺</span></button></div><p id="store-status" role="status" aria-live="polite">正在读取参数…</p><p>参数即时生效 · 像素以 390 宽度为基准</p></div>
     </aside>
     <section class="stage" aria-label="游戏测试区域">
@@ -56,8 +56,8 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <aside class="panel right-panel" data-ui aria-label="实时状态">
       <div class="panel-heading"><div><span class="eyebrow">LIVE INSPECTOR</span><h2 class="large-heading">每一步，都看得见</h2></div><span class="live-dot"></span></div>
       <section class="status-card"><span class="eyebrow">角色状态</span><strong id="mode-label">待机</strong><div class="state-track"><span data-mode="idle">待机</span><span data-mode="in-place">原地跑步</span><span data-mode="moving">移动</span></div></section>
-      <dl class="telemetry"><div><dt>当前控制点</dt><dd id="pointer-label">—</dd></div><div><dt>摇杆锁定</dt><dd id="lock-label">—</dd></div><div><dt>摇杆偏移</dt><dd id="stick-label">0.0 / 0.0</dd></div><div><dt>角色朝向</dt><dd id="heading-label">0.0°</dd></div><div><dt>锚点方向</dt><dd id="anchor-heading-label">—</dd></div><div><dt>锚点相对 X / Z</dt><dd id="anchor-label">0.00 / 0.00</dd></div><div><dt>目标锚点 X / Z</dt><dd id="target-anchor-label">0.00 / 0.00</dd></div><div><dt>锚点跟随距离差</dt><dd id="anchor-gap-label">0.000</dd></div><div><dt>角色坐标</dt><dd id="position-label">0.00 / 0.00</dd></div><div><dt>转向模型</dt><dd id="turn-model-label">匀速</dd></div><div><dt>实际角速度</dt><dd id="angular-speed-label">0.0°/s</dd></div><div><dt>剩余转角</dt><dd id="angle-label">0.0°</dd></div><div><dt>镜头纵向差</dt><dd id="camera-label">0.000</dd></div></dl>
-      <p class="threshold-help">角度：上 0°、右 90°、下 180°、左 270°。相对坐标为地面单位，X 向右、Z 向下。</p>
+      <dl class="telemetry"><div><dt>当前控制点</dt><dd id="pointer-label">—</dd></div><div><dt>摇杆锁定</dt><dd id="lock-label">—</dd></div><div><dt>摇杆偏移</dt><dd id="stick-label">0.0 / 0.0</dd></div><div><dt>角色朝向</dt><dd id="heading-label">0.0°</dd></div><div><dt>锚点方向</dt><dd id="anchor-heading-label">—</dd></div><div><dt>锚点相对 X / Z</dt><dd id="anchor-label">0.00 / 0.00</dd></div><div><dt>目标锚点 X / Z</dt><dd id="target-anchor-label">0.00 / 0.00</dd></div><div><dt>锚点跟随距离差</dt><dd id="anchor-gap-label">0.000</dd></div><div><dt>角色坐标</dt><dd id="position-label">0.00 / 0.00</dd></div><div><dt>转向模型</dt><dd id="turn-model-label">匀速</dd></div><div><dt>移动计算角度差</dt><dd id="move-angle-label">—</dd></div><div><dt>移动速度倍率</dt><dd id="move-ratio-label">—</dd></div><div><dt>速度减少</dt><dd id="move-reduction-label">—</dd></div><div><dt>移动指令速度</dt><dd id="move-speed-label">0.00 单位/s</dd></div><div><dt>实际角速度</dt><dd id="angular-speed-label">0.0°/s</dd></div><div><dt>当前角度差</dt><dd id="angle-label">0.0°</dd></div><div><dt>镜头纵向差</dt><dd id="camera-label">0.000</dd></div></dl>
+      <p class="threshold-help">角度：上 0°、右 90°、下 180°、左 270°。相对坐标为地面单位，X 向右、Z 向下。移动计算角度差为本步转身前的采样值；速度减少仅统计曲线减速，不含碰墙或松手停止。</p>
       <section class="blend-meter"><div><span>Idle</span><span id="blend-label">100% / 0%</span><span>Run</span></div><div class="meter"><i id="blend-fill"></i></div></section>
       <section class="guide"><span class="eyebrow">试试这些动作</span><div><b>01</b><p>轻按，微微拖动<small>阈值内原地跑步，摇杆保持居中</small></p></div><div><b>02</b><p>越过阈值，再回拉<small>解锁后持续移动，不再重复解锁</small></p></div><div><b>03</b><p>手机上，用第二指接管<small>移动延续，新摇杆等待首次解锁</small></p></div></section>
       <div class="renderer-info"><span><i></i> WEBGPU</span><span id="fps-label">— FPS</span></div>
@@ -78,6 +78,16 @@ const anchorEditor = new AnchorCurveEditor(element('anchor-curve-editor'), () =>
 });
 element('anchor-follow').addEventListener('change', () => {
   controller.set('anchorFollow', element<HTMLInputElement>('anchor-follow').checked ? 1 : 0);
+  syncSettings(); settingsChanged();
+});
+const moveEditor = new TurnCurveEditor(element('move-curve-editor'), () => ({turnCurve:controller.settings.moveCurve}), points => {
+  controller.setMoveCurve(points); settingsChanged();
+}, () => { syncSettings(); settingsChanged(); }, {
+  title:'移动速度 / 角度差曲线',speedLabel:'移动速度',unit:'%',defaults:DEFAULTS.moveCurve,
+  warning:'存在非零角度的零速度点：该角度下停止位移，但身体仍会转向。',
+});
+element('move-model').addEventListener('change', () => {
+  controller.set('moveModel', Number(element<HTMLSelectElement>('move-model').value));
   syncSettings(); settingsChanged();
 });
 const modeNames = { idle: '待机', 'in-place': '原地跑步', moving: '移动中' };
@@ -194,6 +204,9 @@ function syncSettings() {
     element('slider-' + key).closest<HTMLElement>('.setting')!.hidden = owners[key] !== model;
   }
   curveEditor.render();
+  moveEditor.render();
+  element<HTMLSelectElement>('move-model').value = String(controller.settings.moveModel);
+  element('move-curve-editor').hidden = controller.settings.moveModel !== 1;
   anchorEditor.render();
   element<HTMLInputElement>('anchor-follow').checked = !!controller.settings.anchorFollow;
   element<HTMLInputElement>('show-threshold').checked = !!controller.settings.showThreshold;
@@ -230,6 +243,7 @@ element('show-threshold').addEventListener('change', () => {
 element('restore').addEventListener('click', () => {
   for (const key of Object.keys(LIMITS) as SettingKey[]) controller.set(key, DEFAULTS[key]);
   controller.setCurve(DEFAULTS.turnCurve);
+  controller.setMoveCurve(DEFAULTS.moveCurve);
   controller.setAnchorCurve(DEFAULTS.anchorCurve);
   syncSettings(); settingsChanged();
 });
@@ -268,6 +282,13 @@ function updateTelemetry() {
   element('angular-speed-label').textContent = `${controller.angularSpeed.toFixed(1)}°/s`;
   element('target-anchor-label').textContent = `${controller.targetOffset.x.toFixed(3)} / ${controller.targetOffset.z.toFixed(3)}`;
   element('anchor-gap-label').textContent = Math.hypot(controller.targetOffset.x-controller.offset.x,controller.targetOffset.z-controller.offset.z).toFixed(4);
+  const moving = controller.mode === 'moving' && controller.direction !== null;
+  element('move-angle-label').textContent = moving ? `${controller.movementAngleError.toFixed(1)}°` : '—';
+  element('move-ratio-label').textContent = moving ? `${(controller.movementSpeedRatio*100).toFixed(1)}%` : '—';
+  const reduction = Math.max(0,controller.movementBaseSpeed-controller.movementSpeed);
+  const reductionPercent = Math.max(0,1-controller.movementSpeedRatio)*100;
+  element('move-reduction-label').textContent = moving ? `${reduction.toFixed(2)} 单位/s · ${reductionPercent.toFixed(1)}%` : '—（未移动）';
+  element('move-speed-label').textContent = `${controller.movementSpeed.toFixed(2)} 单位/s`;
   element('angle-label').textContent = `${(Math.abs(wrapAngle(controller.targetHeading - controller.heading)) * 180 / Math.PI).toFixed(1)}°`;
   element('camera-label').textContent = (controller.position.z - game.cameraZ).toFixed(3);
   const weight = Math.round(game.blend.weight * 100);
@@ -307,6 +328,7 @@ async function start() {
     const loaded = await loadSettings();
     for (const key of Object.keys(LIMITS) as SettingKey[]) controller.set(key, loaded[key]);
     controller.setCurve(loaded.turnCurve);
+    controller.setMoveCurve(loaded.moveCurve);
     controller.setAnchorCurve(loaded.anchorCurve);
     savedSettings = JSON.stringify(controller.settings);
     showStoreStatus('已读取 params.json');
@@ -319,6 +341,7 @@ async function start() {
   syncSettings();
   document.querySelectorAll<HTMLInputElement>('[data-setting]').forEach(input => { input.disabled = false; });
   element<HTMLSelectElement>('turn-model').disabled = false;
+  element<HTMLSelectElement>('move-model').disabled = false;
   element<HTMLButtonElement>('restore').disabled = false; saveButton.disabled = false;
   try {
     await game.init();

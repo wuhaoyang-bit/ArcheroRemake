@@ -1,3 +1,4 @@
+import { validateMoveCurve } from './move-speed.ts';
 import { validateAnchorCurve } from './anchor-follow.ts';
 import { exponentialCurve, validateCurve } from './turn-curve.ts';
 import { DEFAULTS, LIMITS, sanitize, type Settings, type SettingKey } from './config.ts';
@@ -25,6 +26,7 @@ export function parseSettingsDocument(raw: unknown, strict = false): Settings {
     const value = source[key];
     if (value === undefined) continue; // Older files gain newly added parameters from defaults.
     if (typeof value !== 'number' || !Number.isFinite(value)) throw new Error(`参数 ${key} 必须是有限数字`);
+    if (key === 'moveModel' && value !== 0 && value !== 1) throw new Error('移动速度模型编号无效');
     if (key === 'turnModel' && (![0, 1, 2, 3, 4, 5, 6].includes(value))) {
       throw new Error('转向模型编号无效');
     }
@@ -34,6 +36,7 @@ export function parseSettingsDocument(raw: unknown, strict = false): Settings {
   settings.turnCurve = source.turnCurve === undefined ? exponentialCurve(typeof source.turnResponse === 'number' && Number.isFinite(source.turnResponse) ? Math.max(0.1, Math.min(60, source.turnResponse)) : 10.4) : validateCurve(source.turnCurve);
   if (source.curveSnapAngle === undefined) settings.curveSnapAngle = typeof source.turnSnapAngle === 'number' ? sanitize('curveSnapAngle', source.turnSnapAngle) : DEFAULTS.curveSnapAngle;
   settings.anchorCurve = validateAnchorCurve(source.anchorCurve ?? DEFAULTS.anchorCurve);
+  settings.moveCurve = validateMoveCurve(source.moveCurve ?? DEFAULTS.moveCurve);
   return settings;
 }
 

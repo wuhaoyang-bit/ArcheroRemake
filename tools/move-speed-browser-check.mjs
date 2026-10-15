@@ -1,0 +1,37 @@
+import {chromium} from '@playwright/test';
+import assert from 'node:assert/strict';
+import {mkdir} from 'node:fs/promises';
+await mkdir('analysis/move-speed-checks',{recursive:true});
+let saved={version:1,settings:{moveSpeed:13,turnModel:2}};
+const browser=await chromium.launch({executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',headless:true,args:['--enable-unsafe-webgpu']});
+try {
+ const page=await browser.newPage({viewport:{width:1440,height:1100}}),errors=[];
+ page.on('pageerror',e=>errors.push(e.message));
+ await page.route('**/params.json',r=>r.fulfill({json:saved}));
+ await page.route('**/__save-params',async r=>{saved=r.request().postDataJSON();await r.fulfill({json:{ok:true}});});
+ await page.goto('http://localhost:5173');
+ const ready=()=>page.waitForFunction(()=>window.__ARCHERO__?.snapshot().ready);
+ await ready();
+ assert.equal(await page.locator('#move-model').inputValue(),'0');
+ const turn=await page.evaluate(()=>window.__ARCHERO__.snapshot().settings.turnCurve);
+ await page.locator('#move-model').selectOption('1');
+ const root=page.locator('#move-curve-editor');assert.ok(await root.isVisible());
+ const first=await page.evaluate(()=>window.__ARCHERO__.snapshot().settings);
+ assert.equal(first.moveSpeed,13);assert.deepEqual(first.moveCurve,[{angle:0,speed:100},{angle:180,speed:100}]);
+ await root.locator('[data-curve="edit"]').click();
+ const dialog=page.locator('.curve-number-dialog[open]');
+ assert.ok((await dialog.textContent()).includes('移动速度（%）'));
+ await dialog.locator('[name="speed"]').fill('80');await dialog.locator('[type="submit"]').click();
+ await page.locator('#save-settings').click();await page.waitForFunction(()=>document.querySelector('#store-status').textContent.includes('已写入'));
+ await page.reload();await ready();assert.equal(await page.locator('#move-model').inputValue(),'1');
+ const loaded=await page.evaluate(()=>window.__ARCHERO__.snapshot().settings);
+ assert.equal(loaded.moveCurve.at(-1).speed,80);assert.deepEqual(loaded.turnCurve,turn);
+ await page.locator('#move-model').selectOption('0');assert.equal(await root.isVisible(),false);
+ await page.locator('#move-model').selectOption('1');
+ await root.scrollIntoViewIfNeeded();await page.screenshot({path:'analysis/move-speed-checks/desktop.png',fullPage:true});
+ await page.setViewportSize({width:390,height:844});await page.locator('#open-settings').click();
+ await root.scrollIntoViewIfNeeded();await root.locator('[data-curve="expand"]').click();
+ assert.ok((await page.locator('.curve-dialog[open]').textContent()).includes('移动速度'));
+ await page.screenshot({path:'analysis/move-speed-checks/mobile.png'});
+ assert.deepEqual(errors,[]);console.log('PASS: model switch, 100% defaults, independent editing, JSON reload and mobile expanded curve.');
+}finally{await browser.close();}

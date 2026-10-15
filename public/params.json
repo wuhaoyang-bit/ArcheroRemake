@@ -12,7 +12,7 @@
         "speed": 0
       },
       {
-        "distance": 0.049538,
+        "distance": 0.05,
         "speed": 7.289476
       },
       {
@@ -20,7 +20,22 @@
         "speed": 107.169973
       }
     ],
-    "moveSpeed": 13,
+    "moveSpeed": 16,
+    "moveModel": 1,
+    "moveCurve": [
+      {
+        "angle": 0,
+        "speed": 100
+      },
+      {
+        "angle": 5,
+        "speed": 95
+      },
+      {
+        "angle": 180,
+        "speed": 95
+      }
+    ],
     "turnSpeed": 1210,
     "turnModel": 2,
     "curveSnapAngle": 0.1,
@@ -39,7 +54,7 @@
       },
       {
         "angle": 180,
-        "speed": 1720
+        "speed": 2000
       }
     ],
     "slerpResponse": 40.872,
@@ -52,6 +67,6 @@
     "roomLength": 38,
     "cameraResponse": 9,
     "cameraOffset": 0,
-    "viewWidth": 17
+    "viewWidth": 16.5
   }
 }
