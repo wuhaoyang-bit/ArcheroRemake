@@ -15,9 +15,13 @@ const settings: { title: string; items: [SettingKey, string, string, string][] }
   { title: '角色', items: [
     ['moveSpeed', '移动速度', '单位/s', '真正移动时立即使用固定速度，与身体朝向和摇杆幅度无关。'],
     ['turnSpeed', '匀速转向速度', '°/s', '仅匀速模型使用；保留原有固定角速度实验参数。'],
-    ['turnResponse', '转向响应系数', '1/s', '仅指数模型使用：越大追近越快；不限制最大角速度。'],
+    ['turnResponse', '转向响应系数', '1/s', '仅原有指数跟随使用：越大追近越快；不限制最大角速度。'],
     ['curveSnapAngle', '曲线到位角度阈值', '°', '仅自定义曲线使用，独立于指数模型；到位时对齐目标。'],
-    ['turnSnapAngle', '到位角度阈值', '°', '仅指数模型使用：剩余角度小于此值时对齐目标，不影响摇杆阈值和锚点。'],
+    ['turnSnapAngle', '到位角度阈值', '°', '仅原有指数跟随使用：剩余角度小于此值时对齐目标，不影响摇杆阈值和锚点。'],
+    ['dampingResponse', '指数阻尼响应系数', '1/s', '新模型的独立参数；默认 50/s，以 60 FPS 下 180° 转向第 9 帧进入 0.1° 为校准目标。'],
+    ['dampingSnapAngle', '指数阻尼到位阈值', '°', '剩余角度进入阈值后对齐；仅影响身体转向，不改变锚点。'],
+    ['velocitySmoothTime', '阻尼平滑时间', 's', '越小追近越快；默认 0.03039 秒。保留同向角速度状态，目标反向时清除反向惯性以维持最短路径。'],
+    ['velocitySnapAngle', '速度阻尼到位阈值', '°', '进入阈值后对齐并清零角速度状态；松手本身不会清零该状态。'],
     ['blendDuration', '动画融合', 's', 'Idle 与 Run 的姿态融合时长，不影响实际位移。'],
     ['runSpeed', 'Run 动画速度', '倍', '独立控制原地跑步与移动时的 Run 播放速度，不改变位移速度、Idle 或融合时长。'],
   ] },
@@ -35,7 +39,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <main class="workspace">
     <aside class="panel left-panel" data-ui aria-label="参数调试">
       <div class="panel-heading"><div><span class="eyebrow">TUNING</span><h1>找到你的手感<span class="title-dot">.</span></h1></div><button class="icon-button mobile-only" id="close-settings" aria-label="关闭调试面板">×</button></div>
-      <div class="settings-scroll">${settings.map(group => `<section class="setting-group"><h2>${group.title}</h2>${group.title === '角色' ? '<div class="turn-model-field"><label for="turn-model">旋转角速度模型</label><select id="turn-model" disabled><option value="0">匀速转向</option><option value="1">指数跟随（不限速）</option><option value="2">自定义转向曲线</option></select><p id="turn-model-hint" class="threshold-help"></p><div id="turn-curve-editor" hidden></div></div>' : ''}${group.items.map(([key, name, unit, hint]) => {
+      <div class="settings-scroll">${settings.map(group => `<section class="setting-group"><h2>${group.title}</h2>${group.title === '角色' ? '<div class="turn-model-field"><label for="turn-model">旋转角速度模型</label><select id="turn-model" disabled><option value="0">匀速转向</option><option value="1">指数跟随（原有实验）</option><option value="2">自定义转向曲线</option><option value="3">指数阻尼（独立参数）</option><option value="4">带速度状态的阻尼</option></select><p id="turn-model-hint" class="threshold-help"></p><div id="turn-curve-editor" hidden></div></div>' : ''}${group.items.map(([key, name, unit, hint]) => {
         const [min, max, step] = LIMITS[key];
         return `<div class="setting" title="${hint}"><div class="setting-label"><label for="slider-${key}">${name}</label><div class="numeric"><input id="value-${key}" data-setting="${key}" type="number" min="${min}" max="${max}" step="${step}" value="${DEFAULTS[key]}" aria-label="${name}数值"><span>${unit}</span></div></div><input id="slider-${key}" data-setting="${key}" type="range" min="${min}" max="${max}" step="${step}" value="${DEFAULTS[key]}" aria-label="${name}"></div>`;
       }).join('')}${group.title === '轮盘与锚点' ? '<label class="threshold-toggle"><input id="show-threshold" type="checkbox">显示移动阈值范围</label><p class="threshold-help">黄圈为首次解锁边界，越过后变青色；回圈内不会再次锁定。</p>' : ''}</section>`).join('')}<section class="setting-group"><h2>朝向调试</h2><label class="threshold-toggle"><input id="show-heading" type="checkbox">显示角色朝向线</label><label class="threshold-toggle debug-toggle"><input id="show-idle-anchor" type="checkbox">待机时也显示移动锚点</label><label class="threshold-toggle debug-toggle"><input id="show-anchor-outline" type="checkbox">锚点遮挡轮廓</label><p class="threshold-help">粉红直线代表角色当前朝向；蓝点代表移动锚点；遮挡轮廓让浅蓝圆环透过角色显示。开关仅用于本次页面调试。</p></section></div>
@@ -160,11 +164,16 @@ function syncSettings() {
     '固定角速度、最短路径。其他模型的参数独立保留。',
     '角差越大转得越快，接近时减速。其他模型的参数独立保留。',
     '根据剩余角度查曲线速度。横轴从左侧 180° 到右侧 0°。',
+    '与原有指数跟随公式相同，参数独立。180° 固定目标，默认以 60 FPS 第 9 帧进入 0.1° 校准，前 4 帧会超过 90°。',
+    '保留角速度状态，平滑加减速。180° 固定目标、从静止开始，默认 60 FPS 第 9 帧进入 0.1°；反向输入仍取最短路径。',
   ][model];
   element('turn-curve-editor').hidden = model !== 2;
-  for (const key of ['turnSpeed', 'turnResponse', 'turnSnapAngle', 'curveSnapAngle']) {
-    const owner = key === 'turnSpeed' ? 0 : key === 'curveSnapAngle' ? 2 : 1;
-    element('slider-' + key).closest<HTMLElement>('.setting')!.hidden = owner !== model;
+  const owners: Partial<Record<SettingKey, number>> = {
+    turnSpeed: 0, turnResponse: 1, turnSnapAngle: 1, curveSnapAngle: 2,
+    dampingResponse: 3, dampingSnapAngle: 3, velocitySmoothTime: 4, velocitySnapAngle: 4,
+  };
+  for (const key of Object.keys(owners) as SettingKey[]) {
+    element('slider-' + key).closest<HTMLElement>('.setting')!.hidden = owners[key] !== model;
   }
   curveEditor.render();
   element<HTMLInputElement>('show-threshold').checked = !!controller.settings.showThreshold;
@@ -234,7 +243,7 @@ function updateTelemetry() {
     ? displayAngle(Math.atan2(controller.offset.x, controller.offset.z)) : '与角色重合';
   element('anchor-label').textContent = `${controller.offset.x.toFixed(3)} / ${controller.offset.z.toFixed(3)}`;
   element('position-label').textContent = `${controller.position.x.toFixed(2)} / ${controller.position.z.toFixed(2)}`;
-  element('turn-model-label').textContent = ['匀速', '指数跟随', '自定义曲线'][controller.settings.turnModel];
+  element('turn-model-label').textContent = ['匀速', '原有指数跟随', '自定义曲线', '指数阻尼', '带速度状态的阻尼'][controller.settings.turnModel];
   element('angular-speed-label').textContent = `${controller.angularSpeed.toFixed(1)}°/s`;
   element('angle-label').textContent = `${(Math.abs(wrapAngle(controller.targetHeading - controller.heading)) * 180 / Math.PI).toFixed(1)}°`;
   element('camera-label').textContent = (controller.position.z - game.cameraZ).toFixed(3);

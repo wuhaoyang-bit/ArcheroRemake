@@ -8,8 +8,8 @@
     "moveSpeed": 16,
     "turnSpeed": 1200,
     "turnModel": 2,
-    "turnResponse": 15.4,
-    "turnSnapAngle": 0.1,
+    "turnResponse": 17.6,
+    "turnSnapAngle": 0.112,
     "curveSnapAngle": 0.1,
     "turnCurve": [
       {
@@ -25,6 +25,10 @@
         "speed": 1215
       }
     ],
+    "dampingResponse": 20.12,
+    "dampingSnapAngle": 0.159,
+    "velocitySmoothTime": 0.04426,
+    "velocitySnapAngle": 0.271,
     "blendDuration": 0.25,
     "runSpeed": 2,
     "roomSize": 16,

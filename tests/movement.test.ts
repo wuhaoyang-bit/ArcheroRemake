@@ -256,8 +256,8 @@ test('model changes retain pose, input, anchor, and independent tuning', () => {
   c.update(0.01); near(c.angularSpeed, 1200);
 });
 
-test('exponential and custom curves use directional horizontal ties and shortest non-ties', () => {
-  for (const model of [1, 2]) for (const side of [-1, 1]) {
+test('all gradual models use directional horizontal ties and shortest non-ties', () => {
+  for (const model of [1, 2, 3, 4]) for (const side of [-1, 1]) {
     for (const tilt of [-10, 0, 10]) {
       const c = moving(); c.set('turnModel', model); c.heading = side * Math.PI / 2;
       const angle = tilt * Math.PI / 180;
@@ -266,4 +266,73 @@ test('exponential and custom curves use directional horizontal ties and shortest
       assert.equal(Math.sign(Math.cos(c.heading)), tilt === 0 ? side : tilt < 0 ? -1 : 1);
     }
   }
+});
+
+test('new defaults enter 0.1 degrees on frame nine at 60 FPS, using real 120 Hz substeps', () => {
+  for (const model of [3, 4]) {
+    const c = moving(0, -60); c.heading = 0; c.set('turnModel', model); c.release(1);
+    const stop = { ...c.position };
+    const angles: number[] = [];
+    for (let frame = 1; frame <= 9; frame++) {
+      c.update(1 / 120); c.update(1 / 120);
+      angles.push(180 - Math.abs(wrapAngle(c.targetHeading - c.heading)) * 180 / Math.PI);
+    }
+    assert.ok(180 - angles[7] > 0.1);
+    near(angles[8], 180);
+    // Accepted compromise: prioritize total time, not the original 90° at frame four.
+    assert.ok(angles[3] > (model === 3 ? 173 : 167));
+    assert.ok(angles[3] < (model === 3 ? 174 : 169));
+    assert.deepEqual(c.position, stop);
+    c.update(1 / 60); near(c.angularSpeed, 0); near(c.snapshot().dampingVelocity, 0);
+  }
+});
+
+test('new models preserve movement and finish from the final released anchor', () => {
+  for (const model of [3, 4]) {
+    const c = moving(0, -60); c.heading = 0; c.set('turnModel', model);
+    const before = { ...c.position }; c.update(1 / 120);
+    near(c.position.z, before.z - c.settings.moveSpeed / 120);
+    c.release(1, { x: 60, y: 0 });
+    near(c.targetHeading, Math.PI / 2);
+    const stopped = { ...c.position }, offset = { ...c.offset };
+    for (let i = 0; i < 120; i++) c.update(1 / 120);
+    near(wrapAngle(c.heading - c.targetHeading), 0);
+    assert.deepEqual(c.position, stopped); assert.deepEqual(c.offset, offset);
+    assert.deepEqual(c.remembered, offset);
+  }
+});
+
+test('velocity state survives release and same-target takeover, resets on switching and opposite arcs', () => {
+  const c = moving(); c.set('turnModel', 4); c.update(1 / 120);
+  const velocity = c.snapshot().dampingVelocity;
+  assert.ok(velocity < 0);
+  c.press(2, 10, 20); near(c.snapshot().dampingVelocity, velocity);
+  c.release(2); near(c.snapshot().dampingVelocity, velocity);
+  const before = c.heading; c.update(1 / 120);
+  assert.ok(wrapAngle(c.heading - before) < 0);
+  const pose = c.snapshot();
+  c.set('turnModel', 3);
+  const switched = c.snapshot(); near(switched.dampingVelocity, 0);
+  for (const key of ['position', 'offset', 'remembered', 'heading', 'pointerId', 'mode'] as const) {
+    assert.deepEqual(switched[key], pose[key]);
+  }
+  c.set('turnModel', 4); near(c.snapshot().dampingVelocity, 0);
+  c.update(1 / 120); assert.ok(c.snapshot().dampingVelocity < 0);
+  c.press(3, 0, 0); c.move(3, -60, 0);
+  const heading = c.heading; c.update(1 / 120);
+  assert.ok(wrapAngle(c.heading - heading) > 0); // Never drifts down the old, longer arc.
+  assert.ok(c.snapshot().dampingVelocity > 0);
+});
+
+test('legacy and newly calibrated exponentials share a formula but not stored parameters', () => {
+  const legacy = moving(0, -60), calibrated = moving(0, -60);
+  legacy.heading = calibrated.heading = 0;
+  legacy.set('turnModel', 1); legacy.set('turnResponse', 15.4);
+  calibrated.set('turnModel', 3); calibrated.set('dampingResponse', 15.4);
+  for (let i = 0; i < 60; i++) {
+    legacy.update(1 / 120); calibrated.update(1 / 120);
+    near(legacy.heading, calibrated.heading);
+  }
+  calibrated.set('dampingResponse', 50);
+  near(legacy.settings.turnResponse, 15.4); near(calibrated.settings.turnResponse, DEFAULTS.turnResponse);
 });

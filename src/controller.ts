@@ -1,5 +1,6 @@
 import { remainingCurveAngle, validateCurve, type TurnCurvePoint } from './turn-curve.ts';
 import { DEFAULTS, sanitize, type SettingKey, type Settings } from './config.ts';
+import { exponentialTurn, velocityDampedTurn } from './turn-damping.ts';
 
 export type Mode = 'idle' | 'in-place' | 'moving';
 export type GroundVector = { x: number; z: number };
@@ -24,6 +25,7 @@ export class MovementController {
   direction: GroundVector | null = null;
   heading = Math.PI;
   angularSpeed = 0; // Actual turn magnitude during the latest simulation step, degrees/s.
+  private dampedVelocity = 0; // Signed radians/s; persists across input updates and release.
   get targetHeading() {
     // The retained anchor remains authoritative even while hidden in idle.
     if (Math.hypot(this.offset.x, this.offset.z) > 0) return Math.atan2(this.offset.x, this.offset.z);
@@ -122,7 +124,10 @@ export class MovementController {
   setCurve(points: TurnCurvePoint[]) { this.settings.turnCurve = validateCurve(points); }
 
   set(key: SettingKey, value: number) {
-    this.settings[key] = sanitize(key, value);
+    const next = sanitize(key, value);
+    // Changing model starts fresh velocity state, without changing pose, input, or anchor.
+    if (key === 'turnModel' && next !== this.settings.turnModel) this.dampedVelocity = 0;
+    this.settings[key] = next;
     if (this.unlocked && (key === 'joystickRadius' || key === 'anchorScale')) this.mapStick();
     if (key === 'roomSize' || key === 'roomLength') this.constrain();
   }
@@ -160,6 +165,18 @@ export class MovementController {
       const degrees = Math.abs(difference) * 180 / Math.PI;
       const residual = remainingCurveAngle(degrees, dt, this.settings.turnCurve, this.settings.curveSnapAngle);
       turn = Math.sign(difference) * (degrees - residual) * Math.PI / 180;
+    } else if (this.settings.turnModel === 3) {
+      turn = exponentialTurn(difference, this.settings.dampingResponse, this.settings.dampingSnapAngle * Math.PI / 180, dt);
+    } else if (this.settings.turnModel === 4) {
+      // Preserve the existing shortest-path contract when input reverses: discard
+      // velocity pointing away from the new target. Same-direction speed carries on.
+      if (difference * this.dampedVelocity < 0) this.dampedVelocity = 0;
+      const next = velocityDampedTurn(
+        difference, this.dampedVelocity, this.settings.velocitySmoothTime,
+        this.settings.velocitySnapAngle * Math.PI / 180, dt,
+      );
+      turn = next.turn;
+      this.dampedVelocity = next.velocity;
     } else {
       const step = this.settings.turnSpeed * Math.PI / 180 * dt;
       turn = Math.sign(difference) * Math.min(Math.abs(difference), step);
@@ -175,6 +192,7 @@ export class MovementController {
       remembered: { ...this.remembered }, direction: this.direction && { ...this.direction },
       anchor: this.anchor, anchorVisible: this.anchorVisible,
       heading: this.heading, angularSpeed: this.angularSpeed, targetHeading: this.targetHeading,
+      dampingVelocity: this.dampedVelocity * 180 / Math.PI,
     };
   }
 }

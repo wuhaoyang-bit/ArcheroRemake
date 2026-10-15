@@ -15,6 +15,7 @@ test('requested defaults match the screenshot, with speed 16 / upper limit 30 an
   assert.deepEqual(DEFAULTS, {
     joystickRadius: 64, unlockDistance: 12, showThreshold: 0, anchorScale: 0.036,
     moveSpeed: 16, turnSpeed: 1200, turnModel: 0, turnResponse: 10.4, turnSnapAngle: 0.1, curveSnapAngle: 0.1, turnCurve: exponentialCurve(10.4), blendDuration: 0.06, runSpeed: 1.6,
+    dampingResponse: 50, dampingSnapAngle: 0.1, velocitySmoothTime: 0.03039, velocitySnapAngle: 0.1,
     roomSize: 16, roomLength: 38, cameraResponse: 9, cameraOffset: 0, viewWidth: 18,
   });
   assert.equal(LIMITS.moveSpeed[1], 30);
@@ -73,7 +74,29 @@ test('turning model settings persist together and old JSON keeps constant behavi
   assert.equal(old.turnModel, 0); assert.equal(old.turnResponse, 10.4); assert.equal(old.turnSnapAngle, 0.1);
   const tuned = { ...old, turnModel: 1, turnResponse: 8.5, turnSnapAngle: 0.05 };
   assert.deepEqual(parseSettingsDocument(JSON.parse(JSON.stringify(settingsDocument(tuned)))), tuned);
-  for (const value of [0.5, -1, 3]) {
+  for (const value of [0.5, -1, 5, 3.5]) {
     assert.throws(() => parseSettingsDocument({ version: 1, settings: { turnModel: value } }));
   }
+});
+
+test('new damping models load defaults into old JSON and retain all independent experiments', () => {
+  const legacy = parseSettingsDocument({ version: 1, settings: {
+    turnModel: 2, turnResponse: 15.4, turnSpeed: 1200,
+    turnCurve: [{ angle: 0, speed: 260 }, { angle: 25, speed: 1215 }, { angle: 180, speed: 1215 }],
+  } });
+  assert.equal(legacy.dampingResponse, 50);
+  assert.equal(legacy.velocitySmoothTime, .03039);
+  for (const turnModel of [3, 4]) {
+    const document = settingsDocument({
+      ...legacy, turnModel, dampingResponse: 37.5, dampingSnapAngle: .15,
+      velocitySmoothTime: .042, velocitySnapAngle: .08,
+    });
+    const restored = parseSettingsDocument(JSON.parse(JSON.stringify(document)));
+    assert.deepEqual(restored, document.settings);
+    assert.deepEqual(restored.turnCurve, legacy.turnCurve);
+    assert.equal(restored.turnResponse, 15.4); assert.equal(restored.turnSpeed, 1200);
+    assert.equal('dampingVelocity' in document.settings, false);
+  }
+  assert.throws(() => parseSettingsDocument({ version: 1, settings: { velocitySmoothTime: 0 } }, true));
+  assert.throws(() => parseSettingsDocument({ version: 1, settings: { dampingResponse: Infinity } }));
 });
