@@ -14,10 +14,10 @@
     "turnCurve": [
       {
         "angle": 0,
-        "speed": 600
+        "speed": 260
       },
       {
-        "angle": 30,
+        "angle": 25,
         "speed": 1215
       },
       {
@@ -25,8 +25,8 @@
         "speed": 1215
       }
     ],
-    "blendDuration": 0.2,
-    "runSpeed": 2.5,
+    "blendDuration": 0.25,
+    "runSpeed": 2,
     "roomSize": 16,
     "roomLength": 38,
     "cameraResponse": 9,
