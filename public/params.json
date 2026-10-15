@@ -5,8 +5,8 @@
     "unlockDistance": 20,
     "showThreshold": 1,
     "anchorScale": 0.036,
-    "moveSpeed": 14,
-    "turnSpeed": 1200,
+    "moveSpeed": 14.5,
+    "turnSpeed": 1210,
     "turnModel": 2,
     "turnResponse": 17.6,
     "turnSnapAngle": 0.112,
@@ -21,8 +21,12 @@
         "speed": 1215
       },
       {
-        "angle": 180,
+        "angle": 150,
         "speed": 1215
+      },
+      {
+        "angle": 180,
+        "speed": 1720
       }
     ],
     "dampingResponse": 20.12,
