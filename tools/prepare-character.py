@@ -1,4 +1,5 @@
-"""Keep the original rig/mesh and only Idle + Run; compact referenced GLB buffers.
+"""Legacy KayKit exporter; the current game uses prepare-archero-character.py.
+Keep the original rig/mesh and only Idle + Run; compact referenced GLB buffers.
 Source model is CC0. The full source download remains in ignored analysis/.
 """
 from pathlib import Path

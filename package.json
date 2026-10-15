@@ -11,6 +11,7 @@
     "preview": "vite preview --host 0.0.0.0",
     "test": "tsx --test tests/*.test.ts",
     "test:browser": "node tools/browser-check.mjs",
+    "test:character": "node tools/character-browser-check.mjs",
     "test:turn-curve": "node tools/turn-curve-browser-check.mjs",
     "test:turn-model": "node tools/turn-model-browser-check.mjs",
     "test:release": "node tools/release-browser-check.mjs",

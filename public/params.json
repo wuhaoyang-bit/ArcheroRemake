@@ -30,7 +30,7 @@
     "velocitySmoothTime": 0.04426,
     "velocitySnapAngle": 0.271,
     "blendDuration": 0.25,
-    "runSpeed": 2,
+    "runSpeed": 1,
     "roomSize": 16,
     "roomLength": 38,
     "cameraResponse": 9,

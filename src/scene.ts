@@ -1,5 +1,5 @@
 import * as THREE from 'three/webgpu';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { loadCharacter } from './character.ts';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { AnimationBlend, follow, type MovementController } from './controller.ts';
 import { ASPECT } from './config.ts';
@@ -176,19 +176,11 @@ export class GameScene {
     this.headingGuide.visible = false;
     this.player.add(this.headingGuide);
 
-    const gltf = await new GLTFLoader().loadAsync(`${import.meta.env.BASE_URL}models/rogue.glb`);
-    for (const name of ['Knife', 'Knife_Offhand', '1H_Crossbow', '2H_Crossbow', 'Throwable']) {
-      const object = gltf.scene.getObjectByName(name); if (object) object.visible = false;
-    }
-    const box = new THREE.Box3().setFromObject(gltf.scene), scale = 3.25 / (box.max.y - box.min.y);
-    gltf.scene.scale.setScalar(scale); gltf.scene.position.y = -box.min.y * scale;
-    gltf.scene.traverse(object => { if (object instanceof THREE.Mesh) { object.castShadow = true; object.receiveShadow = true; } });
-    this.body.add(gltf.scene);
-    this.mixer = new THREE.AnimationMixer(gltf.scene);
-    const idle = THREE.AnimationClip.findByName(gltf.animations, 'Idle'), run = THREE.AnimationClip.findByName(gltf.animations, 'Run');
-    if (!idle || !run) throw new Error('角色资源缺少 Idle 或 Run 动画。');
-    this.idle = this.mixer.clipAction(idle).play(); this.run = this.mixer.clipAction(run).play();
-    this.idle.setEffectiveWeight(1); this.run.setEffectiveWeight(0);
+    const character = await loadCharacter();
+    this.body.add(character.model);
+    this.mixer = character.mixer;
+    this.idle = character.idle;
+    this.run = character.run;
     this.sync(0);
     this.resize();
     await this.renderer.compileAsync(this.scene, this.camera);

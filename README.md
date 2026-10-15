@@ -123,16 +123,22 @@ macOS 默认使用 `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome
 | --- | --- |
 | `src/controller.ts` | 输入所有权、状态、运动、锚点、转向和动画融合权重 |
 | `src/scene.ts` | WebGPU 渲染、角色骨骼、房间、镜头、锚点显示 |
+| `src/character.ts` | 加载新角色、贴图与 Idle／Run 骨骼动画 |
 | `src/main.ts` | 页面、Pointer Events、参数面板、更新循环 |
 | `src/config.ts` | 参数初值和范围 |
 | `src/settings-store.ts` | JSON 格式校验、读取和保存请求 |
 | `tools/settings-server.ts` | 开发／预览服务的 JSON 读取、原子写入接口 |
 | `public/params.json` | 当前已保存的参数；随项目和构建一起分发 |
 | `src/styles.css` | 电脑／手机布局与轮盘外观 |
-| `public/models/rogue.glb` | 约 390 KiB，保留 Idle／Run 的低多边形角色 |
+| `public/models/archero-default.glb` | 约 875 KiB，用户提供的默认弓箭手、弓、5 张贴图与 Idle／Run |
+| `tools/prepare-archero-character.py` | 从用户提供的 Blender 文件重建游戏角色资源 |
 | `tests/`、`tools/browser-check.mjs` | 状态与浏览器验收 |
 
-角色来自 KayKit，授权和加工记录见 [THIRD_PARTY_ASSETS.md](THIRD_PARTY_ASSETS.md)。房间和界面由项目代码生成，运行时不依赖外部字体或素材服务。
+当前角色来自用户提供的桌面 `ArcHeroModel`，已替换原 KayKit 角色。来源和加工记录见 [THIRD_PARTY_ASSETS.md](THIRD_PARTY_ASSETS.md)。房间和界面由项目代码生成，运行时不依赖外部字体或素材服务。
+
+待机使用 `Idle`（原速循环 1 秒），原地跑步和实际移动均使用 `Run`（原速循环约 0.667 秒）。继续使用“动画融合”和“Run 动画速度”参数；例如 2 倍速对应约 0.333 秒一次跑步循环，实际速度读取当前保存值。角色体高保持 3.25 单位，以本体而非弓的包围盒归一化，并校准待机首帧的脚底高度。移动和转向仍由控制器驱动。
+
+运行 `npm run test:character` 可检查真实蒙皮变形、动画时长、循环接缝、脚底高度、根节点稳定与倍速，并保存 WebGPU 截图至本地 `analysis/character-import/`。弓的前后握持方向已修正，继续跟随原有手部挂点；该素材没有还原原作运行时的武器特殊缩放与拉弦。
 
 参考录像、原始模型、逐帧图片与分析结果保存在本地 `analysis/`。该目录以及依赖、构建产物已加入 `.gitignore`，不上传到 GitHub。
 
