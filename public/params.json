@@ -12,15 +12,15 @@
         "speed": 0
       },
       {
-        "distance": 0.05,
+        "distance": 0.08,
         "speed": 7.289476
       },
       {
-        "distance": 0.051,
+        "distance": 0.081,
         "speed": 107.169973
       }
     ],
-    "moveSpeed": 16,
+    "moveSpeed": 14.5,
     "moveModel": 1,
     "moveCurve": [
       {
@@ -29,11 +29,11 @@
       },
       {
         "angle": 5,
-        "speed": 95
+        "speed": 92.5
       },
       {
         "angle": 180,
-        "speed": 95
+        "speed": 90
       }
     ],
     "turnSpeed": 1210,
@@ -46,11 +46,23 @@
       },
       {
         "angle": 30,
-        "speed": 1215
+        "speed": 1115
+      },
+      {
+        "angle": 132.76,
+        "speed": 1115
       },
       {
         "angle": 150,
         "speed": 1215
+      },
+      {
+        "angle": 160.62,
+        "speed": 1326
+      },
+      {
+        "angle": 171.36,
+        "speed": 1603
       },
       {
         "angle": 180,
