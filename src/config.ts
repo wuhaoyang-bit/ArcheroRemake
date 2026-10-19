@@ -1,4 +1,4 @@
-import { DEFAULT_RING_CURVE, DEFAULT_STROKE_CURVE, DEFAULT_LINK_ATTACK_CURVE } from './lock-rings.ts';
+import { DEFAULT_RING_CURVE, DEFAULT_STROKE_CURVE, DEFAULT_LINK_ATTACK_CURVE, DEFAULT_SWITCH_CURVE } from './lock-rings.ts';
 import { DEFAULT_MOVE_CURVE } from './move-speed.ts';
 import { DEFAULT_ANCHOR_CURVE } from './anchor-follow.ts';
 import { exponentialCurve } from './turn-curve.ts';
@@ -26,6 +26,7 @@ export const DEFAULTS = {
   smoothSnapAngle: 0.1,
   ringPlayerDiameter: 4, ringTargetDiameter: 8,
   ringPlayerStroke: 1, ringTargetStroke: 1.2,
+  ringSwitchDuration:0.25, ringSwitchAmount:150, ringSwitchCurve:DEFAULT_SWITCH_CURVE,
   ringLinkThreshold: 95, ringLinkStroke: 1,
   ringPlayerHeight: 1.4, ringTargetHeight: 1.2,
   ringDuration: 0.25, ringCurve: DEFAULT_RING_CURVE, ringStrokeCurve: DEFAULT_STROKE_CURVE, ringLinkAttackCurve: DEFAULT_LINK_ATTACK_CURVE,
@@ -52,7 +53,7 @@ export const DEFAULTS = {
   viewWidth: 18,
 };
 export type Settings = typeof DEFAULTS;
-export type SettingKey = Exclude<keyof Settings, 'turnCurve' | 'lockTurnCurve' | 'anchorCurve' | 'moveCurve' | 'ringCurve' | 'ringStrokeCurve' | 'ringLinkAttackCurve'>;
+export type SettingKey = Exclude<keyof Settings, 'turnCurve' | 'lockTurnCurve' | 'anchorCurve' | 'moveCurve' | 'ringCurve' | 'ringStrokeCurve' | 'ringLinkAttackCurve' | 'ringSwitchCurve'>;
 /** Missing lock values inherit the corresponding ordinary tuning once, on load. */
 export const LOCK_TURN_KEYS = {
   lockTurnModel: 'turnModel', lockTurnSpeed: 'turnSpeed', lockCurveSnapAngle: 'curveSnapAngle',
@@ -68,6 +69,7 @@ export const LIMITS: Record<SettingKey, [number, number, number]> = {
   slerpResponse: [0.1, 120, 0.001], slerpSnapAngle: [0.001, 5, 0.001],
   smoothTime: [0.005, 0.5, 0.00001], smoothSnapAngle: [0.001, 5, 0.001],
   ringPlayerDiameter: [2, 80, 0.5], ringTargetDiameter: [2, 80, 0.5],
+  ringSwitchDuration:[0.03,2,0.01], ringSwitchAmount:[0,200,1],
   ringLinkThreshold: [0, 100, 0.1], ringLinkStroke: [0.25, 16, 0.25],
   ringPlayerStroke: [0.25, 8, 0.25], ringTargetStroke: [0.25, 8, 0.05],
   ringPlayerHeight: [0, 5, 0.05], ringTargetHeight: [0, 5, 0.05], ringDuration: [0.05, 3, 0.01],

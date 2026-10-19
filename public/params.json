@@ -77,6 +77,30 @@
     "ringTargetDiameter": 8,
     "ringPlayerStroke": 1,
     "ringTargetStroke": 1.2,
+    "ringSwitchDuration": 0.25,
+    "ringSwitchAmount": 200,
+    "ringSwitchCurve": [
+      {
+        "time": 0,
+        "progress": 0
+      },
+      {
+        "time": 25,
+        "progress": 100
+      },
+      {
+        "time": 50,
+        "progress": 45
+      },
+      {
+        "time": 75,
+        "progress": 10
+      },
+      {
+        "time": 100,
+        "progress": 0
+      }
+    ],
     "ringLinkThreshold": 95,
     "ringLinkStroke": 0.5,
     "ringPlayerHeight": 1.4,
@@ -189,7 +213,7 @@
       }
     ],
     "targetModel": 0,
-    "lockRange": 18.1,
+    "lockRange": 17,
     "showLockRange": 1,
     "targetCone": 90,
     "targetAdvantage": 8,

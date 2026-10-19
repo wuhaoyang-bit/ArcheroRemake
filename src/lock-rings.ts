@@ -49,9 +49,17 @@ export function attackLinkMultiplier(curve:StrokePoint[],attack?:AttackPhase){
   if(!attack?.playing||attack.duration<=0)return 1;
   return 1+(strokeAt(curve,attack.time/attack.duration)-1)*Math.max(0,Math.min(1,attack.weight));
 }
+export const DEFAULT_SWITCH_CURVE:ProgressPoint[]=[{time:0,progress:0},{time:25,progress:100},{time:50,progress:45},{time:75,progress:10},{time:100,progress:0}];
+export function validateSwitchCurve(raw:unknown):ProgressPoint[]{
+  if(!Array.isArray(raw))throw new Error('换目标曲线格式无效');
+  const points=validateStrokeCurve(raw.map(p=>({completion:p?.time,width:p?.progress})));
+  if(points[0].width!==0||points.at(-1)!.width!==0||points.some(p=>p.width>100))throw new Error('换目标曲线首尾固定为 0，扩张量为 0～100%');
+  return points.map(p=>({time:p.completion,progress:p.width}));
+}
 export type RingConfig = Pick<Settings,'ringPlayerDiameter'|'ringTargetDiameter'|'ringPlayerStroke'|'ringTargetStroke'|
-  'ringPlayerHeight'|'ringTargetHeight'|'ringDuration'|'ringCurve'|'ringStrokeCurve'|'ringLinkThreshold'|'ringLinkStroke'|'ringLinkAttackCurve'>;
+  'ringPlayerHeight'|'ringTargetHeight'|'ringDuration'|'ringCurve'|'ringStrokeCurve'|'ringLinkThreshold'|'ringLinkStroke'|'ringLinkAttackCurve'|'ringSwitchDuration'|'ringSwitchAmount'|'ringSwitchCurve'>;
 export const ringConfig=(s: RingConfig): RingConfig=>({
+  ringSwitchDuration:s.ringSwitchDuration,ringSwitchAmount:s.ringSwitchAmount,ringSwitchCurve:validateSwitchCurve(s.ringSwitchCurve),
   ringLinkAttackCurve:validateStrokeCurve(s.ringLinkAttackCurve),ringLinkThreshold:s.ringLinkThreshold,ringLinkStroke:s.ringLinkStroke,
   ringPlayerDiameter:s.ringPlayerDiameter,ringTargetDiameter:s.ringTargetDiameter,
   ringPlayerStroke:s.ringPlayerStroke,ringTargetStroke:s.ringTargetStroke,
@@ -73,8 +81,10 @@ export class LockRings {
   radius=0;
   completion=0;
   stroke=0;
+  switchElapsed:number|null=null;
+  switchStart=0;
   preview:number|null=null;
-  seek(completion:number){if(this.targetId!==null&&Number.isFinite(completion))this.preview=Math.max(0,Math.min(1,completion));}
+  seek(completion:number){if(this.targetId!==null&&Number.isFinite(completion)){this.preview=Math.max(0,Math.min(1,completion));this.switchElapsed=null;this.switchStart=0;}}
   resume(){
     if(this.preview===null||!this.config)return;
     // Invert the piecewise linear progress curve, choosing the earliest matching time.
@@ -85,7 +95,7 @@ export class LockRings {
     }
     this.elapsed=time/100*this.config.ringDuration;this.preview=null;
   }
-  reset(){this.preview=null;this.completion=0;this.stroke=0;this.targetId=null;this.config=null;this.elapsed=0;this.initialRadius=0;this.radius=0;}
+  reset(){this.switchElapsed=null;this.switchStart=0;this.preview=null;this.completion=0;this.stroke=0;this.targetId=null;this.config=null;this.elapsed=0;this.initialRadius=0;this.radius=0;}
   update(dt:number,id:string|null,settings:RingConfig,center:{x:number;y:number},width:number,height:number){
     if(id===null){this.reset();return;}
     if(this.targetId===null){
@@ -94,12 +104,25 @@ export class LockRings {
         +this.config.ringTargetStroke*strokeAt(this.config.ringStrokeCurve,0)/2+1;
       this.initialRadius=Math.max(this.initialRadius,this.config.ringTargetDiameter/2);
     }else if(this.preview===null&&Number.isFinite(dt)&&dt>0){this.elapsed=Math.min(this.config!.ringDuration,this.elapsed+dt);}
+    const changed=this.targetId!==null&&this.targetId!==id;
+    if(changed&&this.preview===null&&this.completion===1){
+      this.switchStart=Math.max(0,this.radius-this.config!.ringTargetDiameter/2);this.switchElapsed=0;
+    }else if(this.switchElapsed!==null&&Number.isFinite(dt)&&dt>0){
+      this.switchElapsed=Math.min(this.config!.ringSwitchDuration,this.switchElapsed+dt);
+    }
     this.targetId=id;
     const c=this.config!,p=this.preview??progressAt(c.ringCurve,this.elapsed/c.ringDuration);
     this.completion=p;this.stroke=c.ringTargetStroke*strokeAt(c.ringStrokeCurve,p);
     this.radius=c.ringTargetDiameter/2+(this.initialRadius-c.ringTargetDiameter/2)*(1-p);
+    if(this.switchElapsed!==null&&this.preview===null){
+      const u=this.switchElapsed/c.ringSwitchDuration,maximum=c.ringTargetDiameter/2*c.ringSwitchAmount/100;
+      // Blend the current expansion into the new envelope, bounded by the configured peak.
+      const start=Math.min(maximum,this.switchStart);
+      this.radius+=start*(1-u)+(maximum-start)*progressAt(c.ringSwitchCurve,u);
+      if(u>=1){this.switchElapsed=null;this.switchStart=0;}
+    }
   }
   get linkVisible(){return this.targetId!==null&&this.config!==null&&this.completion>=this.config.ringLinkThreshold/100;}
-  snapshot(){return {targetId:this.targetId,elapsed:this.elapsed,initialRadius:this.initialRadius,radius:this.radius,
+  snapshot(){return {switchElapsed:this.switchElapsed,switchStart:this.switchStart,targetId:this.targetId,elapsed:this.elapsed,initialRadius:this.initialRadius,radius:this.radius,
     linkVisible:this.linkVisible,completion:this.completion,stroke:this.stroke,preview:this.preview,progress:this.config?Math.min(1,this.elapsed/this.config.ringDuration):0,config:this.config&&ringConfig(this.config)};}
 }

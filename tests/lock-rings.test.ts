@@ -98,3 +98,21 @@ test('attack link pulse uses actual animation phase and blend weight, resets whe
   near(attackLinkMultiplier(curve,{...attack,time:.54,playing:false}),1);
   assert.deepEqual(parseSettingsDocument(settingsDocument(DEFAULTS)).ringLinkAttackCurve,curve);
 });
+
+test('target switch pulse expands then settles, retriggers continuously without accumulation',()=>{
+  const s=new LockRings();s.update(0,'a',DEFAULTS,c,w,h);s.update(1,'a',DEFAULTS,c,w,h);
+  near(s.radius,4);s.update(0,'b',DEFAULTS,c,w,h);near(s.radius,4);
+  s.update(DEFAULTS.ringSwitchDuration*.25,'b',DEFAULTS,c,w,h);near(s.radius,10);
+  const radius=s.radius;s.update(0,'c',DEFAULTS,c,w,h);near(s.radius,radius);
+  for(let i=0;i<10;i++){s.update(.01,'c',DEFAULTS,c,w,h);assert.ok(s.radius<=10&&s.radius>=4);}
+  s.update(1,'c',DEFAULTS,c,w,h);near(s.radius,4);assert.equal(s.switchElapsed,null);
+  s.update(0,'d',DEFAULTS,c,w,h);s.update(.02,'d',DEFAULTS,c,w,h);s.seek(.9);s.update(0,'d',DEFAULTS,c,w,h);assert.equal(s.switchElapsed,null);
+  s.update(0,'e',DEFAULTS,c,w,h);assert.equal(s.switchElapsed,null);
+  s.update(0,null,DEFAULTS,c,w,h);assert.equal(s.switchElapsed,null);
+});
+test('switch during entry does not add pulse, switch curve saves and rejects nonzero endpoints',()=>{
+  const s=new LockRings();s.update(0,'a',DEFAULTS,c,w,h);s.update(.05,'a',DEFAULTS,c,w,h);
+  s.update(.05,'b',DEFAULTS,c,w,h);assert.equal(s.switchElapsed,null);
+  assert.deepEqual(parseSettingsDocument(settingsDocument(DEFAULTS)).ringSwitchCurve,DEFAULTS.ringSwitchCurve);
+  assert.throws(()=>parseSettingsDocument({version:1,settings:{ringSwitchCurve:[{time:0,progress:1},{time:100,progress:0}]}},true));
+});

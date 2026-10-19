@@ -1,4 +1,4 @@
-import { validateProgressCurve, validateStrokeCurve, type StrokePoint, type ProgressPoint } from './lock-rings.ts';
+import { validateProgressCurve, validateSwitchCurve, validateStrokeCurve, type StrokePoint, type ProgressPoint } from './lock-rings.ts';
 import { movementMultiplier, validateMoveCurve } from './move-speed.ts';
 import { remainingAnchorDistance, validateAnchorCurve, type AnchorCurvePoint } from './anchor-follow.ts';
 import { trainingCourse, lockingTargets, moveAroundObstacles, CHECKPOINT_RADIUS, type TrainingMode } from './training.ts';
@@ -104,7 +104,7 @@ export class MovementController {
   }
 
   constructor(settings: Settings = { ...DEFAULTS }) {
-    this.settings = { ...settings, ringLinkAttackCurve:validateStrokeCurve(settings.ringLinkAttackCurve), ringStrokeCurve:validateStrokeCurve(settings.ringStrokeCurve), ringCurve: validateProgressCurve(settings.ringCurve), turnCurve: validateCurve(settings.turnCurve), lockTurnCurve: validateCurve(settings.lockTurnCurve), anchorCurve: validateAnchorCurve(settings.anchorCurve), moveCurve: validateMoveCurve(settings.moveCurve) };
+    this.settings = { ...settings, ringSwitchCurve:validateSwitchCurve(settings.ringSwitchCurve), ringLinkAttackCurve:validateStrokeCurve(settings.ringLinkAttackCurve), ringStrokeCurve:validateStrokeCurve(settings.ringStrokeCurve), ringCurve: validateProgressCurve(settings.ringCurve), turnCurve: validateCurve(settings.turnCurve), lockTurnCurve: validateCurve(settings.lockTurnCurve), anchorCurve: validateAnchorCurve(settings.anchorCurve), moveCurve: validateMoveCurve(settings.moveCurve) };
     this.position = { x: 0, z: settings.roomSize * 0.27 };
   }
   get anchorVisible() { return this.mode !== 'idle'; }
@@ -219,6 +219,7 @@ export class MovementController {
 
   setRingLinkAttackCurve(points:StrokePoint[]){this.settings.ringLinkAttackCurve=validateStrokeCurve(points);}
   setRingStrokeCurve(points:StrokePoint[]){this.settings.ringStrokeCurve=validateStrokeCurve(points);}
+  setRingSwitchCurve(points:ProgressPoint[]){this.settings.ringSwitchCurve=validateSwitchCurve(points);}
   setRingCurve(points: ProgressPoint[]) { this.settings.ringCurve = validateProgressCurve(points); }
 
   setAnchorCurve(points: AnchorCurvePoint[]) { this.settings.anchorCurve = validateAnchorCurve(points); }
