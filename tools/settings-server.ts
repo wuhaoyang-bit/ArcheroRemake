@@ -5,7 +5,8 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Plugin } from 'vite';
 import { parseSettingsDocument, settingsDocument } from '../src/settings-store.ts';
 
-const MAX_BYTES = 16 * 1024;
+// Four independently editable curves, each allowing up to 128 control points.
+const MAX_BYTES = 64 * 1024;
 
 /** Fixed target path and atomic replacement: failed saves cannot truncate the previous JSON. */
 export function settingsMiddleware(file: string) {

@@ -75,3 +75,33 @@ test('checkpoint progress is ordered, persistent when leaving, and reset on rest
   c.restartTraining();assert.equal(c.passedCheckpoints,0);
   c.setTraining('free');assert.equal(c.passedCheckpoints,0);
 });
+
+test('locking field starts in the center and switching discards an old gesture without changing tuning', () => {
+  const c = new MovementController(); c.setTraining('obstacles');
+  const settings = structuredClone(c.settings);
+  c.press(1, 0, 0); c.move(1, 60, 0); c.update(.1);
+  c.setTraining('locking');
+  assert.deepEqual(c.position, { x: 0, z: 0 });
+  assert.equal(c.mode, 'idle'); assert.equal(c.pointerId, null);
+  assert.deepEqual(c.offset, { x: 0, z: 0 });
+  c.move(1, 0, -60); c.release(1, { x: 0, y: -60 }); c.update(.1);
+  assert.deepEqual(c.position, { x: 0, z: 0 });
+  assert.deepEqual(c.settings, settings);
+  c.setTraining('obstacles'); assert.equal(c.position.z, c.course.startZ);
+  c.setTraining('free'); assert.equal(c.position.z, c.settings.roomSize * .27);
+});
+
+test('locking field keeps anchor-driven movement and never triggers obstacle-course completion', () => {
+  const field = new MovementController(), ordinary = new MovementController();
+  field.setTraining('locking'); ordinary.position = { x: 0, z: 0 };
+  for (const controller of [field, ordinary]) { controller.press(1, 0, 0); controller.move(1, 40, -60); }
+  for (let i = 0; i < 240; i++) {
+    field.update(1 / 120); ordinary.update(1 / 120);
+    assert.deepEqual(field.position, ordinary.position);
+    assert.equal(field.heading, ordinary.heading);
+  }
+  field.position = { x: 0, z: field.course.finishZ + .01 };
+  field.move(1, 0, -60); field.update(.2);
+  assert.equal(field.completions, 0); assert.equal(field.passedCheckpoints, 0);
+  assert.equal(field.mode, 'moving'); assert.equal(field.pointerId, 1);
+});

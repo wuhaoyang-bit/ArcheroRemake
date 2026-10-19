@@ -1,6 +1,8 @@
 import { buildTraining } from './training-scene.ts';
+import { buildLockingTraining } from './locking-training-scene.ts';
 import * as THREE from 'three/webgpu';
 import { loadCharacter } from './character.ts';
+import { CharacterAnimation } from './character-animation.ts';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { AnimationBlend, follow, type MovementController } from './controller.ts';
 import { ASPECT } from './config.ts';
@@ -107,7 +109,14 @@ export class GameScene {
   anchorOutline = new THREE.Mesh(new THREE.RingGeometry(0.235, 0.275, 48),
     new THREE.MeshBasicMaterial({ color: 0x9ff5ff, depthTest: false, depthWrite: false, side: THREE.DoubleSide }));
   headingGuide = new THREE.Group();
+  lockRangeGuide = new THREE.Mesh(new THREE.RingGeometry(.996, 1, 192),
+    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .7, depthWrite: false, side: THREE.DoubleSide }));
+  lockMarker = new THREE.Mesh(new THREE.RingGeometry(.94, 1.04, 64),
+    new THREE.MeshBasicMaterial({ color: 0xff752f, depthTest: false, depthWrite: false, side: THREE.DoubleSide }));
+  candidateMarker = new THREE.Mesh(new THREE.RingGeometry(1.12, 1.17, 64),
+    new THREE.MeshBasicMaterial({ color: 0xfff4cd, transparent: true, opacity: .8, depthTest: false, depthWrite: false, side: THREE.DoubleSide }));
   cameraZ: number;
+  animation!: CharacterAnimation;
   blend = new AnimationBlend();
   mixer!: THREE.AnimationMixer;
   idle!: THREE.AnimationAction;
@@ -178,12 +187,19 @@ export class GameScene {
     this.headingGuide.add(headingLine);
     this.headingGuide.visible = false;
     this.player.add(this.headingGuide);
+    for (const marker of [this.lockRangeGuide, this.lockMarker, this.candidateMarker]) {
+      marker.rotation.x = -Math.PI / 2; marker.visible = false;
+      this.scene.add(marker);
+    }
+    this.lockMarker.renderOrder = 102; this.candidateMarker.renderOrder = 102;
 
     const character = await loadCharacter();
     this.body.add(character.model);
     this.mixer = character.mixer;
     this.idle = character.idle;
     this.run = character.run;
+    this.animation = new CharacterAnimation(character.mixer, character.idle, character.run, character.attack);
+    this.blend = this.animation.blend;
     this.sync(0);
     this.resize();
     await this.renderer.compileAsync(this.scene, this.camera);
@@ -196,9 +212,19 @@ export class GameScene {
     this.roomLength = this.controller.settings.roomLength;
     this.trainingMode = this.controller.training;
     this.room = buildRoom(this.roomSize, this.roomLength);
-    this.trainingVisual = this.trainingMode === 'obstacles' ? buildTraining(this.roomSize, this.roomLength) : undefined;
+    this.trainingVisual = this.trainingMode === 'obstacles' ? buildTraining(this.roomSize, this.roomLength)
+      : this.trainingMode === 'locking' ? buildLockingTraining(this.roomSize, this.roomLength) : undefined;
     if (this.trainingVisual) this.room.add(this.trainingVisual);
     this.scene.add(this.room);
+  }
+
+  /** Read-only visual diagnostics for the development browser checks. */
+  trainingTargetsSnapshot() {
+    return this.trainingVisual?.children.filter(object => object.userData.practiceTarget).map(object => ({
+      id: object.userData.practiceTarget as string,
+      position: object.position.toArray(),
+      ndc: object.position.clone().project(this.camera).toArray(),
+    })) ?? [];
   }
 
   resize() {
@@ -222,7 +248,7 @@ export class GameScene {
     const ctl = this.controller;
     if (this.trainingMode !== ctl.training || this.roomSize !== ctl.settings.roomSize || this.roomLength !== ctl.settings.roomLength) this.setRoom();
     if (this.viewWidth !== ctl.settings.viewWidth || this.offset !== ctl.settings.cameraOffset) this.projection();
-    this.trainingVisual?.userData.setProgress(ctl.passedCheckpoints, dt);
+    this.trainingVisual?.userData.setProgress?.(ctl.passedCheckpoints, dt);
     this.player.position.set(ctl.position.x, 0, ctl.position.z);
     this.body.rotation.y = ctl.heading;
     const target = ctl.anchor;
@@ -230,11 +256,14 @@ export class GameScene {
     this.anchorOutline.visible = this.showAnchorOutline;
     this.headingGuide.visible = this.showHeading;
     this.headingGuide.rotation.y = ctl.heading;
-    this.blend.setTarget(ctl.mode === 'idle' ? 0 : 1, ctl.settings.blendDuration);
-    const weight = this.blend.update(dt);
-    this.idle.setEffectiveWeight(1 - weight); this.run.setEffectiveWeight(weight);
-    this.run.setEffectiveTimeScale(ctl.settings.runSpeed);
-    this.mixer.update(dt);
+    this.lockRangeGuide.visible = ctl.training === 'locking' && !!ctl.settings.showLockRange && ctl.settings.lockRange > 0;
+    this.lockRangeGuide.position.set(ctl.position.x, .045, ctl.position.z);
+    this.lockRangeGuide.scale.setScalar(ctl.settings.lockRange);
+    for (const [marker, target] of [[this.lockMarker, ctl.targeting.target], [this.candidateMarker, ctl.targeting.candidate]] as const) {
+      marker.visible = ctl.training === 'locking' && target !== null;
+      if (target) marker.position.set(target.x, .08, target.z);
+    }
+    this.animation.update(dt, ctl.mode, ctl.activeAttackRequest, ctl.settings.blendDuration, ctl.settings.runSpeed);
     this.cameraZ = follow(this.cameraZ, ctl.position.z, ctl.settings.cameraResponse, dt);
     this.camera.position.set(0, 24, this.cameraZ + 24 / Math.tan(this.tilt));
     this.camera.lookAt(0, 0, this.cameraZ);

@@ -1,4 +1,4 @@
-"""Export the supplied Blender character with only Idle / Run (Blender 5.2).
+"""Export Idle / Run and the two ordinary bow attack phases (Blender 5.2).
 
 Run Blender with --background --factory-startup --disable-autoexec --python
 tools/prepare-archero-character.py -- --source /path/Archero_Default.blend
@@ -15,6 +15,7 @@ import bpy
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_SHA256 = "ed0285b942e3b6145c3ac513cc9b778070127ca5a882b9771005f0813bcde453"
+CLIPS = {"Idle", "Run", "AttackPrev", "AttackEnd"}
 parser = argparse.ArgumentParser()
 parser.add_argument("--source", type=Path, default=ROOT / "analysis/source-assets/archero-default/Archero_Default.blend")
 parser.add_argument("--output", type=Path, default=ROOT / "public/models/archero-default.glb")
@@ -27,9 +28,9 @@ rig = bpy.data.objects["Archero_Default"]
 meshes = [obj for obj in scene.objects if obj.type == "MESH"]
 assert len(meshes) == 5
 for action in list(bpy.data.actions):
-    if action.name not in {"Idle", "Run"}:
+    if action.name not in CLIPS:
         bpy.data.actions.remove(action)
-assert {a.name for a in bpy.data.actions} == {"Idle", "Run"}
+assert {a.name for a in bpy.data.actions} == CLIPS
 rig.animation_data_create()
 for track in list(rig.animation_data.nla_tracks):
     rig.animation_data.nla_tracks.remove(track)
@@ -96,7 +97,7 @@ bpy.ops.export_scene.gltf(
 data = args.output.read_bytes()
 json_size, = struct.unpack_from("<I", data, 12)
 gltf = json.loads(data[20:20 + json_size])
-assert {a["name"] for a in gltf["animations"]} == {"Idle", "Run"}
+assert {a["name"] for a in gltf["animations"]} == CLIPS
 for animation in gltf["animations"]:
     times = [gltf["accessors"][sampler["input"]] for sampler in animation["samplers"]]
     assert abs(min(a["min"][0] for a in times)) < 1e-6, "Animation must start at zero."

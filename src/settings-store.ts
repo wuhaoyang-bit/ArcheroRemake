@@ -1,7 +1,7 @@
 import { validateMoveCurve } from './move-speed.ts';
 import { validateAnchorCurve } from './anchor-follow.ts';
 import { exponentialCurve, validateCurve } from './turn-curve.ts';
-import { DEFAULTS, LIMITS, sanitize, type Settings, type SettingKey } from './config.ts';
+import { DEFAULTS, LIMITS, LOCK_TURN_KEYS, sanitize, type Settings, type SettingKey } from './config.ts';
 
 export type SettingsDocument = { version: 1; settings: Settings };
 
@@ -27,7 +27,8 @@ export function parseSettingsDocument(raw: unknown, strict = false): Settings {
     if (value === undefined) continue; // Older files gain newly added parameters from defaults.
     if (typeof value !== 'number' || !Number.isFinite(value)) throw new Error(`参数 ${key} 必须是有限数字`);
     if (key === 'moveModel' && value !== 0 && value !== 1) throw new Error('移动速度模型编号无效');
-    if (key === 'turnModel' && (![0, 1, 2, 3, 4, 5, 6].includes(value))) {
+    if (key === 'targetModel' && ![0, 1, 2].includes(value)) throw new Error('选敌模型编号无效');
+    if ((key === 'turnModel' || key === 'lockTurnModel') && (![0, 1, 2, 3, 4, 5, 6].includes(value))) {
       throw new Error('转向模型编号无效');
     }
     if (strict && (value < LIMITS[key][0] || value > LIMITS[key][1])) throw new Error(`参数 ${key} 超出范围`);
@@ -37,6 +38,10 @@ export function parseSettingsDocument(raw: unknown, strict = false): Settings {
   if (source.curveSnapAngle === undefined) settings.curveSnapAngle = typeof source.turnSnapAngle === 'number' ? sanitize('curveSnapAngle', source.turnSnapAngle) : DEFAULTS.curveSnapAngle;
   settings.anchorCurve = validateAnchorCurve(source.anchorCurve ?? DEFAULTS.anchorCurve);
   settings.moveCurve = validateMoveCurve(source.moveCurve ?? DEFAULTS.moveCurve);
+  for (const key of Object.keys(LOCK_TURN_KEYS) as (keyof typeof LOCK_TURN_KEYS)[]) {
+    if (source[key] === undefined) settings[key] = settings[LOCK_TURN_KEYS[key]];
+  }
+  settings.lockTurnCurve = validateCurve(source.lockTurnCurve === undefined ? settings.turnCurve : source.lockTurnCurve);
   return settings;
 }
 

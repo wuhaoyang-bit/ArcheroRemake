@@ -79,7 +79,8 @@ try {
   assert.deepEqual(report.clips.map(clip => clip.name), ['Idle', 'Run']);
   assert.ok(Math.abs(report.clips[0].duration - 1) < 1e-6);
   assert.ok(Math.abs(report.clips[1].duration - 2 / 3) < 1e-6);
-  assert.equal(report.meshes.length, 5);
+  assert.equal(report.meshes.length, 4);
+  assert.ok(report.meshes.every(mesh => mesh.name !== 'Bow_WeaponHand101001'), 'Weapon must be removed from the character');
   assert.ok(report.meshes.every(mesh => mesh.hasTexture && mesh.bones === 63));
   assert.ok(Math.abs(report.idleBounds.min[1]) < .001, 'Feet must rest on the floor');
   assert.ok(Math.abs(report.idleBounds.max[1] - 3.25) < .001, 'Body height must match the existing game scale');

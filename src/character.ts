@@ -1,28 +1,21 @@
 import * as THREE from 'three/webgpu';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { bowAttackClip } from './character-animation.ts';
 
 export async function loadCharacter() {
   const gltf = await new GLTFLoader().loadAsync(`${import.meta.env.BASE_URL}models/archero-default.glb`);
   const idleClip = THREE.AnimationClip.findByName(gltf.animations, 'Idle');
   const runClip = THREE.AnimationClip.findByName(gltf.animations, 'Run');
   if (!idleClip || !runClip) throw new Error('角色资源缺少 Idle 或 Run 动画。');
+  const attackPrev = THREE.AnimationClip.findByName(gltf.animations, 'AttackPrev');
+  const attackEnd = THREE.AnimationClip.findByName(gltf.animations, 'AttackEnd');
+  if (!attackPrev || !attackEnd) throw new Error('角色资源缺少射箭攻击动画。');
 
   // The exported static parent already places the feet at y=0, normalizes body
   // height to 3.25, and preserves +Z forward. Do not rescale using the bow bounds.
   const model = gltf.scene;
-  const bow = model.getObjectByName('Bow_WeaponHand101001');
-  if (bow instanceof THREE.SkinnedMesh) {
-    const handIndex = bow.skeleton.bones.findIndex(bone => bone.name === 'right');
-    if (handIndex < 0) throw new Error('弓模型缺少手部挂点。');
-    // The supplied bow faces backwards. Turn it around its longitudinal axis
-    // in the attachment's bind space, preserving the grip and all skin weights.
-    // Use the original bind matrix: the live bindMatrixInverse includes the
-    // model's current world scale and would incorrectly shrink the weapon.
-    const meshToHand = bow.skeleton.boneInverses[handIndex].clone().multiply(bow.bindMatrix);
-    const correction = meshToHand.clone().invert()
-      .multiply(new THREE.Matrix4().makeRotationZ(Math.PI)).multiply(meshToHand);
-    bow.geometry.applyMatrix4(correction);
-  }
+  // Remove only the weapon mesh; retain the original character bones and clips.
+  model.getObjectByName('Bow_WeaponHand101001')?.removeFromParent();
   model.traverse(object => {
     if (object instanceof THREE.Mesh) {
       object.castShadow = true;
@@ -34,6 +27,7 @@ export async function loadCharacter() {
   const run = mixer.clipAction(runClip).setLoop(THREE.LoopRepeat, Infinity).play();
   idle.setEffectiveWeight(1);
   run.setEffectiveWeight(0);
+  const attack = mixer.clipAction(bowAttackClip(attackPrev, attackEnd)).setEffectiveWeight(0);
   mixer.update(0);
-  return { model, mixer, idle, run };
+  return { model, mixer, idle, run, attack };
 }

@@ -18,6 +18,7 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
 .edition b { color: #c8dfae; font-size: 15px; font-weight: 400; border-left: 1px solid #627564; margin-left: 7px; padding-left: 15px; }
 .workspace { display: grid; grid-template-columns: minmax(245px, 290px) minmax(0, 1fr) minmax(245px, 290px); gap: clamp(16px, 2.5vw, 42px); width: 100%; max-width: 1370px; min-height: 0; flex: 1; margin: auto; padding: 23px 30px 14px; }
 .panel { display: flex; flex-direction: column; min-height: 0; }
+.right-panel { overflow-y: auto; scrollbar-width: thin; padding-right: 4px; }
 .panel-heading { min-height: 75px; flex-shrink: 0; display: flex; justify-content: space-between; align-items: flex-start; padding: 10px 0 20px; }
 .eyebrow { font-size: 9px; font-weight: 500; letter-spacing: 2px; color: #92a695; }
 h1, .large-heading { margin: 10px 0 0; font-size: 19px; font-weight: 500; letter-spacing: .5px; }
@@ -50,7 +51,7 @@ input[type=range]::-moz-range-thumb { width: 9px; height: 9px; border-radius: 50
 .viewport { position: relative; overflow: hidden; border-radius: 14px; background: #b2c07c; box-shadow: 0 22px 60px #030f1760, 0 0 0 1px #edffd32e, inset 0 0 0 1px #ffffff10; touch-action: none; user-select: none; -webkit-user-select: none; flex-shrink: 0; }
 #game-canvas { display: block; width: 100%; height: 100%; }
 .viewport::after { content: ''; position: absolute; z-index: 1; inset: 64% 0 0; background: linear-gradient(transparent, #edf5d780); pointer-events: none; }
-.game-top { position: absolute; z-index: 2; inset: 22px 20px auto; display: flex; align-items: center; justify-content: space-between; pointer-events: none; }
+.game-top { position: absolute; z-index: 2; inset: 22px 20px auto; display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; pointer-events: none; }
 .game-label { display: flex; gap: 6px; align-items: center; color: #eff7e5; font-size: 10px; letter-spacing: 1px; text-shadow: 0 1px 7px #27401f88; }
 .game-label i { width: 5px; height: 5px; background: #e1f5cf; border-radius: 50%; }
 .state-pill { position: absolute; z-index: 2; top: 51px; left: 19px; display: flex; gap: 5px; align-items: center; padding: 5px 8px; border: 1px solid #e5ffe52b; background: #20392b4a; border-radius: 20px; color: #eaf3e3; font-size: 9px; backdrop-filter: blur(8px); pointer-events: none; }
@@ -150,7 +151,12 @@ input[type=range]::-moz-range-thumb { width: 9px; height: 9px; border-radius: 50
 /* Keep the SVG itself as the event target when points redraw mid-click. */
 .curve-graph > * { pointer-events:none; }
 
-.training-actions { display:flex; align-items:center; gap:6px; pointer-events:auto; }
-#switch-training { border:1px solid #efffca66; border-radius:9px; background:#264b35dc; color:#fff9dc; padding:9px 10px; font-size:10px; cursor:pointer; touch-action:manipulation; }
-#switch-training:disabled { opacity:.45; }
+.training-actions { display:flex; align-items:flex-start; gap:6px; pointer-events:auto; }
+.training-arena-buttons { display:flex; flex-direction:column; gap:6px; }
+.training-arena-button { border:1px solid #efffca66; border-radius:9px; background:#264b35dc; color:#fff9dc; padding:9px 10px; font-size:10px; white-space:nowrap; cursor:pointer; touch-action:manipulation; }
+.training-arena-button[aria-pressed=true] { border-color:#edffc9; background:#3d6540ed; }
+.training-arena-button:disabled { opacity:.45; }
 #training-result { position:absolute; z-index:4; top:24%; left:5%; right:5%; padding:16px 10px; border-radius:14px; background:#245b42ed; color:#fff4b6; text-align:center; font-size:13px; box-shadow:0 5px 30px #17382444; pointer-events:none; }
+
+.targeting-hud { position: absolute; left: 12px; top: 82px; max-width: calc(100% - 24px); padding: 6px 10px; border-radius: 8px; background: #244d37d9; color: #fff4d5; font-size: 11px; pointer-events: none; z-index: 3; }
+.targeting-hud[hidden] { display: none; }

@@ -1,6 +1,24 @@
 export const CHECKPOINT_RADIUS = 0.65;
+export type TrainingMode = 'free' | 'obstacles' | 'locking';
 export type RoutePoint = { x: number; z: number };
 export type Obstacle = { x: number; z: number; radius: number };
+
+/** Static practice targets, arranged around the room center, independent of player facing. */
+export function lockingTargets(width: number, length: number) {
+  // Leave extra space at the ends so the upper props clear the portrait HUD.
+  const x = width / 2 - 2, z = length / 2 - Math.min(4, length / 4);
+  return [
+    { id: 'north', label: '正上方', x: 0, z: -z },
+    { id: 'south', label: '正下方', x: 0, z },
+    { id: 'west', label: '正左方', x: -x, z: 0 },
+    { id: 'east', label: '正右方', x, z: 0 },
+    { id: 'north-west', label: '左上方', x: -x, z: -z },
+    { id: 'south-west', label: '左下方', x: -x, z },
+    { id: 'south-east', label: '右下方', x, z },
+    { id: 'north-east', label: '右上方', x, z: -z },
+  ];
+}
+
 export function trainingCourse(width: number, length: number) {
   const startZ = length / 2 - 1.5, finishZ = -length / 2 + 1.5;
   const count = Math.max(1, Math.floor((length - 6) / 4.5));

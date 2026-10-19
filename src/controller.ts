@@ -1,6 +1,7 @@
 import { movementMultiplier, validateMoveCurve } from './move-speed.ts';
 import { remainingAnchorDistance, validateAnchorCurve, type AnchorCurvePoint } from './anchor-follow.ts';
-import { trainingCourse, moveAroundObstacles, CHECKPOINT_RADIUS } from './training.ts';
+import { trainingCourse, lockingTargets, moveAroundObstacles, CHECKPOINT_RADIUS, type TrainingMode } from './training.ts';
+import { TargetSelection } from './targeting.ts';
 import { remainingCurveAngle, validateCurve, type TurnCurvePoint } from './turn-curve.ts';
 import { DEFAULTS, sanitize, type SettingKey, type Settings } from './config.ts';
 import { slerpTurn, smoothDampAngleTurn } from './turn-damping.ts';
@@ -15,7 +16,11 @@ export const follow = (current: number, target: number, response: number, dt: nu
 /** Pure input/movement state. The visual model and camera never drive this state. */
 export class MovementController {
   settings: Settings;
-  training: 'free' | 'obstacles' = 'free';
+  training: TrainingMode = 'free';
+  targeting = new TargetSelection();
+  private targetCache: ReturnType<typeof lockingTargets> = [];
+  private targetCacheKey = '';
+  private lastTurnModel: number | null = null;
   completions = 0;
   passedCheckpoints = 0;
   private courseCache?: ReturnType<typeof trainingCourse>;
@@ -31,7 +36,7 @@ export class MovementController {
     const next = this.course.checkpoints[this.passedCheckpoints];
     if (next && Math.hypot(this.position.x-next.x, this.position.z-next.z) <= CHECKPOINT_RADIUS) this.passedCheckpoints++;
   }
-  setTraining(training: 'free' | 'obstacles') {
+  setTraining(training: TrainingMode) {
     this.training = training;
     this.completions = 0;
     this.restartTraining();
@@ -45,7 +50,8 @@ export class MovementController {
     this.offset = {x: 0, z: 0}; this.remembered = {x: 0, z: 0}; this.direction = null;
     this.raw = {x: 0, y: 0}; this.stick = {x: 0, y: 0};
     this.heading = Math.PI; this.angularSpeed = 0; this.dampedVelocity = 0;
-    this.position = {x: 0, z: this.training === 'obstacles' ? this.course.startZ : this.settings.roomSize * .27};
+    this.lastTurnModel = null; this.targeting.reset();
+    this.position = {x: 0, z: this.training === 'obstacles' ? this.course.startZ : this.training === 'locking' ? 0 : this.settings.roomSize * .27};
     this.constrain();
   }
   movementAngleError = 0;
@@ -55,6 +61,12 @@ export class MovementController {
   mode: Mode = 'idle';
   pointerId: number | null = null;
   private pendingRelease: { id: number; unlocked: boolean } | null = null;
+  private attackSequence = 0;
+  attackRequest: number | null = null;
+  get activeAttackRequest() {
+    return this.mode === 'idle' && this.training === 'locking' && this.targeting.target
+      ? this.attackRequest : null;
+  }
   unlocked = false;
   center = { x: 0, y: 0 };
   raw = { x: 0, y: 0 };
@@ -67,20 +79,38 @@ export class MovementController {
   heading = Math.PI;
   angularSpeed = 0; // Actual turn magnitude during the latest simulation step, degrees/s.
   private dampedVelocity = 0; // Signed radians/s; persists across input updates and release.
-  get targetHeading() {
+  get anchorHeading() {
     // The retained anchor remains authoritative even while hidden in idle.
     if (Math.hypot(this.offset.x, this.offset.z) > 0) return Math.atan2(this.offset.x, this.offset.z);
     return this.direction ? Math.atan2(this.direction.x, this.direction.z) : Math.PI;
   }
+  // A new locked stick during a moving handoff is still "moving", not in-place.
+  get usesLockTurn() { return this.mode !== 'moving' && this.training === 'locking' && this.targeting.target !== null; }
+  get targetHeading() {
+    const target = this.targeting.target;
+    return this.usesLockTurn && target
+      ? Math.atan2(target.x - this.position.x, target.z - this.position.z) : this.anchorHeading;
+  }
+  get activeTurnModel() { return this.usesLockTurn ? this.settings.lockTurnModel : this.settings.turnModel; }
+  private updateTargeting(dt: number) {
+    if (this.training !== 'locking') return;
+    const key = `${this.settings.roomSize}/${this.settings.roomLength}`;
+    if (key !== this.targetCacheKey) {
+      this.targetCacheKey = key;
+      this.targetCache = lockingTargets(this.settings.roomSize, this.settings.roomLength);
+    }
+    this.targeting.update(this.targetCache, this.position, this.anchorHeading, this.settings, dt);
+  }
 
   constructor(settings: Settings = { ...DEFAULTS }) {
-    this.settings = { ...settings, turnCurve: validateCurve(settings.turnCurve), anchorCurve: validateAnchorCurve(settings.anchorCurve), moveCurve: validateMoveCurve(settings.moveCurve) };
+    this.settings = { ...settings, turnCurve: validateCurve(settings.turnCurve), lockTurnCurve: validateCurve(settings.lockTurnCurve), anchorCurve: validateAnchorCurve(settings.anchorCurve), moveCurve: validateMoveCurve(settings.moveCurve) };
     this.position = { x: 0, z: settings.roomSize * 0.27 };
   }
   get anchorVisible() { return this.mode !== 'idle'; }
   get anchor() { return { x: this.position.x + this.offset.x, z: this.position.z + this.offset.z }; }
 
   press(id: number, x: number, y: number) {
+    this.attackRequest = null;
     this.pendingRelease = null;
     // Taking over does not reset the movement mode or the remembered direction.
     if (this.mode === 'idle') {
@@ -93,6 +123,7 @@ export class MovementController {
     this.raw = { x: 0, y: 0 };
     this.stick = { x: 0, y: 0 };
     this.unlocked = false;
+    if (this.training === 'locking') { this.targeting.active = true; this.updateTargeting(0); }
   }
 
   move(id: number, dx: number, dy: number) {
@@ -154,7 +185,7 @@ export class MovementController {
     this.pendingRelease = pending;
   }
 
-  release(id: number, finalInput?: { x: number; y: number }) {
+  release(id: number, finalInput?: { x: number; y: number }, reason: 'pointerup' | 'cancel' = 'cancel') {
     if (!this.canRelease(id)) return;
     const unlocked = id === this.pointerId ? this.unlocked : this.pendingRelease!.unlocked;
     this.pendingRelease = null;
@@ -171,9 +202,16 @@ export class MovementController {
     this.unlocked = false;
     this.raw = { x: 0, y: 0 };
     this.stick = { x: 0, y: 0 };
+    this.targeting.clearCandidate();
+    this.updateTargeting(0);
+    // Only an authoritative owner pointerup requests a shot, after final-position
+    // mapping and target selection. Cancellation/capture loss is not a release shot.
+    this.attackRequest = reason === 'pointerup' && this.training === 'locking' && this.targeting.target
+      ? ++this.attackSequence : null;
   }
 
   cancel() {
+    this.attackRequest = null;
     this.pendingRelease = null;
     if (this.pointerId !== null) this.release(this.pointerId);
   }
@@ -183,17 +221,21 @@ export class MovementController {
   setMoveCurve(points: TurnCurvePoint[]) { this.settings.moveCurve = validateMoveCurve(points); }
 
   setCurve(points: TurnCurvePoint[]) { this.settings.turnCurve = validateCurve(points); }
+  setLockCurve(points: TurnCurvePoint[]) { this.settings.lockTurnCurve = validateCurve(points); }
 
   set(key: SettingKey, value: number) {
     const next = sanitize(key, value);
     // Changing model starts fresh velocity state, without changing pose, input, or anchor.
-    if (key === 'turnModel' && next !== this.settings.turnModel) this.dampedVelocity = 0;
+    if ((key === 'turnModel' && !this.usesLockTurn || key === 'lockTurnModel' && this.usesLockTurn)
+      && next !== this.settings[key]) this.dampedVelocity = 0;
+    if (key === 'targetModel' && next !== this.settings.targetModel) this.targeting.reselect();
     this.settings[key] = next;
     if (key === 'anchorFollow' && !next) { this.offset = {...this.targetOffset}; this.syncAnchorDirection(); }
     if (this.unlocked && (key === 'joystickRadius' || key === 'anchorScale')) this.mapStick();
     if (key === 'roomSize' || key === 'roomLength') {
       if (this.training === 'obstacles') this.restartTraining(); else this.constrain();
     }
+    if (['targetModel', 'lockRange', 'targetCone', 'targetAdvantage', 'targetDwell', 'roomSize', 'roomLength'].includes(key)) this.updateTargeting(0);
   }
 
   private constrain() {
@@ -209,7 +251,7 @@ export class MovementController {
     this.syncAnchorDirection();
     this.movementSpeed = 0;
     if (this.mode === 'moving' && this.direction) {
-      const angle = Math.abs(wrapAngle(this.targetHeading-this.heading))*180/Math.PI;
+      const angle = Math.abs(wrapAngle(this.anchorHeading-this.heading))*180/Math.PI;
       this.movementAngleError = angle;
       this.movementSpeedRatio = this.settings.moveModel === 1 ? movementMultiplier(angle,this.settings.moveCurve) : 1;
       this.movementBaseSpeed = this.settings.moveSpeed;
@@ -222,6 +264,10 @@ export class MovementController {
         this.completions++; this.restartTraining(); return;
       }
     }
+    this.updateTargeting(dt);
+    const locked = this.usesLockTurn, model = this.activeTurnModel;
+    if (this.lastTurnModel !== null && this.lastTurnModel !== model) this.dampedVelocity = 0;
+    this.lastTurnModel = model;
     let difference = wrapAngle(this.targetHeading - this.heading);
     // Exact left/right reversals have two equally short arcs. Match the observed
     // left-to-right upper arc (-Z), right-to-left lower arc (+Z).
@@ -232,24 +278,26 @@ export class MovementController {
       difference = -Math.PI;
     }
     let turn: number;
-    if (this.settings.turnModel === 2) {
+    if (model === 2) {
       const degrees = Math.abs(difference) * 180 / Math.PI;
-      const residual = remainingCurveAngle(degrees, dt, this.settings.turnCurve, this.settings.curveSnapAngle);
+      const residual = remainingCurveAngle(degrees, dt, locked ? this.settings.lockTurnCurve : this.settings.turnCurve,
+        locked ? this.settings.lockCurveSnapAngle : this.settings.curveSnapAngle);
       turn = Math.sign(difference) * (degrees - residual) * Math.PI / 180;
-    } else if (this.settings.turnModel === 5) {
-      turn = slerpTurn(difference, this.settings.slerpResponse, this.settings.slerpSnapAngle * Math.PI / 180, dt);
-    } else if (this.settings.turnModel === 6) {
+    } else if (model === 5) {
+      turn = slerpTurn(difference, locked ? this.settings.lockSlerpResponse : this.settings.slerpResponse,
+        (locked ? this.settings.lockSlerpSnapAngle : this.settings.slerpSnapAngle) * Math.PI / 180, dt);
+    } else if (model === 6) {
       // Preserve the existing shortest-path contract when input reverses: discard
       // velocity pointing away from the new target. Same-direction speed carries on.
       if (difference * this.dampedVelocity < 0) this.dampedVelocity = 0;
       const next = smoothDampAngleTurn(
-        difference, this.dampedVelocity, this.settings.smoothTime,
-        this.settings.smoothSnapAngle * Math.PI / 180, dt,
+        difference, this.dampedVelocity, locked ? this.settings.lockSmoothTime : this.settings.smoothTime,
+        (locked ? this.settings.lockSmoothSnapAngle : this.settings.smoothSnapAngle) * Math.PI / 180, dt,
       );
       turn = next.turn;
       this.dampedVelocity = next.velocity;
     } else {
-      const step = this.settings.turnSpeed * Math.PI / 180 * dt;
+      const step = (locked ? this.settings.lockTurnSpeed : this.settings.turnSpeed) * Math.PI / 180 * dt;
       turn = Math.sign(difference) * Math.min(Math.abs(difference), step);
     }
     this.angularSpeed = Math.abs(turn) / dt * 180 / Math.PI;
@@ -266,6 +314,10 @@ export class MovementController {
       movementAngleError: this.movementAngleError, movementSpeedRatio: this.movementSpeedRatio, movementBaseSpeed: this.movementBaseSpeed,
       movementSpeed: this.movementSpeed, heading: this.heading, angularSpeed: this.angularSpeed, targetHeading: this.targetHeading,
       dampingVelocity: this.dampedVelocity * 180 / Math.PI,
+      targeting: this.targeting.snapshot(), anchorHeading: this.anchorHeading,
+      turnContext: this.usesLockTurn ? 'lock' : 'ordinary', activeTurnModel: this.activeTurnModel,
+      attackRequest: this.attackRequest,
+      activeAttackRequest: this.activeAttackRequest,
     };
   }
 }
@@ -277,6 +329,10 @@ export class AnimationBlend {
   private start = 0;
   private elapsed = 0;
   private duration = 0;
+  reset(weight: number) {
+    this.weight = weight; this.target = weight; this.start = weight;
+    this.elapsed = 0; this.duration = 0;
+  }
   setTarget(target: number, duration: number) {
     if (target === this.target) return;
     this.start = this.weight;

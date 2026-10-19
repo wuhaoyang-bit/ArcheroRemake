@@ -1,0 +1,115 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import * as THREE from 'three/webgpu';
+import { DEFAULTS } from '../src/config.ts';
+import { MovementController } from '../src/controller.ts';
+import { CharacterAnimation, bowAttackClip } from '../src/character-animation.ts';
+
+const locking = () => {
+  const c = new MovementController({...DEFAULTS, targetModel: 1, lockRange: 30, anchorFollow: 0});
+  c.setTraining('locking'); return c;
+};
+const near = (a: number, b: number) => assert.ok(Math.abs(a-b) < 1e-6, `${a} != ${b}`);
+
+test('attack requires owner pointerup with a target; pressing, moving and idle acquisition never fire', () => {
+  const c = locking(); c.update(.1); assert.equal(c.attackRequest, null);
+  c.press(1,0,0); assert.ok(c.targeting.target); assert.equal(c.attackRequest,null);
+  c.move(1,40,0); c.update(.01); assert.equal(c.attackRequest,null);
+  const position = {...c.position};
+  c.release(1,{x:0,y:-40},'pointerup');
+  assert.equal(c.targeting.target?.id,'north'); assert.equal(c.attackRequest,1);
+  assert.equal(c.mode,'idle'); assert.equal(c.movementSpeed,0); assert.equal(c.usesLockTurn,true);
+  c.update(.5); assert.deepEqual(c.position,position);
+  c.release(1,{x:40,y:0},'pointerup'); assert.equal(c.attackRequest,1);
+  c.set('lockRange',0); c.press(2,0,0); c.release(2,undefined,'pointerup'); assert.equal(c.attackRequest,null);
+  c.set('lockRange',30); c.update(.1); assert.ok(c.targeting.target); assert.equal(c.attackRequest,null);
+  c.setTraining('free'); c.press(3,0,0); c.release(3,undefined,'pointerup'); assert.equal(c.attackRequest,null);
+});
+
+test('cancellation and capture loss never fire; final pointerup after capture loss fires once', () => {
+  const c = locking(); c.press(1,0,0); c.move(1,40,0); c.loseCapture(1);
+  assert.equal(c.attackRequest,null); c.release(1,{x:0,y:-40},'pointerup');
+  assert.equal(c.attackRequest,1); assert.equal(c.targeting.target?.id,'north');
+  c.release(1,undefined,'pointerup'); c.loseCapture(1); assert.equal(c.attackRequest,1);
+  c.press(2,0,0); assert.equal(c.attackRequest,null); c.release(2); assert.equal(c.attackRequest,null);
+  c.release(2,undefined,'pointerup'); assert.equal(c.attackRequest,null);
+  c.press(3,0,0); c.loseCapture(3); c.cancel(); c.release(3,undefined,'pointerup'); assert.equal(c.attackRequest,null);
+  c.press(4,0,0); c.release(4,undefined,'pointerup'); assert.equal(c.attackRequest,2);
+  c.setTraining('locking'); assert.equal(c.attackRequest,null); assert.equal(c.targeting.target,null);
+});
+
+test('handoff ignores old finger release; re-press cancels and next owner release gets a new shot', () => {
+  const c = locking(); c.press(1,0,0); c.press(2,10,10);
+  c.release(1,undefined,'pointerup'); assert.equal(c.attackRequest,null);
+  c.release(2,undefined,'pointerup'); assert.equal(c.attackRequest,1);
+  c.release(1,undefined,'pointerup'); assert.equal(c.attackRequest,1);
+  c.press(3,0,0); assert.equal(c.attackRequest,null);
+  c.release(3,undefined,'pointerup'); assert.equal(c.attackRequest,2);
+});
+
+test('released attack pauses without a target, resumes on reacquisition, and stays cancelled after press or blur', () => {
+  const c=locking();c.press(1,0,0);c.release(1,undefined,'pointerup');
+  assert.equal(c.activeAttackRequest,1);
+  c.set('lockRange',0);assert.equal(c.activeAttackRequest,null);
+  c.set('lockRange',30);assert.equal(c.activeAttackRequest,1);
+  c.press(2,0,0);assert.equal(c.activeAttackRequest,null);
+  c.release(2,undefined,'pointerup');assert.equal(c.activeAttackRequest,2);
+  c.cancel();c.set('lockRange',0);c.set('lockRange',30);assert.equal(c.activeAttackRequest,null);
+});
+
+const animator = () => {
+  const object = new THREE.Object3D(), mixer = new THREE.AnimationMixer(object);
+  const clip = (name: string, values: number[], duration: number) => new THREE.AnimationClip(name,duration,
+    [new THREE.NumberKeyframeTrack('.rotation[x]',values.map((_,i)=>i*duration/(values.length-1)),values)]);
+  const idle = mixer.clipAction(clip('Idle',[0,0],1)).setEffectiveWeight(1).play();
+  const run = mixer.clipAction(clip('Run',[.1,.3,.1],.6)).setEffectiveWeight(0).play();
+  const attack = mixer.clipAction(clip('Attack',[0,1,0],1));
+  return {animation:new CharacterAnimation(mixer,idle,run,attack), object, mixer, attack, run, idle};
+};
+
+test('one release loops continuously, independently of Run speed and update frequency', () => {
+  for (const hz of [30,60,120]) {
+    const {animation,mixer,attack,run,idle} = animator();
+    let loops = 0; mixer.addEventListener('loop',event=>{if(event.action===attack)loops+=event.loopDelta;});
+    animation.update(.1,'in-place',null,.06,4);
+    for (let i=0;i<hz/2;i++) animation.update(1/hz,'idle',1,.06,4);
+    near(attack.time,.5); near(attack.getEffectiveTimeScale(),1); near(run.getEffectiveTimeScale(),4);
+    for (let i=0;i<hz*3;i++) animation.update(1/hz,'idle',1,.06,4);
+    assert.equal(loops,3); assert.equal(animation.snapshot().playing,true); near(attack.time,.5);
+    near(idle.getEffectiveWeight(),0); near(attack.getEffectiveWeight(),1);
+    animation.update(0,'idle',null,.06,4); near(idle.getEffectiveWeight(),1); near(attack.getEffectiveWeight(),0);
+    animation.update(.1,'idle',1,.06,4); assert.equal(animation.snapshot().playing,true); near(attack.time,.1);
+    animation.update(.1,'idle',2,.06,4); assert.equal(animation.snapshot().playing,true); near(attack.time,.1);
+  }
+});
+
+test('new press immediately removes attack weight and displays Run, including subsequent loops', () => {
+  for (const interruptionTime of [.3,1.05]) {
+    const {animation,run,attack,mixer} = animator();
+    let finished=0; mixer.addEventListener('finished',()=>finished++);
+    for(let t=0;t<interruptionTime;t+=.01) animation.update(.01,'idle',1,.25,1.5);
+    assert.ok(attack.getEffectiveWeight()>0);
+    animation.update(0,'in-place',null,.25,1.5);
+    near(attack.getEffectiveWeight(),0); near(run.getEffectiveWeight(),1);
+    assert.equal(animation.snapshot().playing,false);
+    const before=finished;
+    for(let i=0;i<200;i++) animation.update(.01,'moving',null,.25,1.5);
+    assert.equal(finished,before);
+    animation.update(.1,'idle',2,.25,1.5); near(attack.time,.1);
+  }
+});
+
+test('bow phase join retains both seam poses and all source samples at strictly increasing times', () => {
+  const a=new THREE.NumberKeyframeTrack('.rotation[x]',[0,.5],[0,1]);
+  const b=new THREE.NumberKeyframeTrack('.rotation[x]',[0,.5],[.7,0]);
+  const prev=new THREE.AnimationClip('AttackPrev',.5,[a]),end=new THREE.AnimationClip('AttackEnd',.5,[b]);
+  const joined=bowAttackClip(prev,end),track=joined.tracks[0];
+  assert.deepEqual(Array.from(track.values),[0,1,Math.fround(.7),0]);
+  for(let i=1;i<track.times.length;i++) assert.ok(track.times[i]>track.times[i-1]);
+  near(track.times[2]-track.times[1],1/60); near(joined.duration,1+1/60);
+  assert.equal(a.times.length,2); assert.equal(b.times[0],0);
+  const constant=new THREE.NumberKeyframeTrack('.rotation[x]',[0,.5],[0,0],THREE.InterpolateDiscrete);
+  const optimized=bowAttackClip(new THREE.AnimationClip('constant',.5,[constant]),end);
+  assert.equal(optimized.tracks[0].getInterpolation(),THREE.InterpolateLinear);
+  assert.equal(constant.getInterpolation(),THREE.InterpolateDiscrete);
+});

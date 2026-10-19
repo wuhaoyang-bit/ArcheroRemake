@@ -23,6 +23,20 @@ export const DEFAULTS = {
   slerpSnapAngle: 0.1,
   smoothTime: 0.03039,
   smoothSnapAngle: 0.1,
+  targetModel: 0, // 0 nearest, 1 direction cone, 2 direction with retention.
+  lockRange: 22,
+  showLockRange: 0,
+  targetCone: 90, // Full cone angle, degrees.
+  targetAdvantage: 8,
+  targetDwell: 160, // Milliseconds.
+  lockTurnModel: 0,
+  lockTurnSpeed: 1200,
+  lockCurveSnapAngle: 0.1,
+  lockTurnCurve: exponentialCurve(10.4),
+  lockSlerpResponse: 40.872,
+  lockSlerpSnapAngle: 0.1,
+  lockSmoothTime: 0.03039,
+  lockSmoothSnapAngle: 0.1,
   blendDuration: 0.06,
   runSpeed: 1.6,
   roomSize: 16,
@@ -32,7 +46,13 @@ export const DEFAULTS = {
   viewWidth: 18,
 };
 export type Settings = typeof DEFAULTS;
-export type SettingKey = Exclude<keyof Settings, 'turnCurve' | 'anchorCurve' | 'moveCurve'>;
+export type SettingKey = Exclude<keyof Settings, 'turnCurve' | 'lockTurnCurve' | 'anchorCurve' | 'moveCurve'>;
+/** Missing lock values inherit the corresponding ordinary tuning once, on load. */
+export const LOCK_TURN_KEYS = {
+  lockTurnModel: 'turnModel', lockTurnSpeed: 'turnSpeed', lockCurveSnapAngle: 'curveSnapAngle',
+  lockSlerpResponse: 'slerpResponse', lockSlerpSnapAngle: 'slerpSnapAngle',
+  lockSmoothTime: 'smoothTime', lockSmoothSnapAngle: 'smoothSnapAngle',
+} as const;
 export const LIMITS: Record<SettingKey, [number, number, number]> = {
   joystickRadius: [32, 100, 1], unlockDistance: [1, 40, 1],
   showThreshold: [0, 1, 1],
@@ -41,6 +61,11 @@ export const LIMITS: Record<SettingKey, [number, number, number]> = {
   turnModel: [0, 6, 1], curveSnapAngle: [0.001, 5, 0.001],
   slerpResponse: [0.1, 120, 0.001], slerpSnapAngle: [0.001, 5, 0.001],
   smoothTime: [0.005, 0.5, 0.00001], smoothSnapAngle: [0.001, 5, 0.001],
+  targetModel: [0, 2, 1], lockRange: [0, 100, 0.1], showLockRange: [0, 1, 1],
+  targetCone: [0, 360, 1], targetAdvantage: [0, 180, 0.1], targetDwell: [0, 2000, 10],
+  lockTurnModel: [0, 6, 1], lockTurnSpeed: [90, 1800, 10], lockCurveSnapAngle: [0.001, 5, 0.001],
+  lockSlerpResponse: [0.1, 120, 0.001], lockSlerpSnapAngle: [0.001, 5, 0.001],
+  lockSmoothTime: [0.005, 0.5, 0.00001], lockSmoothSnapAngle: [0.001, 5, 0.001],
   turnSpeed: [90, 1800, 10], blendDuration: [0, 0.6, 0.01],
   runSpeed: [0.25, 4, 0.05],
   roomSize: [8, 24, 1], roomLength: [8, 80, 1], cameraResponse: [2, 24, 0.5],
@@ -50,6 +75,7 @@ export const LIMITS: Record<SettingKey, [number, number, number]> = {
 export function sanitize(key: SettingKey, value: number): number {
   if (!Number.isFinite(value)) return DEFAULTS[key];
   if (key === 'moveModel') return value === 1 ? 1 : 0;
-  if (key === 'turnModel') return [0, 2, 5, 6].includes(value) ? value : 0;
+  if (key === 'turnModel' || key === 'lockTurnModel') return [0, 2, 5, 6].includes(value) ? value : 0;
+  if (key === 'targetModel') return [0, 1, 2].includes(value) ? value : 0;
   return Math.max(LIMITS[key][0], Math.min(LIMITS[key][1], value));
 }

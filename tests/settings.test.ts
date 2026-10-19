@@ -16,6 +16,9 @@ test('requested defaults match the screenshot, with speed 16 / upper limit 30 an
     joystickRadius: 64, unlockDistance: 12, showThreshold: 0, anchorScale: 0.036, anchorFollow: 1, anchorCurve: DEFAULTS.anchorCurve,
     moveSpeed: 16, moveModel: 0, moveCurve: DEFAULTS.moveCurve, turnSpeed: 1200, turnModel: 0, curveSnapAngle: 0.1, turnCurve: exponentialCurve(10.4), blendDuration: 0.06, runSpeed: 1.6,
     slerpResponse: 40.872, slerpSnapAngle: 0.1, smoothTime: 0.03039, smoothSnapAngle: 0.1,
+    targetModel: 0, lockRange: 22, showLockRange: 0, targetCone: 90, targetAdvantage: 8, targetDwell: 160,
+    lockTurnModel: 0, lockTurnSpeed: 1200, lockCurveSnapAngle: .1, lockTurnCurve: exponentialCurve(10.4),
+    lockSlerpResponse: 40.872, lockSlerpSnapAngle: .1, lockSmoothTime: .03039, lockSmoothSnapAngle: .1,
     roomSize: 16, roomLength: 38, cameraResponse: 9, cameraOffset: 0, viewWidth: 18,
   });
   assert.equal(LIMITS.moveSpeed[1], 30);
@@ -89,4 +92,27 @@ test('new models round-trip, retired selections migrate, constant and custom exp
   for (const value of [-1, .5, 7]) assert.throws(() => parseSettingsDocument({version: 1, settings: {turnModel: value}}));
   assert.throws(() => parseSettingsDocument({version: 1, settings: {smoothTime: 0}}, true));
   assert.throws(() => parseSettingsDocument({version: 1, settings: {slerpResponse: Infinity}}));
+});
+
+test('HTTP save accepts four full curves without losing lock tuning; oversized writes preserve the last document', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'archero-curves-')), file = join(dir, 'params.json');
+  const middleware = settingsMiddleware(file);
+  const server = createServer((req, res) => middleware(req, res, () => { res.statusCode = 404; res.end(); }));
+  const curve = Array.from({length:128}, (_,i) => ({angle:i===127?180:i*180/127,speed:1000+i/127}));
+  const payload = settingsDocument({...DEFAULTS, turnCurve:curve, lockTurnCurve:curve.map(p=>({...p,speed:p.speed+100})),
+    moveCurve:curve, anchorCurve:curve.map(p=>({distance:p.angle/2,speed:p.speed})), targetModel:2, lockTurnModel:2});
+  const body = JSON.stringify(payload);
+  assert.ok(Buffer.byteLength(body) > 16384);
+  try {
+    server.listen(0,'127.0.0.1'); await once(server,'listening');
+    const address=server.address();assert.ok(address&&typeof address==='object');
+    const base=`http://127.0.0.1:${address.port}`;
+    const post = (body:string) => fetch(`${base}/__save-params`,{method:'POST',headers:{'Content-Type':'application/json',Origin:base},body});
+    assert.equal((await post(body)).status,200);assert.deepEqual(JSON.parse(await readFile(file,'utf8')),payload);
+    assert.equal((await post(' '.repeat(65537))).status,413);
+    assert.deepEqual(JSON.parse(await readFile(file,'utf8')),payload);
+  } finally {
+    if(server.listening) await new Promise<void>(resolve=>server.close(()=>resolve()));
+    await rm(dir,{recursive:true,force:true});
+  }
 });

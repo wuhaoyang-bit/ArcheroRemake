@@ -233,10 +233,10 @@ test('Slerp follows the anchor without the constant speed cap and finishes after
 test('model changes retain pose, input, anchor, and independent tuning', () => {
   const c = moving(40, 0); c.set('turnSpeed', 1200); c.set('slerpResponse', 7); c.update(0.01);
   const before = c.snapshot(); c.set('turnModel', 5);
-  assert.deepEqual(c.snapshot(), before);
+  assert.deepEqual(c.snapshot(), { ...before, activeTurnModel: 5 });
   c.update(0.01); assert.notEqual(c.heading, before.heading);
   const exponentialPose = c.snapshot(); c.set('turnModel', 0);
-  assert.deepEqual(c.snapshot(), exponentialPose);
+  assert.deepEqual(c.snapshot(), { ...exponentialPose, activeTurnModel: 0 });
   near(c.settings.turnSpeed, 1200); near(c.settings.slerpResponse, 7);
   c.update(0.01); near(c.angularSpeed, 1200);
 });

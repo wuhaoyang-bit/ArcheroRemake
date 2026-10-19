@@ -36,7 +36,7 @@
         "speed": 90
       }
     ],
-    "turnSpeed": 1210,
+    "turnSpeed": 1230,
     "turnModel": 2,
     "curveSnapAngle": 0.1,
     "turnCurve": [
@@ -58,21 +58,64 @@
       },
       {
         "angle": 160.62,
-        "speed": 1326
+        "speed": 1628
       },
       {
         "angle": 171.36,
-        "speed": 1603
+        "speed": 2103
       },
       {
         "angle": 180,
-        "speed": 2000
+        "speed": 2600
       }
     ],
     "slerpResponse": 40.872,
     "slerpSnapAngle": 0.1,
     "smoothTime": 0.03039,
     "smoothSnapAngle": 0.1,
+    "targetModel": 0,
+    "lockRange": 18,
+    "showLockRange": 0,
+    "targetCone": 90,
+    "targetAdvantage": 8,
+    "targetDwell": 100,
+    "lockTurnModel": 2,
+    "lockTurnSpeed": 1300,
+    "lockCurveSnapAngle": 0.1,
+    "lockTurnCurve": [
+      {
+        "angle": 0,
+        "speed": 260
+      },
+      {
+        "angle": 30,
+        "speed": 1115
+      },
+      {
+        "angle": 132.76,
+        "speed": 1115
+      },
+      {
+        "angle": 150,
+        "speed": 1215
+      },
+      {
+        "angle": 160.62,
+        "speed": 1628
+      },
+      {
+        "angle": 171.36,
+        "speed": 2103
+      },
+      {
+        "angle": 180,
+        "speed": 2600
+      }
+    ],
+    "lockSlerpResponse": 40.872,
+    "lockSlerpSnapAngle": 0.1,
+    "lockSmoothTime": 0.03039,
+    "lockSmoothSnapAngle": 0.1,
     "blendDuration": 0.25,
     "runSpeed": 1,
     "roomSize": 16,
