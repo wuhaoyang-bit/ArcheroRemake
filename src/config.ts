@@ -26,6 +26,7 @@ export const DEFAULTS = {
   smoothSnapAngle: 0.1,
   ringPlayerDiameter: 4, ringTargetDiameter: 8,
   ringPlayerStroke: 1, ringTargetStroke: 1.2,
+  ringWaveDuration:0.4,ringWaveDistance:32,ringWaveStroke:1.2,ringWaveCurve:DEFAULT_RING_CURVE,
   ringSwitchDuration:0.25, ringSwitchAmount:150, ringSwitchCurve:DEFAULT_SWITCH_CURVE,
   ringLinkThreshold: 95, ringLinkStroke: 1,
   ringPlayerHeight: 1.4, ringTargetHeight: 1.2,
@@ -53,7 +54,7 @@ export const DEFAULTS = {
   viewWidth: 18,
 };
 export type Settings = typeof DEFAULTS;
-export type SettingKey = Exclude<keyof Settings, 'turnCurve' | 'lockTurnCurve' | 'anchorCurve' | 'moveCurve' | 'ringCurve' | 'ringStrokeCurve' | 'ringLinkAttackCurve' | 'ringSwitchCurve'>;
+export type SettingKey = Exclude<keyof Settings, 'turnCurve' | 'lockTurnCurve' | 'anchorCurve' | 'moveCurve' | 'ringCurve' | 'ringStrokeCurve' | 'ringLinkAttackCurve' | 'ringSwitchCurve' | 'ringWaveCurve'>;
 /** Missing lock values inherit the corresponding ordinary tuning once, on load. */
 export const LOCK_TURN_KEYS = {
   lockTurnModel: 'turnModel', lockTurnSpeed: 'turnSpeed', lockCurveSnapAngle: 'curveSnapAngle',
@@ -69,6 +70,7 @@ export const LIMITS: Record<SettingKey, [number, number, number]> = {
   slerpResponse: [0.1, 120, 0.001], slerpSnapAngle: [0.001, 5, 0.001],
   smoothTime: [0.005, 0.5, 0.00001], smoothSnapAngle: [0.001, 5, 0.001],
   ringPlayerDiameter: [2, 80, 0.5], ringTargetDiameter: [2, 80, 0.5],
+  ringWaveDuration:[0.05,3,0.01],ringWaveDistance:[0,200,1],ringWaveStroke:[0,16,0.1],
   ringSwitchDuration:[0.03,2,0.01], ringSwitchAmount:[0,200,1],
   ringLinkThreshold: [0, 100, 0.1], ringLinkStroke: [0.25, 16, 0.25],
   ringPlayerStroke: [0.25, 8, 0.25], ringTargetStroke: [0.25, 8, 0.05],

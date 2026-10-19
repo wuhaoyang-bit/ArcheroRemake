@@ -77,6 +77,39 @@
     "ringTargetDiameter": 8,
     "ringPlayerStroke": 1,
     "ringTargetStroke": 1.2,
+    "ringWaveDuration": 0.4,
+    "ringWaveDistance": 32,
+    "ringWaveStroke": 1.2,
+    "ringWaveCurve": [
+      {
+        "time": 0,
+        "progress": 0
+      },
+      {
+        "time": 10,
+        "progress": 27.1
+      },
+      {
+        "time": 25,
+        "progress": 57.813
+      },
+      {
+        "time": 50,
+        "progress": 87.5
+      },
+      {
+        "time": 75,
+        "progress": 98.438
+      },
+      {
+        "time": 90,
+        "progress": 99.9
+      },
+      {
+        "time": 100,
+        "progress": 100
+      }
+    ],
     "ringSwitchDuration": 0.25,
     "ringSwitchAmount": 200,
     "ringSwitchCurve": [
@@ -213,8 +246,8 @@
       }
     ],
     "targetModel": 0,
-    "lockRange": 17,
-    "showLockRange": 1,
+    "lockRange": 18,
+    "showLockRange": 0,
     "targetCone": 90,
     "targetAdvantage": 8,
     "targetDwell": 100,

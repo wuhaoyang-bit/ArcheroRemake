@@ -116,3 +116,21 @@ test('switch during entry does not add pulse, switch curve saves and rejects non
   assert.deepEqual(parseSettingsDocument(settingsDocument(DEFAULTS)).ringSwitchCurve,DEFAULTS.ringSwitchCurve);
   assert.throws(()=>parseSettingsDocument({version:1,settings:{ringSwitchCurve:[{time:0,progress:1},{time:100,progress:0}]}},true));
 });
+
+test('shockwave starts at actual switch peak, decelerates and thins to zero once',()=>{
+  const s=new LockRings();s.update(0,'a',DEFAULTS,c,w,h);s.update(1,'a',DEFAULTS,c,w,h);s.update(0,'b',DEFAULTS,c,w,h);
+  s.update(.05,'b',DEFAULTS,c,w,h);assert.equal(s.waveVisual,null);
+  s.update(.0125,'b',DEFAULTS,c,w,h);near(s.waveVisual!.radius,10);near(s.waveVisual!.stroke,1.2);
+  s.update(.1,'b',DEFAULTS,c,w,h);const first=s.waveVisual!;s.update(.1,'b',DEFAULTS,c,w,h);const second=s.waveVisual!;
+  assert.ok(first.radius-10>second.radius-first.radius);assert.ok(second.stroke<first.stroke);
+  s.update(.2,'b',DEFAULTS,c,w,h);assert.equal(s.waveVisual,null);s.update(.5,'b',DEFAULTS,c,w,h);assert.equal(s.waveVisual,null);
+});
+test('shockwave handles custom peak, skipped peak frame, cancellation and serialization',()=>{
+  const settings={...DEFAULTS,ringSwitchCurve:[{time:0,progress:0},{time:60,progress:80},{time:100,progress:0}]};
+  const s=new LockRings();s.update(0,'a',settings,c,w,h);s.update(1,'a',settings,c,w,h);s.update(0,'b',settings,c,w,h);
+  s.update(.17,'b',settings,c,w,h);assert.ok(s.waveVisual);near(s.wave!.startRadius,8.8);near(s.wave!.age,.02);
+  const previous=s.wave;s.update(0,'c',settings,c,w,h);assert.notEqual(s.wave,previous);near(s.wave!.age,0); // Current size is the new envelope's maximum.
+  s.update(.2,'c',settings,c,w,h);assert.ok(s.waveVisual);s.seek(.9);assert.equal(s.waveVisual,null);
+  s.update(0,null,settings,c,w,h);assert.equal(s.waveVisual,null);
+  assert.deepEqual(parseSettingsDocument(settingsDocument(settings)).ringWaveCurve,DEFAULTS.ringWaveCurve);
+});

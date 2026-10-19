@@ -56,9 +56,17 @@ export function validateSwitchCurve(raw:unknown):ProgressPoint[]{
   if(points[0].width!==0||points.at(-1)!.width!==0||points.some(p=>p.width>100))throw new Error('换目标曲线首尾固定为 0，扩张量为 0～100%');
   return points.map(p=>({time:p.completion,progress:p.width}));
 }
+/** Piecewise linear envelopes attain their maximum at a control point (or their start). */
+export function switchPeak(curve:ProgressPoint[],start:number,maximum:number){
+  let time=0,extra=start;
+  for(const p of curve){const u=p.time/100,value=start*(1-u)+(maximum-start)*p.progress/100;
+    if(value>extra){time=u;extra=value;}}
+  return {time,extra};
+}
 export type RingConfig = Pick<Settings,'ringPlayerDiameter'|'ringTargetDiameter'|'ringPlayerStroke'|'ringTargetStroke'|
-  'ringPlayerHeight'|'ringTargetHeight'|'ringDuration'|'ringCurve'|'ringStrokeCurve'|'ringLinkThreshold'|'ringLinkStroke'|'ringLinkAttackCurve'|'ringSwitchDuration'|'ringSwitchAmount'|'ringSwitchCurve'>;
+  'ringPlayerHeight'|'ringTargetHeight'|'ringDuration'|'ringCurve'|'ringStrokeCurve'|'ringLinkThreshold'|'ringLinkStroke'|'ringLinkAttackCurve'|'ringSwitchDuration'|'ringSwitchAmount'|'ringSwitchCurve'|'ringWaveDuration'|'ringWaveDistance'|'ringWaveStroke'|'ringWaveCurve'>;
 export const ringConfig=(s: RingConfig): RingConfig=>({
+  ringWaveDuration:s.ringWaveDuration,ringWaveDistance:s.ringWaveDistance,ringWaveStroke:s.ringWaveStroke,ringWaveCurve:validateProgressCurve(s.ringWaveCurve),
   ringSwitchDuration:s.ringSwitchDuration,ringSwitchAmount:s.ringSwitchAmount,ringSwitchCurve:validateSwitchCurve(s.ringSwitchCurve),
   ringLinkAttackCurve:validateStrokeCurve(s.ringLinkAttackCurve),ringLinkThreshold:s.ringLinkThreshold,ringLinkStroke:s.ringLinkStroke,
   ringPlayerDiameter:s.ringPlayerDiameter,ringTargetDiameter:s.ringTargetDiameter,
@@ -83,8 +91,10 @@ export class LockRings {
   stroke=0;
   switchElapsed:number|null=null;
   switchStart=0;
+  wave:{age:number;startRadius:number}|null=null;
+  private waveEmitted=false;
   preview:number|null=null;
-  seek(completion:number){if(this.targetId!==null&&Number.isFinite(completion)){this.preview=Math.max(0,Math.min(1,completion));this.switchElapsed=null;this.switchStart=0;}}
+  seek(completion:number){if(this.targetId!==null&&Number.isFinite(completion)){this.wave=null;this.preview=Math.max(0,Math.min(1,completion));this.switchElapsed=null;this.switchStart=0;}}
   resume(){
     if(this.preview===null||!this.config)return;
     // Invert the piecewise linear progress curve, choosing the earliest matching time.
@@ -95,7 +105,7 @@ export class LockRings {
     }
     this.elapsed=time/100*this.config.ringDuration;this.preview=null;
   }
-  reset(){this.switchElapsed=null;this.switchStart=0;this.preview=null;this.completion=0;this.stroke=0;this.targetId=null;this.config=null;this.elapsed=0;this.initialRadius=0;this.radius=0;}
+  reset(){this.wave=null;this.waveEmitted=false;this.switchElapsed=null;this.switchStart=0;this.preview=null;this.completion=0;this.stroke=0;this.targetId=null;this.config=null;this.elapsed=0;this.initialRadius=0;this.radius=0;}
   update(dt:number,id:string|null,settings:RingConfig,center:{x:number;y:number},width:number,height:number){
     if(id===null){this.reset();return;}
     if(this.targetId===null){
@@ -104,9 +114,11 @@ export class LockRings {
         +this.config.ringTargetStroke*strokeAt(this.config.ringStrokeCurve,0)/2+1;
       this.initialRadius=Math.max(this.initialRadius,this.config.ringTargetDiameter/2);
     }else if(this.preview===null&&Number.isFinite(dt)&&dt>0){this.elapsed=Math.min(this.config!.ringDuration,this.elapsed+dt);}
+    if(this.wave&&Number.isFinite(dt)&&dt>0){this.wave.age+=dt;if(this.wave.age>=this.config!.ringWaveDuration)this.wave=null;}
     const changed=this.targetId!==null&&this.targetId!==id;
+    if(changed)this.wave=null;
     if(changed&&this.preview===null&&this.completion===1){
-      this.switchStart=Math.max(0,this.radius-this.config!.ringTargetDiameter/2);this.switchElapsed=0;
+      this.switchStart=Math.max(0,this.radius-this.config!.ringTargetDiameter/2);this.switchElapsed=0;this.waveEmitted=false;
     }else if(this.switchElapsed!==null&&Number.isFinite(dt)&&dt>0){
       this.switchElapsed=Math.min(this.config!.ringSwitchDuration,this.switchElapsed+dt);
     }
@@ -118,11 +130,22 @@ export class LockRings {
       const u=this.switchElapsed/c.ringSwitchDuration,maximum=c.ringTargetDiameter/2*c.ringSwitchAmount/100;
       // Blend the current expansion into the new envelope, bounded by the configured peak.
       const start=Math.min(maximum,this.switchStart);
+      const peak=switchPeak(c.ringSwitchCurve,start,maximum);
+      if(!this.waveEmitted&&u>=peak.time&&peak.extra>0&&c.ringWaveDistance>0&&c.ringWaveStroke>0){
+        this.waveEmitted=true;
+        const age=this.switchElapsed-peak.time*c.ringSwitchDuration;
+        this.wave=age<c.ringWaveDuration?{age,startRadius:c.ringTargetDiameter/2+peak.extra}:null;
+      }
       this.radius+=start*(1-u)+(maximum-start)*progressAt(c.ringSwitchCurve,u);
       if(u>=1){this.switchElapsed=null;this.switchStart=0;}
     }
   }
+  get waveVisual(){
+    if(!this.wave||!this.config)return null;
+    const c=this.config,p=progressAt(c.ringWaveCurve,this.wave.age/c.ringWaveDuration);
+    return {radius:this.wave.startRadius+c.ringWaveDistance*p,stroke:c.ringWaveStroke*(1-p),progress:p};
+  }
   get linkVisible(){return this.targetId!==null&&this.config!==null&&this.completion>=this.config.ringLinkThreshold/100;}
-  snapshot(){return {switchElapsed:this.switchElapsed,switchStart:this.switchStart,targetId:this.targetId,elapsed:this.elapsed,initialRadius:this.initialRadius,radius:this.radius,
+  snapshot(){return {wave:this.waveVisual,switchElapsed:this.switchElapsed,switchStart:this.switchStart,targetId:this.targetId,elapsed:this.elapsed,initialRadius:this.initialRadius,radius:this.radius,
     linkVisible:this.linkVisible,completion:this.completion,stroke:this.stroke,preview:this.preview,progress:this.config?Math.min(1,this.elapsed/this.config.ringDuration):0,config:this.config&&ringConfig(this.config)};}
 }

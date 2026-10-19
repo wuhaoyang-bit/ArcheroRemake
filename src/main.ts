@@ -45,6 +45,9 @@ const settings: { title: string; items: [SettingKey, string, string, string][] }
     ['ringTargetStroke', '目标圆基础线宽', 'px', '实际粗细由下方粗细曲线倍率决定；下一次入场生效。'],
     ['ringPlayerHeight', '角色圆心高度', '单位', '脚下向上固定高度，不受动画影响；下一次入场生效。'],
     ['ringTargetHeight', '目标圆心高度', '单位', '假人脚下向上固定高度；下一次入场生效。'],
+    ['ringWaveDuration', '冲击波扩散时长', 's', '下一次锁定入场生效。'],
+    ['ringWaveDistance', '冲击波扩散距离', 'px', '额外半径，390 宽基准；0 关闭。下一次入场生效。'],
+    ['ringWaveStroke', '冲击波初始粗细', 'px', '随扩散完成度逐渐减至 0；下一次入场生效。'],
     ['ringSwitchDuration', '换目标动画时长', 's', '控制整段扩张收紧的速度；下一次入场生效。'],
     ['ringSwitchAmount', '换目标额外放大幅度', '%', '30% 表示最大尺寸为正常的 130%；0 关闭脉冲。下一次入场生效。'],
     ['ringDuration', '收缩时长', 's', '下一次入场生效。'],
@@ -72,7 +75,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       <div class="settings-scroll">${settings.map(group => `<section class="setting-group"><h2>${group.title}</h2>${group.title === '目标锁定' ? targetingControls : group.title === '旋转角速度－锁定' ? lockTurnControls : ''}${group.title === '角色' ? '<div class="turn-model-field"><label for="turn-model">旋转角速度模型</label><select id="turn-model" disabled><option value="0">匀速转向</option><option value="2">自定义转向曲线</option><option value="5">Slerp</option><option value="6">SmoothDampAngle</option></select><p id="turn-model-hint" class="threshold-help"></p><div id="turn-curve-editor" hidden></div></div>' : ''}${group.items.map(([key, name, unit, hint]) => {
         const [min, max, step] = LIMITS[key];
         return `<div class="setting" title="${hint}"><div class="setting-label"><label for="slider-${key}">${name}</label><div class="numeric"><input id="value-${key}" data-setting="${key}" type="number" min="${min}" max="${max}" step="${step}" value="${DEFAULTS[key]}" aria-label="${name}数值"><span>${unit}</span></div></div><input id="slider-${key}" data-setting="${key}" type="range" min="${min}" max="${max}" step="${step}" value="${DEFAULTS[key]}" aria-label="${name}"></div>`;
-      }).join('')}${group.title === '锁定圆环 UI' ? '<p class="threshold-help">以下曲线及本组全部参数在下一次锁定入场生效。换目标沿用当前值；失去全部目标后重新锁定才应用新值。</p><div id="ring-curve-editor"></div><h3>换目标扩张 / 时间进度</h3><div id="ring-switch-editor"></div><h3>连线粗细 / 攻击动画进度</h3><div id="link-attack-editor"></div><h3>目标圆粗细 / 收缩完成度</h3><div id="ring-stroke-editor"></div><div id="ring-preview" class="ring-preview"><label for="ring-preview-progress">收缩预览 <output id="ring-preview-label">未锁定</output></label><input id="ring-preview-progress" type="range" min="0" max="100" step="0.1" value="0" disabled><button id="ring-preview-resume" disabled>恢复自动播放</button><p class="threshold-help">有锁定目标时可拖动。拖后停留在指定完成度，换目标保留预览；丢锁退出。仅改变圆环，不影响角色操作。参数修改仍在下一次入场生效。</p></div>' : ''}${group.title === '轮盘与锚点' ? '<label class="threshold-toggle"><input id="show-threshold" type="checkbox">显示移动阈值范围</label><p class="threshold-help">黄圈为首次解锁边界，越过后变青色；回圈内不会再次锁定。</p>' : ''}</section>`).join('')}<section class="setting-group"><h2>移动速度模型</h2><div class="turn-model-field"><label for="move-model">移动速度模型</label><select id="move-model" disabled><option value="0">恒定移动速度</option><option value="1">角度差曲线</option></select><p class="threshold-help">身体与实际锚点方向的最短角度差 → 基础移动速度百分比。100% 保持当前速度，80% 为当前速度的八成。默认全程 100%。</p></div><div id="move-curve-editor" hidden></div></section><section class="setting-group"><h2>锚点防抖</h2><label class="threshold-toggle"><input id="anchor-follow" type="checkbox">启用锚点跟随</label><div id="anchor-curve-editor"></div></section><section class="setting-group"><h2>朝向调试</h2><label class="threshold-toggle"><input id="show-heading" type="checkbox">显示角色朝向线</label><label class="threshold-toggle debug-toggle"><input id="show-idle-anchor" type="checkbox">待机时也显示移动锚点</label><label class="threshold-toggle debug-toggle"><input id="show-anchor-outline" type="checkbox">锚点遮挡轮廓</label><p class="threshold-help">粉红直线代表角色当前朝向；蓝点代表移动锚点；遮挡轮廓让浅蓝圆环透过角色显示。开关仅用于本次页面调试。</p></section></div>
+      }).join('')}${group.title === '锁定圆环 UI' ? '<p class="threshold-help">以下曲线及本组全部参数在下一次锁定入场生效。换目标沿用当前值；失去全部目标后重新锁定才应用新值。</p><div id="ring-curve-editor"></div><h3>冲击波扩散 / 时间进度</h3><div id="ring-wave-editor"></div><h3>换目标扩张 / 时间进度</h3><div id="ring-switch-editor"></div><h3>连线粗细 / 攻击动画进度</h3><div id="link-attack-editor"></div><h3>目标圆粗细 / 收缩完成度</h3><div id="ring-stroke-editor"></div><div id="ring-preview" class="ring-preview"><label for="ring-preview-progress">收缩预览 <output id="ring-preview-label">未锁定</output></label><input id="ring-preview-progress" type="range" min="0" max="100" step="0.1" value="0" disabled><button id="ring-preview-resume" disabled>恢复自动播放</button><p class="threshold-help">有锁定目标时可拖动。拖后停留在指定完成度，换目标保留预览；丢锁退出。仅改变圆环，不影响角色操作。参数修改仍在下一次入场生效。</p></div>' : ''}${group.title === '轮盘与锚点' ? '<label class="threshold-toggle"><input id="show-threshold" type="checkbox">显示移动阈值范围</label><p class="threshold-help">黄圈为首次解锁边界，越过后变青色；回圈内不会再次锁定。</p>' : ''}</section>`).join('')}<section class="setting-group"><h2>移动速度模型</h2><div class="turn-model-field"><label for="move-model">移动速度模型</label><select id="move-model" disabled><option value="0">恒定移动速度</option><option value="1">角度差曲线</option></select><p class="threshold-help">身体与实际锚点方向的最短角度差 → 基础移动速度百分比。100% 保持当前速度，80% 为当前速度的八成。默认全程 100%。</p></div><div id="move-curve-editor" hidden></div></section><section class="setting-group"><h2>锚点防抖</h2><label class="threshold-toggle"><input id="anchor-follow" type="checkbox">启用锚点跟随</label><div id="anchor-curve-editor"></div></section><section class="setting-group"><h2>朝向调试</h2><label class="threshold-toggle"><input id="show-heading" type="checkbox">显示角色朝向线</label><label class="threshold-toggle debug-toggle"><input id="show-idle-anchor" type="checkbox">待机时也显示移动锚点</label><label class="threshold-toggle debug-toggle"><input id="show-anchor-outline" type="checkbox">锚点遮挡轮廓</label><p class="threshold-help">粉红直线代表角色当前朝向；蓝点代表移动锚点；遮挡轮廓让浅蓝圆环透过角色显示。开关仅用于本次页面调试。</p></section></div>
       <div class="panel-footer"><div class="store-actions"><button id="save-settings" class="text-button save-button" disabled>保存 JSON <span>↓</span></button><button id="restore" class="text-button" disabled>恢复默认 <span>↺</span></button></div><p id="store-status" role="status" aria-live="polite">正在读取参数…</p><p>圆环参数下次入场生效 · 其余即时生效 · 390 宽基准</p></div>
     </aside>
     <section class="stage" aria-label="游戏测试区域">
@@ -104,6 +107,7 @@ const game = new GameScene(viewport, controller);
 const ringEditor = new ProgressCurveEditor(element('ring-curve-editor'), () => controller.settings.ringCurve, points => {
   controller.setRingCurve(points); settingsChanged();
 });
+const waveEditor=new ProgressCurveEditor(element('ring-wave-editor'),()=>controller.settings.ringWaveCurve,points=>{controller.setRingWaveCurve(points);settingsChanged();},false,false,false,true);
 const switchEditor=new ProgressCurveEditor(element('ring-switch-editor'),()=>controller.settings.ringSwitchCurve,points=>{controller.setRingSwitchCurve(points);settingsChanged();},false,false,true);
 const strokeEditor = new ProgressCurveEditor(element('ring-stroke-editor'),
   () => controller.settings.ringStrokeCurve.map(p=>({time:p.completion,progress:p.width})),points=>{
@@ -292,7 +296,7 @@ function syncSettings() {
   element<HTMLSelectElement>('move-model').value = String(controller.settings.moveModel);
   element('move-curve-editor').hidden = controller.settings.moveModel !== 1;
   anchorEditor.render();
-  ringEditor.render();switchEditor.render();strokeEditor.render();linkAttackEditor.render();
+  ringEditor.render();waveEditor.render();switchEditor.render();strokeEditor.render();linkAttackEditor.render();
   element<HTMLInputElement>('anchor-follow').checked = !!controller.settings.anchorFollow;
   element<HTMLInputElement>('show-threshold').checked = !!controller.settings.showThreshold;
   document.querySelectorAll<HTMLInputElement>('[data-setting]').forEach(input => {
@@ -341,7 +345,7 @@ element('restore').addEventListener('click', () => {
   controller.setLockCurve(DEFAULTS.lockTurnCurve);
   controller.setMoveCurve(DEFAULTS.moveCurve);
   controller.setAnchorCurve(DEFAULTS.anchorCurve);
-  controller.setRingCurve(DEFAULTS.ringCurve);controller.setRingSwitchCurve(DEFAULTS.ringSwitchCurve);controller.setRingStrokeCurve(DEFAULTS.ringStrokeCurve);controller.setRingLinkAttackCurve(DEFAULTS.ringLinkAttackCurve);
+  controller.setRingCurve(DEFAULTS.ringCurve);controller.setRingWaveCurve(DEFAULTS.ringWaveCurve);controller.setRingSwitchCurve(DEFAULTS.ringSwitchCurve);controller.setRingStrokeCurve(DEFAULTS.ringStrokeCurve);controller.setRingLinkAttackCurve(DEFAULTS.ringLinkAttackCurve);
   syncSettings(); settingsChanged();
 });
 saveButton.addEventListener('click', async () => {
@@ -448,7 +452,7 @@ async function start() {
     controller.setLockCurve(loaded.lockTurnCurve);
     controller.setMoveCurve(loaded.moveCurve);
     controller.setAnchorCurve(loaded.anchorCurve);
-    controller.setRingCurve(loaded.ringCurve);controller.setRingSwitchCurve(loaded.ringSwitchCurve);controller.setRingStrokeCurve(loaded.ringStrokeCurve);controller.setRingLinkAttackCurve(loaded.ringLinkAttackCurve);
+    controller.setRingCurve(loaded.ringCurve);controller.setRingWaveCurve(loaded.ringWaveCurve);controller.setRingSwitchCurve(loaded.ringSwitchCurve);controller.setRingStrokeCurve(loaded.ringStrokeCurve);controller.setRingLinkAttackCurve(loaded.ringLinkAttackCurve);
     savedSettings = JSON.stringify(controller.settings);
     showStoreStatus('已读取 params.json');
   } catch (error) {

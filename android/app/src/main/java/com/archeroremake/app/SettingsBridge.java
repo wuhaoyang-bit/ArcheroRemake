@@ -61,11 +61,11 @@ public final class SettingsBridge {
                 canonical.put(key, value);
             }
             // Persist every independent curve, including the new lock rotation curve.
-            for (String curveKey : new String[]{"turnCurve", "lockTurnCurve", "moveCurve", "anchorCurve", "ringCurve", "ringStrokeCurve", "ringLinkAttackCurve", "ringSwitchCurve"}) {
+            for (String curveKey : new String[]{"turnCurve", "lockTurnCurve", "moveCurve", "anchorCurve", "ringCurve", "ringStrokeCurve", "ringLinkAttackCurve", "ringSwitchCurve", "ringWaveCurve"}) {
                 boolean anchor = curveKey.equals("anchorCurve");
                 boolean stroke = curveKey.equals("ringStrokeCurve") || curveKey.equals("ringLinkAttackCurve");
                 boolean switching = curveKey.equals("ringSwitchCurve");
-                boolean ring = curveKey.equals("ringCurve");
+                boolean ring = curveKey.equals("ringCurve") || curveKey.equals("ringWaveCurve");
                 String axis = stroke ? "completion" : ring || switching ? "time" : anchor ? "distance" : "angle";
                 String ordinate = stroke ? "width" : ring || switching ? "progress" : "speed";
                 JSONArray curve = values.getJSONArray(curveKey);

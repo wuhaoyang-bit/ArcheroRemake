@@ -5,6 +5,7 @@ import { LockRings, ringLinkSegment, attackLinkMultiplier, type AttackPhase } fr
 export class LockRingView {
   readonly state=new LockRings();
   readonly element:SVGSVGElement;
+  private wave:SVGCircleElement;
   private link:SVGLineElement;
   private player:SVGCircleElement;
   private target:SVGCircleElement;
@@ -12,7 +13,8 @@ export class LockRingView {
   constructor(private viewport:HTMLElement){
     this.element=document.createElementNS('http://www.w3.org/2000/svg','svg');
     this.element.classList.add('lock-rings');this.element.setAttribute('aria-hidden','true');
-    this.element.innerHTML='<line data-ring-link="" stroke-linecap="butt"/><circle data-ring="player"/><circle data-ring="target"/>';
+    this.element.innerHTML='<circle data-ring-wave=""/><line data-ring-link="" stroke-linecap="butt"/><circle data-ring="player"/><circle data-ring="target"/>';
+    this.wave=this.element.querySelector('[data-ring-wave]')!;
     this.link=this.element.querySelector('line')!;
     this.player=this.element.querySelector('[data-ring="player"]')!;this.target=this.element.querySelector('[data-ring="target"]')!;
     viewport.append(this.element);this.reset();
@@ -41,6 +43,8 @@ export class LockRingView {
       for(const [key,value] of Object.entries(segment))this.link.setAttribute(key,String(value));
       this.link.setAttribute('stroke-width',String(config.ringLinkStroke*attackLinkMultiplier(config.ringLinkAttackCurve,attack)));
     }
+    const wave=this.state.waveVisual;this.wave.style.display=wave&&wave.stroke>0?'':'none';
+    if(wave)draw(this.wave,center,wave.radius,wave.stroke);
     draw(this.player,player,config.ringPlayerDiameter/2,config.ringPlayerStroke);
     draw(this.target,center,this.state.radius,this.state.stroke);
   }
