@@ -199,7 +199,7 @@ export class GameScene {
     this.mixer = character.mixer;
     this.idle = character.idle;
     this.run = character.run;
-    this.animation = new CharacterAnimation(character.mixer, character.idle, character.run, character.attack);
+    this.animation = new CharacterAnimation(character.mixer, character.idle, character.run, character.attack, character.attackReleaseTime);
     this.blend = this.animation.blend;
     this.sync(0);
     this.resize();
@@ -269,7 +269,7 @@ export class GameScene {
     this.camera.position.set(0, 24, this.cameraZ + 24 / Math.tan(this.tilt));
     this.camera.lookAt(0, 0, this.cameraZ);
     this.camera.updateMatrixWorld();
-    this.rings.update(dt, ctl.settings, this.camera, ctl.position, ctl.training === 'locking' ? ctl.targeting.target : null);
+    this.rings.update(dt, ctl.settings, this.camera, ctl.position, ctl.training === 'locking' ? ctl.targeting.target : null, this.animation.snapshot());
   }
 
   render() { this.renderer.render(this.scene, this.camera); }

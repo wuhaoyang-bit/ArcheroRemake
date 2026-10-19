@@ -18,7 +18,7 @@ test('requested defaults match the screenshot, with speed 16 / upper limit 30 an
     slerpResponse: 40.872, slerpSnapAngle: 0.1, smoothTime: 0.03039, smoothSnapAngle: 0.1,
     targetModel: 0, lockRange: 22, showLockRange: 0, targetCone: 90, targetAdvantage: 8, targetDwell: 160,
     ringPlayerDiameter: 4, ringTargetDiameter: 8, ringPlayerStroke: 1, ringTargetStroke: 1.2, ringLinkThreshold:95, ringLinkStroke:1,
-    ringPlayerHeight: 1.4, ringTargetHeight: 1.2, ringDuration: .25, ringCurve: DEFAULTS.ringCurve, ringStrokeCurve: DEFAULTS.ringStrokeCurve,
+    ringPlayerHeight: 1.4, ringTargetHeight: 1.2, ringDuration: .25, ringCurve: DEFAULTS.ringCurve, ringStrokeCurve: DEFAULTS.ringStrokeCurve, ringLinkAttackCurve: DEFAULTS.ringLinkAttackCurve,
     lockTurnModel: 0, lockTurnSpeed: 1200, lockCurveSnapAngle: .1, lockTurnCurve: exponentialCurve(10.4),
     lockSlerpResponse: 40.872, lockSlerpSnapAngle: .1, lockSmoothTime: .03039, lockSmoothSnapAngle: .1,
     roomSize: 16, roomLength: 38, cameraResponse: 9, cameraOffset: 0, viewWidth: 18,
@@ -103,6 +103,7 @@ test('HTTP save accepts five full curves without losing tuning; oversized writes
   const curve = Array.from({length:128}, (_,i) => ({angle:i===127?180:i*180/127,speed:1000+i/127}));
   const payload = settingsDocument({...DEFAULTS, turnCurve:curve, lockTurnCurve:curve.map(p=>({...p,speed:p.speed+100})),
     moveCurve:curve, anchorCurve:curve.map(p=>({distance:p.angle/2,speed:p.speed})),
+    ringLinkAttackCurve:Array.from({length:128},(_,i)=>({completion:i===127?100:i*100/127,width:100})),
     ringStrokeCurve:Array.from({length:128},(_,i)=>({completion:i===127?100:i*100/127,width:100})),
     ringCurve:Array.from({length:128},(_,i)=>({time:i===127?100:i*100/127,progress:i===127?100:i*100/127})), targetModel:2, lockTurnModel:2});
   const body = JSON.stringify(payload);

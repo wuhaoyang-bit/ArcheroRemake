@@ -40,10 +40,19 @@ export function strokeAt(points:StrokePoint[],completion:number){
   for(let i=1;i<points.length;i++)if(x<=points[i].completion){const a=points[i-1],b=points[i];return (a.width+(b.width-a.width)*(x-a.completion)/(b.completion-a.completion))/100;}
   return points.at(-1)!.width/100;
 }
+export const DEFAULT_LINK_ATTACK_CURVE:StrokePoint[]=[
+  {completion:0,width:100},{completion:20,width:90},{completion:50.8,width:65},
+  {completion:54,width:145},{completion:70,width:115},{completion:100,width:100},
+];
+export type AttackPhase={playing:boolean;time:number;duration:number;weight:number;releaseTime:number};
+export function attackLinkMultiplier(curve:StrokePoint[],attack?:AttackPhase){
+  if(!attack?.playing||attack.duration<=0)return 1;
+  return 1+(strokeAt(curve,attack.time/attack.duration)-1)*Math.max(0,Math.min(1,attack.weight));
+}
 export type RingConfig = Pick<Settings,'ringPlayerDiameter'|'ringTargetDiameter'|'ringPlayerStroke'|'ringTargetStroke'|
-  'ringPlayerHeight'|'ringTargetHeight'|'ringDuration'|'ringCurve'|'ringStrokeCurve'|'ringLinkThreshold'|'ringLinkStroke'>;
+  'ringPlayerHeight'|'ringTargetHeight'|'ringDuration'|'ringCurve'|'ringStrokeCurve'|'ringLinkThreshold'|'ringLinkStroke'|'ringLinkAttackCurve'>;
 export const ringConfig=(s: RingConfig): RingConfig=>({
-  ringLinkThreshold:s.ringLinkThreshold,ringLinkStroke:s.ringLinkStroke,
+  ringLinkAttackCurve:validateStrokeCurve(s.ringLinkAttackCurve),ringLinkThreshold:s.ringLinkThreshold,ringLinkStroke:s.ringLinkStroke,
   ringPlayerDiameter:s.ringPlayerDiameter,ringTargetDiameter:s.ringTargetDiameter,
   ringPlayerStroke:s.ringPlayerStroke,ringTargetStroke:s.ringTargetStroke,
   ringPlayerHeight:s.ringPlayerHeight,ringTargetHeight:s.ringTargetHeight,

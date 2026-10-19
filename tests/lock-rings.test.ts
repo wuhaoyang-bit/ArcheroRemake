@@ -86,3 +86,15 @@ test('link excludes circle interiors for every orientation and hides if overlapp
   }
   assert.equal(ringLinkSegment(c,c,2,4),null);
 });
+
+test('attack link pulse uses actual animation phase and blend weight, resets when interrupted',async()=>{
+  const {attackLinkMultiplier,DEFAULT_LINK_ATTACK_CURVE:curve}=await import('../src/lock-rings.ts');
+  const attack={playing:true,time:0,duration:1.05,releaseTime:.55,weight:1};
+  near(attackLinkMultiplier(curve,attack),1);
+  near(attackLinkMultiplier(curve,{...attack,time:1.05*.508}),.65);
+  near(attackLinkMultiplier(curve,{...attack,time:1.05*.54}),1.45);
+  near(attackLinkMultiplier(curve,{...attack,time:1.05*.54,weight:.5}),1.225);
+  near(attackLinkMultiplier(curve,{...attack,time:1.05}),1);
+  near(attackLinkMultiplier(curve,{...attack,time:.54,playing:false}),1);
+  assert.deepEqual(parseSettingsDocument(settingsDocument(DEFAULTS)).ringLinkAttackCurve,curve);
+});

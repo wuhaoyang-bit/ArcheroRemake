@@ -1,4 +1,4 @@
-import { DEFAULT_RING_CURVE, DEFAULT_STROKE_CURVE } from './lock-rings.ts';
+import { DEFAULT_RING_CURVE, DEFAULT_STROKE_CURVE, DEFAULT_LINK_ATTACK_CURVE } from './lock-rings.ts';
 import { DEFAULT_MOVE_CURVE } from './move-speed.ts';
 import { DEFAULT_ANCHOR_CURVE } from './anchor-follow.ts';
 import { exponentialCurve } from './turn-curve.ts';
@@ -28,7 +28,7 @@ export const DEFAULTS = {
   ringPlayerStroke: 1, ringTargetStroke: 1.2,
   ringLinkThreshold: 95, ringLinkStroke: 1,
   ringPlayerHeight: 1.4, ringTargetHeight: 1.2,
-  ringDuration: 0.25, ringCurve: DEFAULT_RING_CURVE, ringStrokeCurve: DEFAULT_STROKE_CURVE,
+  ringDuration: 0.25, ringCurve: DEFAULT_RING_CURVE, ringStrokeCurve: DEFAULT_STROKE_CURVE, ringLinkAttackCurve: DEFAULT_LINK_ATTACK_CURVE,
   targetModel: 0, // 0 nearest, 1 direction cone, 2 direction with retention.
   lockRange: 22,
   showLockRange: 0,
@@ -52,7 +52,7 @@ export const DEFAULTS = {
   viewWidth: 18,
 };
 export type Settings = typeof DEFAULTS;
-export type SettingKey = Exclude<keyof Settings, 'turnCurve' | 'lockTurnCurve' | 'anchorCurve' | 'moveCurve' | 'ringCurve' | 'ringStrokeCurve'>;
+export type SettingKey = Exclude<keyof Settings, 'turnCurve' | 'lockTurnCurve' | 'anchorCurve' | 'moveCurve' | 'ringCurve' | 'ringStrokeCurve' | 'ringLinkAttackCurve'>;
 /** Missing lock values inherit the corresponding ordinary tuning once, on load. */
 export const LOCK_TURN_KEYS = {
   lockTurnModel: 'turnModel', lockTurnSpeed: 'turnSpeed', lockCurveSnapAngle: 'curveSnapAngle',

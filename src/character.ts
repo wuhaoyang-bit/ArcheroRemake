@@ -29,5 +29,5 @@ export async function loadCharacter() {
   run.setEffectiveWeight(0);
   const attack = mixer.clipAction(bowAttackClip(attackPrev, attackEnd)).setEffectiveWeight(0);
   mixer.update(0);
-  return { model, mixer, idle, run, attack };
+  return { model, mixer, idle, run, attack, attackReleaseTime:attackPrev.duration+1/60 };
 }

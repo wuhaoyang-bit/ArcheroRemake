@@ -170,6 +170,24 @@
         "width": 100
       }
     ],
+    "ringLinkAttackCurve": [
+      {
+        "completion": 0,
+        "width": 100
+      },
+      {
+        "completion": 50.8,
+        "width": 60
+      },
+      {
+        "completion": 54,
+        "width": 140
+      },
+      {
+        "completion": 100,
+        "width": 100
+      }
+    ],
     "targetModel": 0,
     "lockRange": 18.1,
     "showLockRange": 1,

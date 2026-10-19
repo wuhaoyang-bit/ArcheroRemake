@@ -36,7 +36,7 @@ export class CharacterAnimation {
   private playing = false;
 
   constructor(readonly mixer: THREE.AnimationMixer, readonly idle: THREE.AnimationAction,
-    readonly run: THREE.AnimationAction, readonly attack: THREE.AnimationAction) {
+    readonly run: THREE.AnimationAction, readonly attack: THREE.AnimationAction, readonly releaseTime=0.55) {
     attack.setLoop(THREE.LoopRepeat, Infinity);
     attack.clampWhenFinished = false;
     attack.setEffectiveWeight(0);
@@ -67,7 +67,7 @@ export class CharacterAnimation {
   }
 
   snapshot() {
-    return { playing: this.playing, time: this.attack.time,
+    return { releaseTime:this.releaseTime, playing: this.playing, time: this.attack.time,
       duration: this.attack.getClip().duration, weight: this.attack.getEffectiveWeight(),
       idleWeight: this.idle.getEffectiveWeight(), runWeight: this.run.getEffectiveWeight() };
   }

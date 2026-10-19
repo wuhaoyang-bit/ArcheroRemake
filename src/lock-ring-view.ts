@@ -1,6 +1,6 @@
 import { Vector3, type Camera } from 'three/webgpu';
 import { DESIGN_WIDTH, type Settings } from './config.ts';
-import { LockRings, ringLinkSegment } from './lock-rings.ts';
+import { LockRings, ringLinkSegment, attackLinkMultiplier, type AttackPhase } from './lock-rings.ts';
 
 export class LockRingView {
   readonly state=new LockRings();
@@ -18,7 +18,7 @@ export class LockRingView {
     viewport.append(this.element);this.reset();
   }
   reset(){this.state.reset();this.element.style.display='none';}
-  update(dt:number,settings:Settings,camera:Camera,position:{x:number;z:number},target:{id:string;x:number;z:number}|null){
+  update(dt:number,settings:Settings,camera:Camera,position:{x:number;z:number},target:{id:string;x:number;z:number}|null,attack?:AttackPhase){
     if(!target){this.reset();return;}
     const width=DESIGN_WIDTH,height=this.viewport.clientHeight/this.viewport.clientWidth*width;
     if(!Number.isFinite(height)||height<=0)return;
@@ -39,7 +39,7 @@ export class LockRingView {
     this.link.style.display=segment?'':'none';
     if(segment){
       for(const [key,value] of Object.entries(segment))this.link.setAttribute(key,String(value));
-      this.link.setAttribute('stroke-width',String(config.ringLinkStroke));
+      this.link.setAttribute('stroke-width',String(config.ringLinkStroke*attackLinkMultiplier(config.ringLinkAttackCurve,attack)));
     }
     draw(this.player,player,config.ringPlayerDiameter/2,config.ringPlayerStroke);
     draw(this.target,center,this.state.radius,this.state.stroke);

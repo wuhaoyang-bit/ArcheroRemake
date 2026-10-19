@@ -104,7 +104,7 @@ export class MovementController {
   }
 
   constructor(settings: Settings = { ...DEFAULTS }) {
-    this.settings = { ...settings, ringStrokeCurve:validateStrokeCurve(settings.ringStrokeCurve), ringCurve: validateProgressCurve(settings.ringCurve), turnCurve: validateCurve(settings.turnCurve), lockTurnCurve: validateCurve(settings.lockTurnCurve), anchorCurve: validateAnchorCurve(settings.anchorCurve), moveCurve: validateMoveCurve(settings.moveCurve) };
+    this.settings = { ...settings, ringLinkAttackCurve:validateStrokeCurve(settings.ringLinkAttackCurve), ringStrokeCurve:validateStrokeCurve(settings.ringStrokeCurve), ringCurve: validateProgressCurve(settings.ringCurve), turnCurve: validateCurve(settings.turnCurve), lockTurnCurve: validateCurve(settings.lockTurnCurve), anchorCurve: validateAnchorCurve(settings.anchorCurve), moveCurve: validateMoveCurve(settings.moveCurve) };
     this.position = { x: 0, z: settings.roomSize * 0.27 };
   }
   get anchorVisible() { return this.mode !== 'idle'; }
@@ -217,6 +217,7 @@ export class MovementController {
     if (this.pointerId !== null) this.release(this.pointerId);
   }
 
+  setRingLinkAttackCurve(points:StrokePoint[]){this.settings.ringLinkAttackCurve=validateStrokeCurve(points);}
   setRingStrokeCurve(points:StrokePoint[]){this.settings.ringStrokeCurve=validateStrokeCurve(points);}
   setRingCurve(points: ProgressPoint[]) { this.settings.ringCurve = validateProgressCurve(points); }
 
