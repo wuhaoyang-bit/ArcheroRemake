@@ -1,3 +1,4 @@
+import { validateProgressCurve, validateStrokeCurve, type StrokePoint, type ProgressPoint } from './lock-rings.ts';
 import { movementMultiplier, validateMoveCurve } from './move-speed.ts';
 import { remainingAnchorDistance, validateAnchorCurve, type AnchorCurvePoint } from './anchor-follow.ts';
 import { trainingCourse, lockingTargets, moveAroundObstacles, CHECKPOINT_RADIUS, type TrainingMode } from './training.ts';
@@ -103,7 +104,7 @@ export class MovementController {
   }
 
   constructor(settings: Settings = { ...DEFAULTS }) {
-    this.settings = { ...settings, turnCurve: validateCurve(settings.turnCurve), lockTurnCurve: validateCurve(settings.lockTurnCurve), anchorCurve: validateAnchorCurve(settings.anchorCurve), moveCurve: validateMoveCurve(settings.moveCurve) };
+    this.settings = { ...settings, ringStrokeCurve:validateStrokeCurve(settings.ringStrokeCurve), ringCurve: validateProgressCurve(settings.ringCurve), turnCurve: validateCurve(settings.turnCurve), lockTurnCurve: validateCurve(settings.lockTurnCurve), anchorCurve: validateAnchorCurve(settings.anchorCurve), moveCurve: validateMoveCurve(settings.moveCurve) };
     this.position = { x: 0, z: settings.roomSize * 0.27 };
   }
   get anchorVisible() { return this.mode !== 'idle'; }
@@ -215,6 +216,9 @@ export class MovementController {
     this.pendingRelease = null;
     if (this.pointerId !== null) this.release(this.pointerId);
   }
+
+  setRingStrokeCurve(points:StrokePoint[]){this.settings.ringStrokeCurve=validateStrokeCurve(points);}
+  setRingCurve(points: ProgressPoint[]) { this.settings.ringCurve = validateProgressCurve(points); }
 
   setAnchorCurve(points: AnchorCurvePoint[]) { this.settings.anchorCurve = validateAnchorCurve(points); }
 

@@ -17,6 +17,8 @@ test('requested defaults match the screenshot, with speed 16 / upper limit 30 an
     moveSpeed: 16, moveModel: 0, moveCurve: DEFAULTS.moveCurve, turnSpeed: 1200, turnModel: 0, curveSnapAngle: 0.1, turnCurve: exponentialCurve(10.4), blendDuration: 0.06, runSpeed: 1.6,
     slerpResponse: 40.872, slerpSnapAngle: 0.1, smoothTime: 0.03039, smoothSnapAngle: 0.1,
     targetModel: 0, lockRange: 22, showLockRange: 0, targetCone: 90, targetAdvantage: 8, targetDwell: 160,
+    ringPlayerDiameter: 4, ringTargetDiameter: 8, ringPlayerStroke: 1, ringTargetStroke: 1.2, ringLinkThreshold:95, ringLinkStroke:1,
+    ringPlayerHeight: 1.4, ringTargetHeight: 1.2, ringDuration: .25, ringCurve: DEFAULTS.ringCurve, ringStrokeCurve: DEFAULTS.ringStrokeCurve,
     lockTurnModel: 0, lockTurnSpeed: 1200, lockCurveSnapAngle: .1, lockTurnCurve: exponentialCurve(10.4),
     lockSlerpResponse: 40.872, lockSlerpSnapAngle: .1, lockSmoothTime: .03039, lockSmoothSnapAngle: .1,
     roomSize: 16, roomLength: 38, cameraResponse: 9, cameraOffset: 0, viewWidth: 18,
@@ -94,13 +96,15 @@ test('new models round-trip, retired selections migrate, constant and custom exp
   assert.throws(() => parseSettingsDocument({version: 1, settings: {slerpResponse: Infinity}}));
 });
 
-test('HTTP save accepts four full curves without losing lock tuning; oversized writes preserve the last document', async () => {
+test('HTTP save accepts five full curves without losing tuning; oversized writes preserve the last document', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'archero-curves-')), file = join(dir, 'params.json');
   const middleware = settingsMiddleware(file);
   const server = createServer((req, res) => middleware(req, res, () => { res.statusCode = 404; res.end(); }));
   const curve = Array.from({length:128}, (_,i) => ({angle:i===127?180:i*180/127,speed:1000+i/127}));
   const payload = settingsDocument({...DEFAULTS, turnCurve:curve, lockTurnCurve:curve.map(p=>({...p,speed:p.speed+100})),
-    moveCurve:curve, anchorCurve:curve.map(p=>({distance:p.angle/2,speed:p.speed})), targetModel:2, lockTurnModel:2});
+    moveCurve:curve, anchorCurve:curve.map(p=>({distance:p.angle/2,speed:p.speed})),
+    ringStrokeCurve:Array.from({length:128},(_,i)=>({completion:i===127?100:i*100/127,width:100})),
+    ringCurve:Array.from({length:128},(_,i)=>({time:i===127?100:i*100/127,progress:i===127?100:i*100/127})), targetModel:2, lockTurnModel:2});
   const body = JSON.stringify(payload);
   assert.ok(Buffer.byteLength(body) > 16384);
   try {

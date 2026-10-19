@@ -1,3 +1,4 @@
+import { LockRingView } from './lock-ring-view.ts';
 import { buildTraining } from './training-scene.ts';
 import { buildLockingTraining } from './locking-training-scene.ts';
 import * as THREE from 'three/webgpu';
@@ -111,10 +112,9 @@ export class GameScene {
   headingGuide = new THREE.Group();
   lockRangeGuide = new THREE.Mesh(new THREE.RingGeometry(.996, 1, 192),
     new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .7, depthWrite: false, side: THREE.DoubleSide }));
-  lockMarker = new THREE.Mesh(new THREE.RingGeometry(.94, 1.04, 64),
-    new THREE.MeshBasicMaterial({ color: 0xff752f, depthTest: false, depthWrite: false, side: THREE.DoubleSide }));
   candidateMarker = new THREE.Mesh(new THREE.RingGeometry(1.12, 1.17, 64),
     new THREE.MeshBasicMaterial({ color: 0xfff4cd, transparent: true, opacity: .8, depthTest: false, depthWrite: false, side: THREE.DoubleSide }));
+  rings: LockRingView;
   cameraZ: number;
   animation!: CharacterAnimation;
   blend = new AnimationBlend();
@@ -133,6 +133,7 @@ export class GameScene {
 
   constructor(private viewport: HTMLElement, private controller: MovementController) {
     this.cameraZ = controller.position.z;
+    this.rings = new LockRingView(viewport);
   }
 
   async init() {
@@ -187,11 +188,11 @@ export class GameScene {
     this.headingGuide.add(headingLine);
     this.headingGuide.visible = false;
     this.player.add(this.headingGuide);
-    for (const marker of [this.lockRangeGuide, this.lockMarker, this.candidateMarker]) {
+    for (const marker of [this.lockRangeGuide, this.candidateMarker]) {
       marker.rotation.x = -Math.PI / 2; marker.visible = false;
       this.scene.add(marker);
     }
-    this.lockMarker.renderOrder = 102; this.candidateMarker.renderOrder = 102;
+    this.candidateMarker.renderOrder = 102;
 
     const character = await loadCharacter();
     this.body.add(character.model);
@@ -259,7 +260,7 @@ export class GameScene {
     this.lockRangeGuide.visible = ctl.training === 'locking' && !!ctl.settings.showLockRange && ctl.settings.lockRange > 0;
     this.lockRangeGuide.position.set(ctl.position.x, .045, ctl.position.z);
     this.lockRangeGuide.scale.setScalar(ctl.settings.lockRange);
-    for (const [marker, target] of [[this.lockMarker, ctl.targeting.target], [this.candidateMarker, ctl.targeting.candidate]] as const) {
+    for (const [marker, target] of [[this.candidateMarker, ctl.targeting.candidate]] as const) {
       marker.visible = ctl.training === 'locking' && target !== null;
       if (target) marker.position.set(target.x, .08, target.z);
     }
@@ -268,6 +269,7 @@ export class GameScene {
     this.camera.position.set(0, 24, this.cameraZ + 24 / Math.tan(this.tilt));
     this.camera.lookAt(0, 0, this.cameraZ);
     this.camera.updateMatrixWorld();
+    this.rings.update(dt, ctl.settings, this.camera, ctl.position, ctl.training === 'locking' ? ctl.targeting.target : null);
   }
 
   render() { this.renderer.render(this.scene, this.camera); }

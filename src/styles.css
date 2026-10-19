@@ -160,3 +160,12 @@ input[type=range]::-moz-range-thumb { width: 9px; height: 9px; border-radius: 50
 
 .targeting-hud { position: absolute; left: 12px; top: 82px; max-width: calc(100% - 24px); padding: 6px 10px; border-radius: 8px; background: #244d37d9; color: #fff4d5; font-size: 11px; pointer-events: none; z-index: 3; }
 .targeting-hud[hidden] { display: none; }
+
+.lock-rings { position:absolute; inset:0; width:100%; height:100%; z-index:2; pointer-events:none; overflow:hidden; }
+.lock-rings circle, .lock-rings line { fill:none; stroke:#f3313e; }
+.ring-preview { opacity:.45; margin-top:18px; }
+.ring-preview.active { opacity:1; }
+.ring-preview label { display:flex; justify-content:space-between; gap:8px; font-size:12px; }
+.ring-preview output { color:#f7a1a5; font-variant-numeric:tabular-nums; }
+.ring-preview input { width:100%; accent-color:#f36c72; margin:16px 0; }
+.ring-preview button { padding:8px 12px; color:inherit; border:1px solid #63765b; border-radius:6px; background:#20392e; }

@@ -42,7 +42,7 @@
     "turnCurve": [
       {
         "angle": 0,
-        "speed": 260
+        "speed": 503
       },
       {
         "angle": 30,
@@ -73,9 +73,106 @@
     "slerpSnapAngle": 0.1,
     "smoothTime": 0.03039,
     "smoothSnapAngle": 0.1,
+    "ringPlayerDiameter": 4,
+    "ringTargetDiameter": 8,
+    "ringPlayerStroke": 1,
+    "ringTargetStroke": 1.2,
+    "ringLinkThreshold": 95,
+    "ringLinkStroke": 0.5,
+    "ringPlayerHeight": 1.4,
+    "ringTargetHeight": 1.2,
+    "ringDuration": 0.25,
+    "ringCurve": [
+      {
+        "time": 0,
+        "progress": 0
+      },
+      {
+        "time": 5.5,
+        "progress": 25.29
+      },
+      {
+        "time": 11.31,
+        "progress": 42
+      },
+      {
+        "time": 17.39,
+        "progress": 56.45
+      },
+      {
+        "time": 26.13,
+        "progress": 71.23
+      },
+      {
+        "time": 38.7,
+        "progress": 84.24
+      },
+      {
+        "time": 50.36,
+        "progress": 93
+      },
+      {
+        "time": 62.71,
+        "progress": 96.51
+      },
+      {
+        "time": 75,
+        "progress": 98.438
+      },
+      {
+        "time": 90,
+        "progress": 99.9
+      },
+      {
+        "time": 100,
+        "progress": 100
+      }
+    ],
+    "ringStrokeCurve": [
+      {
+        "completion": 0,
+        "width": 375.57
+      },
+      {
+        "completion": 24.12,
+        "width": 383.09
+      },
+      {
+        "completion": 46.43,
+        "width": 504.57
+      },
+      {
+        "completion": 53.15,
+        "width": 711.2
+      },
+      {
+        "completion": 57.24,
+        "width": 892.21
+      },
+      {
+        "completion": 65,
+        "width": 1000
+      },
+      {
+        "completion": 72.83,
+        "width": 866.84
+      },
+      {
+        "completion": 76.61,
+        "width": 668.9
+      },
+      {
+        "completion": 88.48,
+        "width": 101.71
+      },
+      {
+        "completion": 100,
+        "width": 100
+      }
+    ],
     "targetModel": 0,
-    "lockRange": 18,
-    "showLockRange": 0,
+    "lockRange": 18.1,
+    "showLockRange": 1,
     "targetCone": 90,
     "targetAdvantage": 8,
     "targetDwell": 100,

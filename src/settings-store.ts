@@ -1,3 +1,4 @@
+import { validateProgressCurve, validateStrokeCurve } from './lock-rings.ts';
 import { validateMoveCurve } from './move-speed.ts';
 import { validateAnchorCurve } from './anchor-follow.ts';
 import { exponentialCurve, validateCurve } from './turn-curve.ts';
@@ -42,6 +43,8 @@ export function parseSettingsDocument(raw: unknown, strict = false): Settings {
     if (source[key] === undefined) settings[key] = settings[LOCK_TURN_KEYS[key]];
   }
   settings.lockTurnCurve = validateCurve(source.lockTurnCurve === undefined ? settings.turnCurve : source.lockTurnCurve);
+  settings.ringStrokeCurve = validateStrokeCurve(source.ringStrokeCurve === undefined ? DEFAULTS.ringStrokeCurve : source.ringStrokeCurve);
+  settings.ringCurve = validateProgressCurve(source.ringCurve === undefined ? DEFAULTS.ringCurve : source.ringCurve);
   return settings;
 }
 

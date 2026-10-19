@@ -38,14 +38,14 @@ try {
   await check('entry and tuning do not acquire before first game press',async()=>{
     await page.locator('#target-model').selectOption('1'); await page.waitForTimeout(120);
     const s=await snap(page); assert.equal(s.targeting.active,false);assert.equal(s.targeting.target,null);near(s.heading,Math.PI);
-    assert.equal(s.debug.lockMarkerVisible,false);assert.equal(await page.locator('#targeting-hud').isVisible(),true);
+    assert.equal(s.debug.rings.targetId,null);assert.equal(await page.locator('#targeting-hud').isVisible(),true);
   });
   const r=await page.locator('#viewport').boundingBox(),x=r.x+r.width*.5,y=r.y+r.height*.65;
   await check('first press selects north; in-place and idle both use lock turn',async()=>{
     await page.mouse.move(x,y);await page.mouse.down();await page.waitForTimeout(80);
     let s=await snap(page);assert.equal(s.targeting.target.id,'north');assert.equal(s.turnContext,'lock');
-    assert.equal(s.mode,'in-place');assert.deepEqual(s.position,{x:0,z:0});assert.equal(s.debug.lockMarkerVisible,true);
-    near(s.debug.lockMarkerPosition[2],-15);
+    assert.equal(s.mode,'in-place');assert.deepEqual(s.position,{x:0,z:0});assert.equal(s.debug.rings.targetId,'north');
+    assert.equal(await page.locator('.lock-rings').isVisible(),true);
     await page.mouse.up();s=await snap(page);assert.equal(s.turnContext,'lock');assert.equal(s.targeting.target.id,'north');
   });
   await check('all lock rotation models and curve editing are independent of ordinary settings',async()=>{

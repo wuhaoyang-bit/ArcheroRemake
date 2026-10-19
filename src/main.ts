@@ -1,3 +1,4 @@
+import { ProgressCurveEditor } from './progress-curve-editor.ts';
 import { AnchorCurveEditor } from './anchor-curve-editor.ts';
 import { TurnCurveEditor } from './turn-curve-editor.ts';
 import './styles.css';
@@ -37,6 +38,17 @@ const settings: { title: string; items: [SettingKey, string, string, string][] }
     ['targetAdvantage', 'C：切换角度优势', '°', '新候选比旧目标更贴合锚点方向，优势达到此值才开始累计时间。'],
     ['targetDwell', 'C：候选持续时间', 'ms', '同一候选连续满足优势的时间。松手归零；旧目标失效立即重选。'],
   ] },
+  { title: '锁定圆环 UI', items: [
+    ['ringPlayerDiameter', '角色圆直径', 'px', '390 宽基准；下一次入场生效。'],
+    ['ringTargetDiameter', '目标圆最终直径', 'px', '390 宽基准；下一次入场生效。'],
+    ['ringPlayerStroke', '角色圆线宽', 'px', '下一次入场生效。'],
+    ['ringTargetStroke', '目标圆基础线宽', 'px', '实际粗细由下方粗细曲线倍率决定；下一次入场生效。'],
+    ['ringPlayerHeight', '角色圆心高度', '单位', '脚下向上固定高度，不受动画影响；下一次入场生效。'],
+    ['ringTargetHeight', '目标圆心高度', '单位', '假人脚下向上固定高度；下一次入场生效。'],
+    ['ringDuration', '收缩时长', 's', '下一次入场生效。'],
+    ['ringLinkThreshold', '连线出现完成度', '%', '收缩完成度达到此值时显示圆外连线；下一次入场生效。'],
+    ['ringLinkStroke', '连线粗细', 'px', '390 宽基准像素；下一次入场生效。'],
+  ] },
   { title: '旋转角速度－锁定', items: [
     ['lockTurnSpeed', '锁定：匀速转向速度', '°/s', '待机或原地跑步时，朝锁定敌人转向所用的速度。'],
     ['lockCurveSnapAngle', '锁定：曲线到位阈值', '°', '锁定自定义曲线的到位角差。'],
@@ -47,7 +59,7 @@ const settings: { title: string; items: [SettingKey, string, string, string][] }
   ] },
 ];
 
-const targetingControls = `<div class="turn-model-field"><label for="target-model">选敌模型</label><select id="target-model" disabled><option value="0">A · 最近目标</option><option value="1">B · 方向扇形</option><option value="2">C · 方向＋保留条件</option></select><p id="target-model-hint" class="threshold-help"></p></div><label class="threshold-toggle"><input id="show-lock-range" type="checkbox" disabled>显示锁定距离范围</label><p class="threshold-help">锁定训练场中，首次按下开始选敌；待机或原地跑步时身体朝敌人转向，真正移动时朝移动锚点转向。橙圈为当前目标，浅色圈为 C 待确认候选。</p>`;
+const targetingControls = `<div class="turn-model-field"><label for="target-model">选敌模型</label><select id="target-model" disabled><option value="0">A · 最近目标</option><option value="1">B · 方向扇形</option><option value="2">C · 方向＋保留条件</option></select><p id="target-model-hint" class="threshold-help"></p></div><label class="threshold-toggle"><input id="show-lock-range" type="checkbox" disabled>显示锁定距离范围</label><p class="threshold-help">锁定训练场中，首次按下开始选敌；待机或原地跑步时身体朝敌人转向，真正移动时朝移动锚点转向。红圈为当前目标，浅色圈为 C 待确认候选。</p>`;
 const lockTurnControls = `<div class="turn-model-field"><label for="lock-turn-model">锁定转向模型</label><select id="lock-turn-model" disabled><option value="0">匀速转向</option><option value="2">自定义转向曲线</option><option value="5">Slerp</option><option value="6">SmoothDampAngle</option></select><p class="threshold-help">待机或原地跑步且有目标时使用；真正移动时使用普通转向。两套配置分别保存。旧参数首次加载时复制当前普通转向配置。</p><div id="lock-turn-curve-editor" hidden></div></div>`;
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
@@ -58,8 +70,8 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       <div class="settings-scroll">${settings.map(group => `<section class="setting-group"><h2>${group.title}</h2>${group.title === '目标锁定' ? targetingControls : group.title === '旋转角速度－锁定' ? lockTurnControls : ''}${group.title === '角色' ? '<div class="turn-model-field"><label for="turn-model">旋转角速度模型</label><select id="turn-model" disabled><option value="0">匀速转向</option><option value="2">自定义转向曲线</option><option value="5">Slerp</option><option value="6">SmoothDampAngle</option></select><p id="turn-model-hint" class="threshold-help"></p><div id="turn-curve-editor" hidden></div></div>' : ''}${group.items.map(([key, name, unit, hint]) => {
         const [min, max, step] = LIMITS[key];
         return `<div class="setting" title="${hint}"><div class="setting-label"><label for="slider-${key}">${name}</label><div class="numeric"><input id="value-${key}" data-setting="${key}" type="number" min="${min}" max="${max}" step="${step}" value="${DEFAULTS[key]}" aria-label="${name}数值"><span>${unit}</span></div></div><input id="slider-${key}" data-setting="${key}" type="range" min="${min}" max="${max}" step="${step}" value="${DEFAULTS[key]}" aria-label="${name}"></div>`;
-      }).join('')}${group.title === '轮盘与锚点' ? '<label class="threshold-toggle"><input id="show-threshold" type="checkbox">显示移动阈值范围</label><p class="threshold-help">黄圈为首次解锁边界，越过后变青色；回圈内不会再次锁定。</p>' : ''}</section>`).join('')}<section class="setting-group"><h2>移动速度模型</h2><div class="turn-model-field"><label for="move-model">移动速度模型</label><select id="move-model" disabled><option value="0">恒定移动速度</option><option value="1">角度差曲线</option></select><p class="threshold-help">身体与实际锚点方向的最短角度差 → 基础移动速度百分比。100% 保持当前速度，80% 为当前速度的八成。默认全程 100%。</p></div><div id="move-curve-editor" hidden></div></section><section class="setting-group"><h2>锚点防抖</h2><label class="threshold-toggle"><input id="anchor-follow" type="checkbox">启用锚点跟随</label><div id="anchor-curve-editor"></div></section><section class="setting-group"><h2>朝向调试</h2><label class="threshold-toggle"><input id="show-heading" type="checkbox">显示角色朝向线</label><label class="threshold-toggle debug-toggle"><input id="show-idle-anchor" type="checkbox">待机时也显示移动锚点</label><label class="threshold-toggle debug-toggle"><input id="show-anchor-outline" type="checkbox">锚点遮挡轮廓</label><p class="threshold-help">粉红直线代表角色当前朝向；蓝点代表移动锚点；遮挡轮廓让浅蓝圆环透过角色显示。开关仅用于本次页面调试。</p></section></div>
-      <div class="panel-footer"><div class="store-actions"><button id="save-settings" class="text-button save-button" disabled>保存 JSON <span>↓</span></button><button id="restore" class="text-button" disabled>恢复默认 <span>↺</span></button></div><p id="store-status" role="status" aria-live="polite">正在读取参数…</p><p>参数即时生效 · 像素以 390 宽度为基准</p></div>
+      }).join('')}${group.title === '锁定圆环 UI' ? '<p class="threshold-help">以下曲线及本组全部参数在下一次锁定入场生效。换目标沿用当前值；失去全部目标后重新锁定才应用新值。</p><div id="ring-curve-editor"></div><h3>目标圆粗细 / 收缩完成度</h3><div id="ring-stroke-editor"></div><div id="ring-preview" class="ring-preview"><label for="ring-preview-progress">收缩预览 <output id="ring-preview-label">未锁定</output></label><input id="ring-preview-progress" type="range" min="0" max="100" step="0.1" value="0" disabled><button id="ring-preview-resume" disabled>恢复自动播放</button><p class="threshold-help">有锁定目标时可拖动。拖后停留在指定完成度，换目标保留预览；丢锁退出。仅改变圆环，不影响角色操作。参数修改仍在下一次入场生效。</p></div>' : ''}${group.title === '轮盘与锚点' ? '<label class="threshold-toggle"><input id="show-threshold" type="checkbox">显示移动阈值范围</label><p class="threshold-help">黄圈为首次解锁边界，越过后变青色；回圈内不会再次锁定。</p>' : ''}</section>`).join('')}<section class="setting-group"><h2>移动速度模型</h2><div class="turn-model-field"><label for="move-model">移动速度模型</label><select id="move-model" disabled><option value="0">恒定移动速度</option><option value="1">角度差曲线</option></select><p class="threshold-help">身体与实际锚点方向的最短角度差 → 基础移动速度百分比。100% 保持当前速度，80% 为当前速度的八成。默认全程 100%。</p></div><div id="move-curve-editor" hidden></div></section><section class="setting-group"><h2>锚点防抖</h2><label class="threshold-toggle"><input id="anchor-follow" type="checkbox">启用锚点跟随</label><div id="anchor-curve-editor"></div></section><section class="setting-group"><h2>朝向调试</h2><label class="threshold-toggle"><input id="show-heading" type="checkbox">显示角色朝向线</label><label class="threshold-toggle debug-toggle"><input id="show-idle-anchor" type="checkbox">待机时也显示移动锚点</label><label class="threshold-toggle debug-toggle"><input id="show-anchor-outline" type="checkbox">锚点遮挡轮廓</label><p class="threshold-help">粉红直线代表角色当前朝向；蓝点代表移动锚点；遮挡轮廓让浅蓝圆环透过角色显示。开关仅用于本次页面调试。</p></section></div>
+      <div class="panel-footer"><div class="store-actions"><button id="save-settings" class="text-button save-button" disabled>保存 JSON <span>↓</span></button><button id="restore" class="text-button" disabled>恢复默认 <span>↺</span></button></div><p id="store-status" role="status" aria-live="polite">正在读取参数…</p><p>圆环参数下次入场生效 · 其余即时生效 · 390 宽基准</p></div>
     </aside>
     <section class="stage" aria-label="游戏测试区域">
       <div class="viewport" id="viewport">
@@ -87,6 +99,16 @@ const viewport = element('viewport'), stage = document.querySelector<HTMLElement
 const joystick = element('joystick'), knob = joystick.querySelector<HTMLElement>('.knob')!;
 const controller = new MovementController();
 const game = new GameScene(viewport, controller);
+const ringEditor = new ProgressCurveEditor(element('ring-curve-editor'), () => controller.settings.ringCurve, points => {
+  controller.setRingCurve(points); settingsChanged();
+});
+const strokeEditor = new ProgressCurveEditor(element('ring-stroke-editor'),
+  () => controller.settings.ringStrokeCurve.map(p=>({time:p.completion,progress:p.width})),points=>{
+    controller.setRingStrokeCurve(points.map(p=>({completion:p.time,width:p.progress})));settingsChanged();
+  },true);
+const previewSlider=element<HTMLInputElement>('ring-preview-progress');
+previewSlider.addEventListener('input',()=>{game.rings.state.seek(previewSlider.valueAsNumber/100);game.sync(0);});
+element('ring-preview-resume').addEventListener('click',()=>game.rings.state.resume());
 const curveEditor = new TurnCurveEditor(element('turn-curve-editor'), () => controller.settings, points => {
   controller.setCurve(points); settingsChanged();
 }, () => { controller.set('curveSnapAngle', DEFAULTS.curveSnapAngle); syncSettings(); settingsChanged(); });
@@ -162,6 +184,7 @@ let resultTimer: ReturnType<typeof setTimeout> | undefined;
 function switchTraining(training: MovementController['training']) {
   captureRelease();
   controller.setTraining(training);
+  game.rings.reset();
   game.cameraZ = controller.position.z;
   clearTimeout(resultTimer); element('training-result').hidden = true;
   const obstacles = training === 'obstacles', locking = training === 'locking';
@@ -262,6 +285,7 @@ function syncSettings() {
   element<HTMLSelectElement>('move-model').value = String(controller.settings.moveModel);
   element('move-curve-editor').hidden = controller.settings.moveModel !== 1;
   anchorEditor.render();
+  ringEditor.render();strokeEditor.render();
   element<HTMLInputElement>('anchor-follow').checked = !!controller.settings.anchorFollow;
   element<HTMLInputElement>('show-threshold').checked = !!controller.settings.showThreshold;
   document.querySelectorAll<HTMLInputElement>('[data-setting]').forEach(input => {
@@ -310,6 +334,7 @@ element('restore').addEventListener('click', () => {
   controller.setLockCurve(DEFAULTS.lockTurnCurve);
   controller.setMoveCurve(DEFAULTS.moveCurve);
   controller.setAnchorCurve(DEFAULTS.anchorCurve);
+  controller.setRingCurve(DEFAULTS.ringCurve);controller.setRingStrokeCurve(DEFAULTS.ringStrokeCurve);
   syncSettings(); settingsChanged();
 });
 saveButton.addEventListener('click', async () => {
@@ -394,6 +419,12 @@ function frame(time: number) {
     }
     game.sync(step); remaining -= step;
   }
+  const rings=game.rings.state,active=rings.targetId!==null;
+  previewSlider.disabled=!active;previewSlider.value=String(rings.completion*100);
+  previewSlider.style.setProperty('--fill',`${rings.completion*100}%`);
+  element('ring-preview').classList.toggle('active',active);
+  element<HTMLButtonElement>('ring-preview-resume').disabled=!active||rings.preview===null;
+  element('ring-preview-label').textContent=active?`${(rings.completion*100).toFixed(1)}% · ${rings.preview===null?'自动':'手动预览'} · ${rings.stroke.toFixed(2)} px`:'未锁定';
   game.render();
   uiTime += dt; fpsTime += dt; frameCount++;
   if (uiTime >= 0.08) { updateTelemetry(); uiTime = 0; }
@@ -409,6 +440,7 @@ async function start() {
     controller.setLockCurve(loaded.lockTurnCurve);
     controller.setMoveCurve(loaded.moveCurve);
     controller.setAnchorCurve(loaded.anchorCurve);
+    controller.setRingCurve(loaded.ringCurve);controller.setRingStrokeCurve(loaded.ringStrokeCurve);
     savedSettings = JSON.stringify(controller.settings);
     showStoreStatus('已读取 params.json');
   } catch (error) {
@@ -432,7 +464,7 @@ async function start() {
     game.renderer.setAnimationLoop(frame);
     if (import.meta.env.DEV) {
       Object.assign(window, { __ARCHERO__: {
-        snapshot: () => ({ ...controller.snapshot(), settings: { ...controller.settings }, center: { ...controller.center }, cameraZ: game.cameraZ, cameraX: game.camera.position.x, footNdc: game.player.position.clone().project(game.camera).toArray(), anchorNdc: game.anchor.position.clone().project(game.camera).toArray(), trainingTargets: game.trainingTargetsSnapshot(), attack: game.animation.snapshot(), runWeight: game.blend.weight, runTime: game.run.time, runTimeScale: game.run.getEffectiveTimeScale(), idleTimeScale: game.idle.getEffectiveTimeScale(), debug: { headingVisible: game.headingGuide.visible, heading: game.headingGuide.rotation.y, anchorVisible: game.anchor.visible, anchorOutlineVisible: game.anchor.visible && game.anchorOutline.visible, lockRangeVisible: game.lockRangeGuide.visible, lockRangeRadius: game.lockRangeGuide.scale.x, lockMarkerVisible: game.lockMarker.visible, lockMarkerPosition: game.lockMarker.position.toArray(), candidateMarkerVisible: game.candidateMarker.visible }, renderer: 'webgpu', ready }),
+        snapshot: () => ({ ...controller.snapshot(), settings: { ...controller.settings }, center: { ...controller.center }, cameraZ: game.cameraZ, cameraX: game.camera.position.x, footNdc: game.player.position.clone().project(game.camera).toArray(), anchorNdc: game.anchor.position.clone().project(game.camera).toArray(), trainingTargets: game.trainingTargetsSnapshot(), attack: game.animation.snapshot(), runWeight: game.blend.weight, runTime: game.run.time, runTimeScale: game.run.getEffectiveTimeScale(), idleTimeScale: game.idle.getEffectiveTimeScale(), debug: { headingVisible: game.headingGuide.visible, heading: game.headingGuide.rotation.y, anchorVisible: game.anchor.visible, anchorOutlineVisible: game.anchor.visible && game.anchorOutline.visible, lockRangeVisible: game.lockRangeGuide.visible, lockRangeRadius: game.lockRangeGuide.scale.x, rings: game.rings.state.snapshot(), candidateMarkerVisible: game.candidateMarker.visible }, renderer: 'webgpu', ready }),
       } });
     }
   } catch (error) {

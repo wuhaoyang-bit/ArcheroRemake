@@ -61,21 +61,26 @@ public final class SettingsBridge {
                 canonical.put(key, value);
             }
             // Persist every independent curve, including the new lock rotation curve.
-            for (String curveKey : new String[]{"turnCurve", "lockTurnCurve", "moveCurve", "anchorCurve"}) {
+            for (String curveKey : new String[]{"turnCurve", "lockTurnCurve", "moveCurve", "anchorCurve", "ringCurve", "ringStrokeCurve"}) {
                 boolean anchor = curveKey.equals("anchorCurve");
-                String axis = anchor ? "distance" : "angle";
+                boolean stroke = curveKey.equals("ringStrokeCurve");
+                boolean ring = curveKey.equals("ringCurve");
+                String axis = stroke ? "completion" : ring ? "time" : anchor ? "distance" : "angle";
+                String ordinate = stroke ? "width" : ring ? "progress" : "speed";
                 JSONArray curve = values.getJSONArray(curveKey);
                 if (curve.length() < 2 || curve.length() > 128) return failure("曲线控制点数量无效");
                 JSONArray cleanCurve = new JSONArray();
-                double previous = -1;
+                double previous = -1, previousValue = -1;
                 for (int i = 0; i < curve.length(); i++) {
                     JSONObject point = curve.getJSONObject(i);
-                    if (!(point.get(axis) instanceof Number) || !(point.get("speed") instanceof Number)) return failure("曲线参数必须是数字");
-                    double angle = point.getDouble(axis), speed = point.getDouble("speed");
-                    if (!Double.isFinite(angle) || !Double.isFinite(speed) || angle <= previous || angle > (anchor ? 100 : 180) || angle < 0 || speed < 0 || (anchor && speed > 10000)) return failure("曲线参数无效");
-                    if ((i == 0 && angle != 0) || (!anchor && i == curve.length() - 1 && angle != 180)) return failure("必须保留曲线端点");
-                    cleanCurve.put(new JSONObject().put(axis, angle).put("speed", speed));
-                    previous = angle;
+                    if (!(point.get(axis) instanceof Number) || !(point.get(ordinate) instanceof Number)) return failure("曲线参数必须是数字");
+                    double angle = point.getDouble(axis), speed = point.getDouble(ordinate);
+                    if (!Double.isFinite(angle) || !Double.isFinite(speed) || angle <= previous || angle > (anchor || ring || stroke ? 100 : 180) || angle < 0 || speed < 0 || (anchor && speed > 10000)) return failure("曲线参数无效");
+                    if (stroke && speed > 1000) return failure("粗细倍率无效");
+                    if (ring && (speed > 100 || speed < previousValue || (i == 0 && speed != 0) || (i == curve.length() - 1 && speed != 100))) return failure("收缩完成度无效");
+                    if ((i == 0 && angle != 0) || (!anchor && i == curve.length() - 1 && angle != (ring || stroke ? 100 : 180))) return failure("必须保留曲线端点");
+                    cleanCurve.put(new JSONObject().put(axis, angle).put(ordinate, speed));
+                    previous = angle; previousValue = speed;
                 }
                 canonical.put(curveKey, cleanCurve);
             }

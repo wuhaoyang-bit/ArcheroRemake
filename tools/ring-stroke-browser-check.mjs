@@ -1,0 +1,46 @@
+import {chromium} from '@playwright/test';
+import assert from 'node:assert/strict';
+import {readFile,mkdir,writeFile} from 'node:fs/promises';
+const original=await readFile('public/params.json','utf8');
+let saved={version:1,settings:{...JSON.parse(original).settings,targetModel:0,lockRange:30,ringDuration:1,ringLinkThreshold:95,ringLinkStroke:1,ringStrokeCurve:[{completion:0,width:100},{completion:100,width:100}]}};
+const browser=await chromium.launch({executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',args:['--enable-unsafe-webgpu']});
+const errors=[];
+const snapshot=p=>p.evaluate(()=>window.__ARCHERO__.snapshot());
+const frames=p=>p.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
+try{
+ const p=await browser.newPage({viewport:{width:1440,height:1100}});p.on('pageerror',e=>errors.push(e.message));
+ await p.route('**/params.json',r=>r.fulfill({json:saved}));await p.route('**/__save-params',async r=>{saved=r.request().postDataJSON();await r.fulfill({json:{ok:true}})});
+ await p.goto('http://localhost:5173');await p.waitForFunction(()=>window.__ARCHERO__?.snapshot().ready);
+ const slider=p.locator('#ring-preview-progress');assert.ok(await slider.isDisabled());
+ const root=p.locator('#ring-stroke-editor');await root.locator('[data-curve=expand]').click();const large=p.locator('.curve-dialog[open] .curve-large');
+ assert.equal(await large.locator('[data-curve=edit]').isDisabled(),false);assert.ok(await large.locator('[data-curve=delete]').isDisabled());
+ await large.locator('[data-curve=edit]').click();const form=p.locator('.curve-number-dialog[open]');assert.ok(await form.locator('[name=time]').getAttribute('readonly')!==null);
+ await form.locator('[name=progress]').fill('200');await form.locator('[type=submit]').click();
+ const b=await large.locator('svg').boundingBox(),xy=(x,y)=>({x:b.x+(70+x*6.2)*b.width/720,y:b.y+(345-y/1000*300)*b.height/400});
+ let a=xy(50,300);await p.mouse.dblclick(a.x,a.y);assert.ok((await snapshot(p)).settings.ringStrokeCurve.some(v=>Math.abs(v.completion-50)<.2));
+ const end=xy(100,200),dest=xy(90,250);await p.mouse.move(end.x,end.y);await p.mouse.down();await p.mouse.move(dest.x,dest.y,{steps:5});await p.mouse.up();
+ let points=(await snapshot(p)).settings.ringStrokeCurve;assert.equal(points.at(-1).completion,100);assert.ok(Math.abs(points.at(-1).width-250)<1);
+ await p.locator('.curve-dialog[open] .curve-close').click();
+ await p.locator('#switch-locking-training').click();const v=await p.locator('#viewport').boundingBox();await p.mouse.click(v.x+v.width*.5,v.y+v.height*.6);
+ await frames(p);assert.equal(await slider.isDisabled(),false);
+ await slider.evaluate(e=>{e.value='50';e.dispatchEvent(new Event('input',{bubbles:true}))});await frames(p);
+ let state=(await snapshot(p)).debug.rings;assert.equal(state.completion,.5);assert.equal(await slider.evaluate(e=>e.style.getPropertyValue('--fill')),'50%');assert.equal(state.preview,.5);assert.ok(Math.abs(state.stroke/state.config.ringTargetStroke-3)<.03);
+ const radius=state.radius;await p.waitForTimeout(250);assert.equal((await snapshot(p)).debug.rings.radius,radius);
+ await p.locator('#target-model').selectOption('1');await frames(p);assert.equal((await snapshot(p)).debug.rings.radius,radius);
+ await p.locator('#ring-preview-resume').click();await p.waitForFunction(()=>window.__ARCHERO__.snapshot().debug.rings.completion===1);assert.equal((await snapshot(p)).debug.rings.preview,null);
+ await slider.evaluate(e=>{e.value='95';e.dispatchEvent(new Event('input',{bubbles:true}))});await frames(p);await slider.scrollIntoViewIfNeeded();
+ const line=p.locator('[data-ring-link]');assert.equal(await line.evaluate(e=>getComputedStyle(e).display),'inline');
+ const geometry=await p.locator('.lock-rings').evaluate(svg=>{
+   const get=(node,key)=>Number(node.getAttribute(key));const a=svg.querySelector('[data-ring=player]'),b=svg.querySelector('[data-ring=target]'),l=svg.querySelector('line');
+   return {start:Math.hypot(get(l,'x1')-get(a,'cx'),get(l,'y1')-get(a,'cy')),end:Math.hypot(get(l,'x2')-get(b,'cx'),get(l,'y2')-get(b,'cy')),ra:get(a,'r')+get(a,'stroke-width')/2,rb:get(b,'r')+get(b,'stroke-width')/2};
+ });assert.ok(Math.abs(geometry.start-geometry.ra)<1e-6);assert.ok(Math.abs(geometry.end-geometry.rb)<1e-6);
+ await slider.evaluate(e=>{e.value='94.9';e.dispatchEvent(new Event('input',{bubbles:true}))});await frames(p);assert.equal(await line.evaluate(e=>getComputedStyle(e).display),'none');
+ await slider.evaluate(e=>{e.value='95';e.dispatchEvent(new Event('input',{bubbles:true}))});await frames(p);assert.equal(await line.evaluate(e=>getComputedStyle(e).display),'inline');
+ await mkdir('analysis/lock-rings-checks',{recursive:true});await p.screenshot({path:'analysis/lock-rings-checks/stroke-preview.png'});
+ await p.locator('#save-settings').click();await p.waitForFunction(()=>document.querySelector('#store-status').textContent.includes('已写入'));
+ await p.reload();await p.waitForFunction(()=>window.__ARCHERO__?.snapshot().ready);assert.deepEqual((await snapshot(p)).settings.ringStrokeCurve,points);assert.ok(await slider.isDisabled());assert.equal((await snapshot(p)).debug.rings.preview,null);
+ await p.setViewportSize({width:390,height:844});await p.locator('#switch-locking-training').click();await p.mouse.click(190,600);await frames(p);await p.locator('#open-settings').click();await slider.scrollIntoViewIfNeeded();assert.equal(await slider.isDisabled(),false);
+ await slider.focus();await slider.press('Home');await slider.press('ArrowRight');await frames(p);assert.ok((await snapshot(p)).debug.rings.preview!==null);
+ assert.deepEqual(errors,[]);assert.equal(await readFile('public/params.json','utf8'),original);
+ console.log('PASS stroke endpoint editing, add/drag, completion preview, handoff/freeze/resume, save/reload, mobile slider; user parameters unchanged');
+}finally{await browser.close()}
