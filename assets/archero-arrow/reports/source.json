@@ -1,0 +1,25 @@
+{
+  "unitypy": "1.25.4",
+  "source": "/Applications/\u5f13\u7bad\u4f20\u8bf4.app/Wrapper/ProductName.app/Data/resources.assets",
+  "externals": [
+    "<FileIdentifier(globalgamemanagers.assets)>",
+    "<FileIdentifier(sharedassets0.assets)>",
+    "<FileIdentifier(Resources/unity_builtin_extra)>",
+    "<FileIdentifier(Library/unity default resources)>"
+  ],
+  "shaders": {
+    "7221": "H3D/InGame/Others/Scroll 2 Layers Sine AlphaBlended",
+    "7202": "Legacy Shaders/Particles/Alpha Blended",
+    "7248": "Custom/OutLine2"
+  },
+  "roots": [
+    [
+      "Bullet1001",
+      28921
+    ],
+    [
+      "1001_01",
+      49584
+    ]
+  ]
+}

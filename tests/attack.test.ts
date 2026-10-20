@@ -113,3 +113,27 @@ test('bow phase join retains both seam poses and all source samples at strictly 
   assert.equal(optimized.tracks[0].getInterpolation(),THREE.InterpolateLinear);
   assert.equal(constant.getInterpolation(),THREE.InterpolateDiscrete);
 });
+
+test('release callbacks occur once per cycle at the sampled release pose, including multiple crossed loops', () => {
+  for (const hz of [30, 60, 120]) {
+    const { animation, attack } = animator();
+    const releases: number[] = [];
+    for (let i = 0; i < hz * 3; i++) animation.update(1/hz, 'idle', 1, 0, 1, remainder => {
+      near(attack.time, .55); releases.push((i + 1) / hz - remainder);
+    });
+    assert.equal(releases.length, 3); releases.forEach((t, i) => near(t, .55 + i));
+    animation.update(0, 'idle', 1, 0, 1, () => assert.fail('zero time cannot emit'));
+    animation.update(1, 'in-place', null, 0, 1, () => assert.fail('cancelled attack cannot emit'));
+  }
+  const { animation } = animator(); const remaining: number[] = [];
+  animation.update(3, 'idle', 1, 0, 1, r => remaining.push(r));
+  assert.equal(remaining.length, 3); remaining.forEach((r, i) => near(r, 2.45 - i));
+});
+
+test('interrupting before release emits nothing; restart waits for a full draw', () => {
+  const { animation } = animator(); let count = 0; const emit = () => count++;
+  animation.update(.4, 'idle', 1, 0, 1, emit);
+  animation.update(.3, 'in-place', null, 0, 1, emit); assert.equal(count, 0);
+  animation.update(.4, 'idle', 2, 0, 1, emit); assert.equal(count, 0);
+  animation.update(.2, 'idle', 2, 0, 1, emit); assert.equal(count, 1);
+});

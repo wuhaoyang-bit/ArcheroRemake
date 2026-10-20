@@ -1,0 +1,23 @@
+MESH USER 6841 child 45075 GoodsCreate1102/child
+MESH USER 6847 child 38302 1010103/child
+MESH USER 6847 child 38303 1001_03/child
+MESH USER 6847 child 38304 1010102/child
+MESH USER 6847 child 38305 1001_01/child
+MESH USER 6847 child 38306 1010101/child
+MESH USER 6846 child 58885 3097_01/rotate/CrossBow_1/Turret/child
+MESH USER 6752 Arrow_v1 80880 3017_02/rotate/Toon Skeleton Archer-Green/RigPelvis/RigSpine1/RigSpine2/RigRibcage/RigLArm1/RigLArm2/RigLArmPalm/Dummy-LHandWeapon/Dummy-Arrow/Arrow_v1
+MESH USER 6833 Arrow 101226 3017_02/rotate/Toon Skeleton Archer-Green/Arrow
+MESH USER 6833 Arrow 126003 3017_01/rotate/Toon Skeleton Archer-Green/RigPelvis/RigSpine1/RigSpine2/RigRibcage/RigLArm1/RigLArm2/RigLArmPalm/Dummy-LHandWeapon/Dummy-Arrow/Arrow
+MESH USER 6847 child 149662 101001/child
+MESH USER 6847 child 160424 1317_01/xr_vfx_bulletarrowfire01/child
+RESOURCE effect/battle/wing_of_valentine_arrow_explode_eff {'m_FileID': 4, 'm_PathID': 191973}
+RESOURCE game/bullet/bullet1001 {'m_FileID': 4, 'm_PathID': 28921}
+RESOURCE game/bullet/bullet100101 {'m_FileID': 4, 'm_PathID': 54155}
+RESOURCE game/bullet/bullet100102 {'m_FileID': 4, 'm_PathID': 61881}
+RESOURCE game/bullet/bullet100103 {'m_FileID': 4, 'm_PathID': 175101}
+RESOURCE game/bullet/bullet100104 {'m_FileID': 4, 'm_PathID': 183548}
+RESOURCE game/bullet/bullet100105 {'m_FileID': 4, 'm_PathID': 153856}
+RESOURCE game/map/guide/guide_arrow {'m_FileID': 4, 'm_PathID': 29306}
+RESOURCE uipanel/act5th/hunting/act5thhuntingarrow {'m_FileID': 4, 'm_PathID': 112794}
+SCRIPT {'m_Name': 'Bullet1001', 'm_ExecutionOrder': 0, 'm_PropertiesHash': {'bytes[0]': 204, 'bytes[1]': 58, 'bytes[2]': 242, 'bytes[3]': 147, 'bytes[4]': 147, 'bytes[5]': 58, 'bytes[6]': 214, 'bytes[7]': 166, 'bytes[8]': 19, 'bytes[9]': 80, 'bytes[10]': 209, 'bytes[11]': 52, 'bytes[12]': 90, 'bytes[13]': 81, 'bytes[14]': 197, 'bytes[15]': 11}, 'm_ClassName': 'Bullet1001', 'm_Namespace': '', 'm_AssemblyName': 'Assembly-CSharp'}
+BULLET SCRIPT RAW 00000000f9700000000000000100000001000000152300000000000000000000

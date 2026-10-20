@@ -14,7 +14,7 @@ import { MovementController } from '../src/controller.ts';
 test('requested defaults match the screenshot, with speed 16 / upper limit 30 and independent Run rate', () => {
   assert.deepEqual(DEFAULTS, {
     joystickRadius: 64, unlockDistance: 12, showThreshold: 0, anchorScale: 0.036, anchorFollow: 1, anchorCurve: DEFAULTS.anchorCurve,
-    moveSpeed: 16, moveModel: 0, moveCurve: DEFAULTS.moveCurve, turnSpeed: 1200, turnModel: 0, curveSnapAngle: 0.1, turnCurve: exponentialCurve(10.4), blendDuration: 0.06, runSpeed: 1.6,
+    moveSpeed: 16, moveModel: 0, moveCurve: DEFAULTS.moveCurve, turnSpeed: 1200, turnModel: 0, curveSnapAngle: 0.1, turnCurve: exponentialCurve(10.4), blendDuration: 0.06, runSpeed: 1.6, bowScale: 1.5, arrowScale: 1.5, arrowSpeed: 50,
     slerpResponse: 40.872, slerpSnapAngle: 0.1, smoothTime: 0.03039, smoothSnapAngle: 0.1,
     targetModel: 0, lockRange: 22, showLockRange: 0, targetCone: 90, targetAdvantage: 8, targetDwell: 160,
     ringPlayerDiameter: 4, ringTargetDiameter: 8, ringPlayerStroke: 1, ringTargetStroke: 1.2, ringWaveDuration:.4,ringWaveDistance:32,ringWaveStroke:1.2,ringWaveCurve:DEFAULTS.ringWaveCurve,ringSwitchDuration:.25,ringSwitchAmount:150,ringSwitchCurve:DEFAULTS.ringSwitchCurve,ringLinkThreshold:95, ringLinkStroke:1,
@@ -30,9 +30,9 @@ test('requested defaults match the screenshot, with speed 16 / upper limit 30 an
 });
 
 test('saved files round-trip only known tuning values; missing new fields default; invalid data cannot poison state', () => {
-  const document = settingsDocument({ ...DEFAULTS, moveSpeed: 24, position: { x: 99, z: 99 }, remembered: { x: 1, z: 2 } } as typeof DEFAULTS);
+  const document = settingsDocument({ ...DEFAULTS, moveSpeed: 24, bowScale: 2, arrowScale: 6, arrowSpeed: 120, position: { x: 99, z: 99 }, remembered: { x: 1, z: 2 } } as typeof DEFAULTS);
   assert.deepEqual(Object.keys(document), ['version', 'settings']);
-  assert.deepEqual(parseSettingsDocument(JSON.parse(JSON.stringify(document))), { ...DEFAULTS, moveSpeed: 24 });
+  assert.deepEqual(parseSettingsDocument(JSON.parse(JSON.stringify(document))), { ...DEFAULTS, moveSpeed: 24, bowScale: 2, arrowScale: 6, arrowSpeed: 120 });
   assert.equal('position' in document.settings, false); assert.equal('remembered' in document.settings, false);
   assert.equal(parseSettingsDocument({ version: 1, settings: { moveSpeed: 18 } }).runSpeed, 1.6);
   assert.equal(parseSettingsDocument({ version: 1, settings: { moveSpeed: 90 } }).moveSpeed, 30);

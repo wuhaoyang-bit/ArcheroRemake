@@ -1,0 +1,426 @@
+{
+  "163": {
+    "name": "eff_bow_bullet_a03_mask",
+    "textures": {
+      "_DetailTex": {
+        "file": "eff_moba_fuhuo_liuguang01_5858.png",
+        "scale": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "offset": {
+          "x": 0.0,
+          "y": 0.0
+        }
+      },
+      "_MainTex": {
+        "file": "eff_bow_bullet_a02_mask_6359.png",
+        "scale": {
+          "x": 1.0,
+          "y": 1.0
+        },
+        "offset": {
+          "x": 0.0,
+          "y": 0.0
+        }
+      },
+      "_MaskTex": {
+        "file": "eff_gudaiyijidating_10_Mask_4407.png",
+        "scale": {
+          "x": 1.0,
+          "y": 1.0
+        },
+        "offset": {
+          "x": 0.0,
+          "y": 0.0
+        }
+      }
+    },
+    "properties": {
+      "m_TexEnvs": [
+        [
+          "_DetailTex",
+          {
+            "m_Texture": {
+              "m_FileID": 0,
+              "m_PathID": 5858
+            },
+            "m_Scale": {
+              "x": 0.5,
+              "y": 0.5
+            },
+            "m_Offset": {
+              "x": 0.0,
+              "y": 0.0
+            }
+          }
+        ],
+        [
+          "_MainTex",
+          {
+            "m_Texture": {
+              "m_FileID": 0,
+              "m_PathID": 6359
+            },
+            "m_Scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "m_Offset": {
+              "x": 0.0,
+              "y": 0.0
+            }
+          }
+        ],
+        [
+          "_MaskTex",
+          {
+            "m_Texture": {
+              "m_FileID": 0,
+              "m_PathID": 4407
+            },
+            "m_Scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "m_Offset": {
+              "x": 0.0,
+              "y": 0.0
+            }
+          }
+        ]
+      ],
+      "m_Ints": [],
+      "m_Floats": [
+        [
+          "_Alpha",
+          0.5770000219345093
+        ],
+        [
+          "_EffectWeaken",
+          1.0
+        ],
+        [
+          "_InvFade",
+          1.0
+        ],
+        [
+          "_MMultiplier",
+          2.0
+        ],
+        [
+          "_Scroll2X",
+          -20.0
+        ],
+        [
+          "_Scroll2Y",
+          0.0
+        ],
+        [
+          "_ScrollX",
+          0.0
+        ],
+        [
+          "_ScrollY",
+          0.0
+        ],
+        [
+          "_SineAmplX",
+          0.0
+        ],
+        [
+          "_SineAmplX2",
+          0.0
+        ],
+        [
+          "_SineAmplY",
+          0.0
+        ],
+        [
+          "_SineAmplY2",
+          0.0
+        ],
+        [
+          "_SineFreqX",
+          0.0
+        ],
+        [
+          "_SineFreqX2",
+          0.0
+        ],
+        [
+          "_SineFreqY",
+          0.0
+        ],
+        [
+          "_SineFreqY2",
+          0.0
+        ]
+      ],
+      "m_Colors": [
+        [
+          "_Color",
+          {
+            "r": 1.0,
+            "g": 0.0,
+            "b": 0.0,
+            "a": 1.0
+          }
+        ],
+        [
+          "_TintColor",
+          {
+            "r": 0.5,
+            "g": 0.5,
+            "b": 0.5,
+            "a": 0.5
+          }
+        ]
+      ]
+    },
+    "shader": {
+      "m_FileID": 0,
+      "m_PathID": 7221
+    }
+  },
+  "141": {
+    "name": "eff_Bullet1001_Shadow",
+    "textures": {
+      "_MainTex": {
+        "file": "Bullet1001_Shadow_4698.png",
+        "scale": {
+          "x": 1.0,
+          "y": 1.0
+        },
+        "offset": {
+          "x": 0.0,
+          "y": 0.0
+        }
+      }
+    },
+    "properties": {
+      "m_TexEnvs": [
+        [
+          "_MainTex",
+          {
+            "m_Texture": {
+              "m_FileID": 0,
+              "m_PathID": 4698
+            },
+            "m_Scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "m_Offset": {
+              "x": 0.0,
+              "y": 0.0
+            }
+          }
+        ]
+      ],
+      "m_Ints": [],
+      "m_Floats": [
+        [
+          "_BumpScale",
+          1.0
+        ],
+        [
+          "_Cutoff",
+          0.5
+        ],
+        [
+          "_DetailNormalMapScale",
+          1.0
+        ],
+        [
+          "_DstBlend",
+          0.0
+        ],
+        [
+          "_GlossMapScale",
+          1.0
+        ],
+        [
+          "_Glossiness",
+          0.5
+        ],
+        [
+          "_GlossyReflections",
+          1.0
+        ],
+        [
+          "_InvFade",
+          1.0
+        ],
+        [
+          "_Metallic",
+          0.0
+        ],
+        [
+          "_Mode",
+          0.0
+        ],
+        [
+          "_OcclusionStrength",
+          1.0
+        ],
+        [
+          "_Parallax",
+          0.019999999552965164
+        ],
+        [
+          "_SmoothnessTextureChannel",
+          0.0
+        ],
+        [
+          "_SpecularHighlights",
+          1.0
+        ],
+        [
+          "_SrcBlend",
+          1.0
+        ],
+        [
+          "_UVSec",
+          0.0
+        ],
+        [
+          "_ZWrite",
+          1.0
+        ]
+      ],
+      "m_Colors": [
+        [
+          "_Color",
+          {
+            "r": 1.0,
+            "g": 1.0,
+            "b": 1.0,
+            "a": 1.0
+          }
+        ],
+        [
+          "_EmissionColor",
+          {
+            "r": 0.0,
+            "g": 0.0,
+            "b": 0.0,
+            "a": 1.0
+          }
+        ],
+        [
+          "_TintColor",
+          {
+            "r": 0.3970588445663452,
+            "g": 0.3970588445663452,
+            "b": 0.3970588445663452,
+            "a": 0.5
+          }
+        ]
+      ]
+    },
+    "shader": {
+      "m_FileID": 0,
+      "m_PathID": 7202
+    }
+  },
+  "142": {
+    "name": "eff_bow_02",
+    "textures": {
+      "_MainTex": {
+        "file": "eff_bow_02_3625.png",
+        "scale": {
+          "x": 1.0,
+          "y": 1.0
+        },
+        "offset": {
+          "x": 0.0,
+          "y": 0.0
+        }
+      }
+    },
+    "properties": {
+      "m_TexEnvs": [
+        [
+          "_MainTex",
+          {
+            "m_Texture": {
+              "m_FileID": 0,
+              "m_PathID": 3625
+            },
+            "m_Scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "m_Offset": {
+              "x": 0.0,
+              "y": 0.0
+            }
+          }
+        ]
+      ],
+      "m_Ints": [],
+      "m_Floats": [
+        [
+          "_Factor",
+          0.05999999865889549
+        ],
+        [
+          "_RimPower",
+          0.0
+        ]
+      ],
+      "m_Colors": [
+        [
+          "_Color",
+          {
+            "r": 1.0,
+            "g": 1.0,
+            "b": 1.0,
+            "a": 1.0
+          }
+        ],
+        [
+          "_MainColor",
+          {
+            "r": 1.0,
+            "g": 1.0,
+            "b": 1.0,
+            "a": 1.0
+          }
+        ],
+        [
+          "_OutLineColor",
+          {
+            "r": 0.27000001072883606,
+            "g": 0.4099999964237213,
+            "b": 0.27000001072883606,
+            "a": 1.0
+          }
+        ],
+        [
+          "_RimColor",
+          {
+            "r": 1.0,
+            "g": 1.0,
+            "b": 1.0,
+            "a": 1.0
+          }
+        ],
+        [
+          "_TextureColor",
+          {
+            "r": 0.0,
+            "g": 0.0,
+            "b": 0.0,
+            "a": 1.0
+          }
+        ]
+      ]
+    },
+    "shader": {
+      "m_FileID": 0,
+      "m_PathID": 7248
+    }
+  }
+}

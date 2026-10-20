@@ -1,0 +1,26 @@
+{
+  "m_Component": [
+    {
+      "component": {
+        "m_FileID": 0,
+        "m_PathID": 197883
+      }
+    },
+    {
+      "component": {
+        "m_FileID": 0,
+        "m_PathID": 261665
+      }
+    },
+    {
+      "component": {
+        "m_FileID": 0,
+        "m_PathID": 257765
+      }
+    }
+  ],
+  "m_Layer": 0,
+  "m_Name": "shadow",
+  "m_Tag": 0,
+  "m_IsActive": true
+}

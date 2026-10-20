@@ -1,3 +1,4 @@
+import { ArrowProjectiles } from './arrow-projectiles.ts';
 import { LockRingView } from './lock-ring-view.ts';
 import { buildTraining } from './training-scene.ts';
 import { buildLockingTraining } from './locking-training-scene.ts';
@@ -117,6 +118,10 @@ export class GameScene {
   rings: LockRingView;
   cameraZ: number;
   animation!: CharacterAnimation;
+  arrows?: ArrowProjectiles;
+  private bowGrip!: THREE.Object3D;
+  private shotOrigin = new THREE.Vector3();
+  private shotAim = new THREE.Vector3();
   blend = new AnimationBlend();
   mixer!: THREE.AnimationMixer;
   idle!: THREE.AnimationAction;
@@ -194,7 +199,10 @@ export class GameScene {
     }
     this.candidateMarker.renderOrder = 102;
 
-    const character = await loadCharacter();
+    const [character, arrows] = await Promise.all([loadCharacter(), ArrowProjectiles.load(this.scene)]);
+    this.arrows = arrows;
+    this.arrows.setTargets(this.trainingVisual?.children.filter(o => o.userData.practiceTarget) ?? []);
+    this.bowGrip = character.model.getObjectByName('RedBowGrip')!;
     this.body.add(character.model);
     this.mixer = character.mixer;
     this.idle = character.idle;
@@ -217,6 +225,7 @@ export class GameScene {
       : this.trainingMode === 'locking' ? buildLockingTraining(this.roomSize, this.roomLength) : undefined;
     if (this.trainingVisual) this.room.add(this.trainingVisual);
     this.scene.add(this.room);
+    this.arrows?.setTargets(this.trainingVisual?.children.filter(o => o.userData.practiceTarget) ?? []);
   }
 
   /** Read-only visual diagnostics for the development browser checks. */
@@ -264,7 +273,18 @@ export class GameScene {
       marker.visible = ctl.training === 'locking' && target !== null;
       if (target) marker.position.set(target.x, .08, target.z);
     }
-    this.animation.update(dt, ctl.mode, ctl.activeAttackRequest, ctl.settings.blendDuration, ctl.settings.runSpeed);
+    this.trainingVisual?.updateWorldMatrix(true, true);
+    this.bowGrip.scale.setScalar(ctl.settings.bowScale);
+    this.arrows?.setScale(ctl.settings.arrowScale);
+    this.arrows?.setSpeed(ctl.settings.arrowSpeed);
+    this.arrows?.update(dt);
+    this.animation.update(dt, ctl.mode, ctl.activeAttackRequest, ctl.settings.blendDuration, ctl.settings.runSpeed, remaining => {
+      const enemy = ctl.targeting.target;
+      if (!enemy || ctl.training !== 'locking') return;
+      this.bowGrip.getWorldPosition(this.shotOrigin);
+      this.shotAim.set(enemy.x, 1.65, enemy.z);
+      this.arrows?.fire(this.shotOrigin, this.shotAim, Math.max(32, ctl.settings.lockRange + 4), remaining);
+    });
     this.cameraZ = follow(this.cameraZ, ctl.position.z, ctl.settings.cameraResponse, dt);
     this.camera.position.set(0, 24, this.cameraZ + 24 / Math.tan(this.tilt));
     this.camera.lookAt(0, 0, this.cameraZ);

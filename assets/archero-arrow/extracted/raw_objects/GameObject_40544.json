@@ -1,0 +1,26 @@
+{
+  "m_Component": [
+    {
+      "component": {
+        "m_FileID": 0,
+        "m_PathID": 210826
+      }
+    },
+    {
+      "component": {
+        "m_FileID": 0,
+        "m_PathID": 261549
+      }
+    },
+    {
+      "component": {
+        "m_FileID": 0,
+        "m_PathID": 257951
+      }
+    }
+  ],
+  "m_Layer": 0,
+  "m_Name": "trail",
+  "m_Tag": 0,
+  "m_IsActive": true
+}

@@ -47,6 +47,7 @@ export const DEFAULTS = {
   lockSmoothSnapAngle: 0.1,
   blendDuration: 0.06,
   runSpeed: 1.6,
+  bowScale: 1.5, arrowScale: 1.5, arrowSpeed: 50,
   roomSize: 16,
   roomLength: 38,
   cameraResponse: 9,
@@ -82,6 +83,7 @@ export const LIMITS: Record<SettingKey, [number, number, number]> = {
   lockSmoothTime: [0.005, 0.5, 0.00001], lockSmoothSnapAngle: [0.001, 5, 0.001],
   turnSpeed: [90, 1800, 10], blendDuration: [0, 0.6, 0.01],
   runSpeed: [0.25, 4, 0.05],
+  bowScale: [0.1, 6, 0.1], arrowScale: [0.1, 6, 0.1], arrowSpeed: [1, 200, 1],
   roomSize: [8, 24, 1], roomLength: [8, 80, 1], cameraResponse: [2, 24, 0.5],
   cameraOffset: [-25, 25, 1], viewWidth: [12, 28, 0.5],
 };

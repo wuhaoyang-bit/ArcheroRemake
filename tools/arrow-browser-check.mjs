@@ -1,0 +1,66 @@
+import { chromium } from '@playwright/test';
+import assert from 'node:assert/strict';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+const out='analysis/arrow-checks'; await mkdir(out,{recursive:true});
+const original=await readFile('public/params.json','utf8');
+const settings={...JSON.parse(original).settings,bowScale:1.5,arrowScale:1.5,arrowSpeed:50,roomSize:16,roomLength:38,targetModel:1,targetCone:45,lockRange:30,anchorFollow:0};
+const browser=await chromium.launch({executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',args:['--enable-unsafe-webgpu']});
+const errors=[];
+try {
+ const page=await browser.newPage({viewport:{width:1440,height:1100}});
+ page.on('pageerror',e=>errors.push(e.message));
+ await page.route('**/params.json',r=>r.fulfill({json:{version:1,settings}}));
+ await page.goto(process.env.BASE_URL||'http://localhost:5173');
+ await page.waitForFunction(()=>window.__ARCHERO__?.snapshot().ready);
+ await page.locator('#switch-locking-training').click();
+ const box=await page.locator('#viewport').boundingBox(),x=box.x+box.width/2,y=box.y+box.height*.65;
+ const snap=()=>page.evaluate(()=>window.__ARCHERO__.snapshot());
+ assert.equal((await snap()).arrows.fired,0);
+ assert.equal(await page.locator('#value-arrowSpeed').inputValue(),'50');
+ await page.locator('#value-arrowSpeed').evaluate(input=>{input.value='120';input.dispatchEvent(new Event('change',{bubbles:true}));});
+ await page.waitForFunction(()=>window.__ARCHERO__.snapshot().arrows.speed===120);
+ await page.locator('#value-arrowSpeed').evaluate(input=>{input.value='50';input.dispatchEvent(new Event('change',{bubbles:true}));});
+ await page.waitForFunction(()=>window.__ARCHERO__.snapshot().arrows.speed===50);
+ assert.equal((await snap()).arrows.scale,1.5);
+ for (const key of ['bowScale','arrowScale']) {
+   assert.equal(await page.locator(`#value-${key}`).inputValue(),'1.5');
+   assert.equal(await page.locator(`#slider-${key}`).getAttribute('max'),'6');
+   await page.locator(`#value-${key}`).evaluate(input=>{input.value='6';input.dispatchEvent(new Event('change',{bubbles:true}));});
+ }
+ await page.waitForFunction(()=>window.__ARCHERO__.snapshot().arrows.scale===6);
+ assert.equal((await snap()).settings.bowScale,6);
+ for (const key of ['bowScale','arrowScale']) await page.locator(`#value-${key}`).evaluate(input=>{input.value='1.5';input.dispatchEvent(new Event('change',{bubbles:true}));});
+ await page.waitForFunction(()=>window.__ARCHERO__.snapshot().arrows.scale===1.5);
+ await page.mouse.move(x,y); await page.mouse.down(); await page.mouse.move(x,y-50);
+ await page.waitForTimeout(80); await page.mouse.up();
+ await page.waitForFunction(()=>window.__ARCHERO__.snapshot().arrows.active.length>0);
+ const flying=await snap(); assert.equal(flying.targeting.target.id,'north');
+ assert.equal(flying.arrows.fired,1); assert.equal(flying.arrows.speed,50);
+ await page.locator('#viewport').screenshot({path:`${out}/flying.png`});
+ await page.waitForFunction(()=>window.__ARCHERO__.snapshot().arrows.hits>=1);
+ const hit=await snap(); assert.equal(hit.arrows.lastHit,'north'); assert.equal(hit.arrows.active.length,0);
+ assert.equal(hit.trainingTargets.length,8); // No target destruction or hit feedback.
+ await page.waitForFunction(()=>window.__ARCHERO__.snapshot().arrows.hits>=3);
+ const loop=await snap(); assert.equal(loop.arrows.fired,3); assert.equal(loop.arrows.allocated,4);
+ await page.mouse.move(x,y); await page.mouse.down();
+ const cancelled=await snap(); await page.waitForTimeout(1200);
+ assert.equal((await snap()).arrows.fired,cancelled.arrows.fired);
+ await page.mouse.up();
+ await page.waitForFunction(n=>window.__ARCHERO__.snapshot().arrows.fired>n,cancelled.arrows.fired);
+ await page.locator('#switch-locking-training').click();
+ const reset=await snap(); assert.equal(reset.arrows.active.length,0);
+ const mobile=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+ mobile.on('pageerror',e=>errors.push(e.message));
+ await mobile.route('**/params.json',r=>r.fulfill({json:{version:1,settings}}));
+ await mobile.goto(process.env.BASE_URL||'http://localhost:5173');
+ await mobile.waitForFunction(()=>window.__ARCHERO__?.snapshot().ready);
+ await mobile.locator('#switch-locking-training').tap();
+ const mb=await mobile.locator('#viewport').boundingBox();
+ await mobile.touchscreen.tap(mb.x+mb.width/2,mb.y+mb.height*.65);
+ await mobile.waitForFunction(()=>window.__ARCHERO__.snapshot().arrows.hits>=1);
+ const mobileHit=await mobile.evaluate(()=>window.__ARCHERO__.snapshot().arrows);
+ assert.equal(mobileHit.active.length,0); assert.equal(mobileHit.fired,1);
+ assert.deepEqual(errors,[]); assert.equal(await readFile('public/params.json','utf8'),original);
+ await writeFile(`${out}/report.json`,JSON.stringify({flying:flying.arrows,hit:hit.arrows,loop:loop.arrows,reset:reset.arrows,mobileHit,errors},null,2));
+ console.log('PASS real GLB: release, visible flight, immediate hit removal, repeat shots, pool reuse, interruption, room cleanup, mobile touch shot; params unchanged');
+} finally {await browser.close();}

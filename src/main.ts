@@ -27,6 +27,11 @@ const settings: { title: string; items: [SettingKey, string, string, string][] }
     ['blendDuration', '动画融合', 's', 'Idle、Run 与射箭动作的姿态融合时长，不影响实际位移；按下轮盘会立即打断射箭并切回 Run。'],
     ['runSpeed', 'Run 动画速度', '倍', '独立控制原地跑步与移动时的 Run 播放速度，不改变位移速度、Idle 或融合时长。'],
   ] },
+  { title: '弓与箭', items: [
+    ['bowScale', '弓缩放', '倍', '以握把为中心调整弓的大小，保留拉弓与回弹动作。'],
+    ['arrowSpeed', '箭飞行速度', '单位/s', '调整箭的匀速飞行速度，立即作用于飞行中的箭；不改变射箭动作频率。'],
+    ['arrowScale', '箭缩放', '倍', '调整箭的大小，立即生效，飞行速度保持不变。'],
+  ] },
   { title: '房间与镜头', items: [
     ['roomSize', '房间宽度', '单位', '调整横向可移动范围。'],
     ['roomLength', '房间纵向长度', '单位', '调整画面上下方向的可移动范围，独立于宽度。'],
@@ -537,7 +542,7 @@ async function start() {
     game.renderer.setAnimationLoop(frame);
     if (import.meta.env.DEV) {
       Object.assign(window, { __ARCHERO__: {
-        snapshot: () => ({ ...controller.snapshot(), settings: { ...controller.settings }, center: { ...controller.center }, cameraZ: game.cameraZ, cameraX: game.camera.position.x, footNdc: game.player.position.clone().project(game.camera).toArray(), anchorNdc: game.anchor.position.clone().project(game.camera).toArray(), trainingTargets: game.trainingTargetsSnapshot(), attack: game.animation.snapshot(), runWeight: game.blend.weight, runTime: game.run.time, runTimeScale: game.run.getEffectiveTimeScale(), idleTimeScale: game.idle.getEffectiveTimeScale(), debug: { headingVisible: game.headingGuide.visible, heading: game.headingGuide.rotation.y, anchorVisible: game.anchor.visible, anchorOutlineVisible: game.anchor.visible && game.anchorOutline.visible, lockRangeVisible: game.lockRangeGuide.visible, lockRangeRadius: game.lockRangeGuide.scale.x, rings: game.rings.state.snapshot(), candidateMarkerVisible: game.candidateMarker.visible }, renderer: 'webgpu', ready }),
+        snapshot: () => ({ ...controller.snapshot(), settings: { ...controller.settings }, center: { ...controller.center }, cameraZ: game.cameraZ, cameraX: game.camera.position.x, footNdc: game.player.position.clone().project(game.camera).toArray(), anchorNdc: game.anchor.position.clone().project(game.camera).toArray(), trainingTargets: game.trainingTargetsSnapshot(), attack: game.animation.snapshot(), arrows: game.arrows?.snapshot(), runWeight: game.blend.weight, runTime: game.run.time, runTimeScale: game.run.getEffectiveTimeScale(), idleTimeScale: game.idle.getEffectiveTimeScale(), debug: { headingVisible: game.headingGuide.visible, heading: game.headingGuide.rotation.y, anchorVisible: game.anchor.visible, anchorOutlineVisible: game.anchor.visible && game.anchorOutline.visible, lockRangeVisible: game.lockRangeGuide.visible, lockRangeRadius: game.lockRangeGuide.scale.x, rings: game.rings.state.snapshot(), candidateMarkerVisible: game.candidateMarker.visible }, renderer: 'webgpu', ready }),
       } });
     }
   } catch (error) {

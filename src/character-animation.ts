@@ -42,7 +42,7 @@ export class CharacterAnimation {
     attack.setEffectiveWeight(0);
   }
 
-  update(dt: number, mode: Mode, request: number | null, blendDuration: number, runSpeed: number) {
+  update(dt: number, mode: Mode, request: number | null, blendDuration: number, runSpeed: number, onRelease?: (remaining: number) => void) {
     if (request === null && this.playing) {
       // Pressing interrupts immediately; losing the target returns to Idle.
       this.attack.stop(); this.attack.setEffectiveWeight(0);
@@ -62,7 +62,22 @@ export class CharacterAnimation {
     this.idle.setEffectiveWeight((1 - runWeight) * (1 - attackWeight));
     this.run.setEffectiveWeight(runWeight * (1 - attackWeight)).setEffectiveTimeScale(runSpeed);
     this.attack.setEffectiveWeight(attackWeight);
-    this.mixer.update(dt);
+    // Sample the hand at the release pose, even when an update crosses the event.
+    // The callback receives only the post-release flight time left in this update.
+    let remaining = dt;
+    if (this.playing && onRelease && dt > 0) {
+      const duration = this.attack.getClip().duration;
+      let untilRelease = this.releaseTime - this.attack.time;
+      if (untilRelease <= 1e-9) untilRelease += duration;
+      while (untilRelease <= remaining + 1e-9) {
+        const step = Math.min(untilRelease, remaining);
+        this.mixer.update(step);
+        remaining = Math.max(0, remaining - step);
+        onRelease(remaining);
+        untilRelease = duration;
+      }
+    }
+    this.mixer.update(remaining);
 
   }
 

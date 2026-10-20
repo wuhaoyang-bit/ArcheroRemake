@@ -97,19 +97,47 @@ try {
       window.__attackPreview=async time=>{
         attack.time=time;mixer.update(0);model.updateMatrixWorld(true);renderer.render(scene,camera);
         const root=model.getObjectByName('CharacterRoot');const hands=['right','left'].map(name=>model.getObjectByName(name)?.getWorldPosition(new THREE.Vector3()).toArray());
-        return {time,root:root.getWorldPosition(new THREE.Vector3()).toArray(),hands};
+        const bow=model.getObjectByName('WeaponHand1001_gong');
+        return {time,root:root.getWorldPosition(new THREE.Vector3()).toArray(),hands,bowScale:bow.scale.toArray(),bowVertices:bow.geometry.attributes.position.count};
       };
       return {name:attack.getClip().name,duration:attack.getClip().duration,tracks:attack.getClip().tracks.length};
     });
-    assert.equal(report.name,'BowAttack');assert.equal(report.tracks,189);assert.ok(Math.abs(report.duration-1.05)<1e-6);
+    assert.equal(report.name,'BowAttack');assert.equal(report.tracks,190);assert.ok(Math.abs(report.duration-1.05)<1e-6);
     report.samples=[];
-    for(const t of [0,.15,.35,.5,.55,.7,.9,1.05]) {
+    for(const t of [0,.15,.35,.5,.55,.55+1/30,.55+1/12,.55+7/60,.7,.9,1.05]) {
       report.samples.push(await page.evaluate(t=>window.__attackPreview(t),t));
       await page.locator('#attack-preview').screenshot({path:`${out}/pose-${t.toFixed(2)}.png`});
     }
     assert.ok(report.samples.every(s=>Math.abs(s.root[0])<1e-6&&Math.abs(s.root[2])<1e-6));
+    assert.ok(report.samples.every(s=>s.bowVertices===124));
+    const scaleNear=(sample,expected)=>sample.bowScale.every((v,i)=>Math.abs(v-expected[i])<1e-4);
+    assert.ok(scaleNear(report.samples[4],[1.3,1,.8]),'Bow reaches source draw pose at character release');
+    assert.ok(scaleNear(report.samples[5],[.6,1,1.4]),'Bow plays the source recoil overshoot');
+    assert.ok(scaleNear(report.samples[7],[1,1,1]),'Bow recovers to its original shape');
     await writeFile(`${out}/animation-report.json`,JSON.stringify(report,null,2));
     assert.ok(report.samples.some(s=>Math.hypot(...s.hands[1].map((v,i)=>v-report.samples[0].hands[1][i]))>.2));
+  });
+  await check('red bow follows the front hand; attack interruption and restart reset its shape',async()=>{
+    const result=await page.evaluate(async()=>{
+      const {loadCharacter}=await import('/src/character.ts');
+      const {CharacterAnimation}=await import('/src/character-animation.ts');
+      const c=await loadCharacter();
+      const animation=new CharacterAnimation(c.mixer,c.idle,c.run,c.attack,c.attackReleaseTime);
+      const bow=c.model.getObjectByName('WeaponHand1001_gong');
+      const grip=c.model.getObjectByName('RedBowGrip');
+      const rest=bow.scale.toArray();
+      animation.update(c.attackReleaseTime+1/30,'idle',1,0,1);
+      const recoil=bow.scale.toArray();
+      animation.update(0,'in-place',null,0,1);
+      const interrupted=bow.scale.toArray();
+      animation.update(.1,'idle',2,0,1);
+      const restarted=bow.scale.toArray();
+      return {rest,recoil,interrupted,restarted,hand:grip.parent.name,oldBow:!!c.model.getObjectByName('Bow_WeaponHand101001')};
+    });
+    assert.equal(result.hand,'left');assert.equal(result.oldBow,false);
+    for(const key of ['rest','interrupted','restarted']) assert.ok(result[key].every(v=>Math.abs(v-1)<1e-6));
+    assert.ok(Math.abs(result.recoil[0]-.6)<1e-4);
+    await writeFile(`${out}/bow-integration.json`,JSON.stringify(result,null,2));
   });
   assert.deepEqual(errors,[]);assert.equal(await readFile('public/params.json','utf8'),original);
   await writeFile(`${out}/results.json`,JSON.stringify({results,errors},null,2));

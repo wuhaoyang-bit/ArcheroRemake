@@ -1,0 +1,16 @@
+{
+  "blend_open": true,
+  "glb_import": true,
+  "vertices": 146,
+  "triangles": 70,
+  "images": [
+    {
+      "name": "eff_bow_02_3625",
+      "size": [
+        128,
+        128
+      ]
+    }
+  ],
+  "animations": 0
+}

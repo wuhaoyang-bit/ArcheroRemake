@@ -1,9 +1,14 @@
 import * as THREE from 'three/webgpu';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { bowAttackClip } from './character-animation.ts';
+import { attachBow, bowScaleTrack, bowRestTrack } from './bow.ts';
 
 export async function loadCharacter() {
-  const gltf = await new GLTFLoader().loadAsync(`${import.meta.env.BASE_URL}models/archero-default.glb`);
+  const loader = new GLTFLoader();
+  const [gltf, bow] = await Promise.all([
+    loader.loadAsync(`${import.meta.env.BASE_URL}models/archero-default.glb`),
+    loader.loadAsync(`${import.meta.env.BASE_URL}models/archero-red-bow.glb`),
+  ]);
   const idleClip = THREE.AnimationClip.findByName(gltf.animations, 'Idle');
   const runClip = THREE.AnimationClip.findByName(gltf.animations, 'Run');
   if (!idleClip || !runClip) throw new Error('角色资源缺少 Idle 或 Run 动画。');
@@ -16,6 +21,9 @@ export async function loadCharacter() {
   const model = gltf.scene;
   // Remove only the weapon mesh; retain the original character bones and clips.
   model.getObjectByName('Bow_WeaponHand101001')?.removeFromParent();
+  attachBow(model, bow.scene);
+  idleClip.tracks.push(bowRestTrack());
+  runClip.tracks.push(bowRestTrack());
   model.traverse(object => {
     if (object instanceof THREE.Mesh) {
       object.castShadow = true;
@@ -27,7 +35,10 @@ export async function loadCharacter() {
   const run = mixer.clipAction(runClip).setLoop(THREE.LoopRepeat, Infinity).play();
   idle.setEffectiveWeight(1);
   run.setEffectiveWeight(0);
-  const attack = mixer.clipAction(bowAttackClip(attackPrev, attackEnd)).setEffectiveWeight(0);
+  const attackClip = bowAttackClip(attackPrev, attackEnd);
+  const attackReleaseTime = attackPrev.duration + 1 / 60;
+  attackClip.tracks.push(bowScaleTrack(bow.animations, attackReleaseTime, attackClip.duration));
+  const attack = mixer.clipAction(attackClip).setEffectiveWeight(0);
   mixer.update(0);
-  return { model, mixer, idle, run, attack, attackReleaseTime:attackPrev.duration+1/60 };
+  return { model, mixer, idle, run, attack, attackReleaseTime };
 }
