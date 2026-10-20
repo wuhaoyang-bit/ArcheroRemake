@@ -53,7 +53,7 @@ export class TurnCurveEditor {
         this.selected=angle; d.angle=angle; this.commit(points);
       });
       const end = () => { this.drag=null; this.render(); };
-      svg.addEventListener('pointerup',end); svg.addEventListener('pointercancel',end);
+      svg.addEventListener('pointerup',end); svg.addEventListener('pointercancel',end); svg.addEventListener('lostpointercapture',end);
       svg.addEventListener('dblclick',event=>{
         event.preventDefault(); const {x,y}=coords(event), point=nearest(x,y);
         if(point){this.selected=point.angle;this.edit();return;}

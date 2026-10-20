@@ -42,31 +42,39 @@
     "turnCurve": [
       {
         "angle": 0,
-        "speed": 503
+        "speed": 876
       },
       {
-        "angle": 30,
-        "speed": 1115
+        "angle": 31.22,
+        "speed": 901
       },
       {
-        "angle": 132.76,
-        "speed": 1115
+        "angle": 65.75,
+        "speed": 943
       },
       {
-        "angle": 150,
-        "speed": 1215
+        "angle": 96.34,
+        "speed": 996
       },
       {
-        "angle": 160.62,
-        "speed": 1628
+        "angle": 120.75,
+        "speed": 1208
       },
       {
-        "angle": 171.36,
-        "speed": 2103
+        "angle": 141,
+        "speed": 1542
+      },
+      {
+        "angle": 153.42,
+        "speed": 1998
+      },
+      {
+        "angle": 166.15,
+        "speed": 2660
       },
       {
         "angle": 180,
-        "speed": 2600
+        "speed": 3568
       }
     ],
     "slerpResponse": 40.872,
@@ -257,31 +265,39 @@
     "lockTurnCurve": [
       {
         "angle": 0,
-        "speed": 260
+        "speed": 876
       },
       {
-        "angle": 30,
-        "speed": 1115
+        "angle": 31.22,
+        "speed": 901
       },
       {
-        "angle": 132.76,
-        "speed": 1115
+        "angle": 65.75,
+        "speed": 943
       },
       {
-        "angle": 150,
-        "speed": 1215
+        "angle": 96.34,
+        "speed": 996
       },
       {
-        "angle": 160.62,
-        "speed": 1628
+        "angle": 120.75,
+        "speed": 1208
       },
       {
-        "angle": 171.36,
-        "speed": 2103
+        "angle": 141,
+        "speed": 1542
+      },
+      {
+        "angle": 153.42,
+        "speed": 1998
+      },
+      {
+        "angle": 166.15,
+        "speed": 2660
       },
       {
         "angle": 180,
-        "speed": 2600
+        "speed": 3568
       }
     ],
     "lockSlerpResponse": 40.872,

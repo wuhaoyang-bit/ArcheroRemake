@@ -40,9 +40,9 @@ input[type=range]::-moz-range-thumb { width: 9px; height: 9px; border-radius: 50
 .panel-footer { margin-top: auto; padding-top: 16px; border-top: 1px solid #c9e4cf16; }
 .text-button { width: 100%; text-align: left; display: flex; justify-content: space-between; background: #d9e8bc09; border: 1px solid #bfdbb426; border-radius: 5px; color: #bbcfb9; padding: 10px 12px; font-size: 11px; }
 .text-button:hover { background: #d9e8bc14; }
-.store-actions { display: grid; grid-template-columns: 1.1fr 1fr; gap: 8px; }
+.store-actions { display: grid; grid-template-columns: 1.2fr .7fr 1fr; gap: 8px; }
 .save-button { background: #b9d3931a; color: #d2e7b6; border-color: #bfdbb444; }
-.text-button:disabled { opacity: .45; cursor: wait; }
+.text-button:disabled { opacity: .45; cursor: default; }
 .panel-footer #store-status { color: #bacfa5; min-height: 13px; line-height: 1.6; }
 .panel-footer #store-status.store-error { color: #efb6a3; }
 .text-button span { font-size: 14px; line-height: 1; }
