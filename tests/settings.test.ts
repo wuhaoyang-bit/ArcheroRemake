@@ -76,7 +76,7 @@ test('HTTP save writes real JSON, is shared across servers, survives restart, an
 
 test('new models round-trip, retired selections migrate, constant and custom experiments survive', () => {
   const curve = [{ angle: 0, speed: 260 }, { angle: 30, speed: 1215 }, { angle: 180, speed: 1720 }];
-  for (const turnModel of [0, 2, 5, 6]) {
+  for (const turnModel of [0, 2, 5, 6, 7]) {
     const tuned = { ...DEFAULTS, turnModel, turnSpeed: 1210, turnCurve: curve,
       slerpResponse: 30, slerpSnapAngle: .2, smoothTime: .04, smoothSnapAngle: .3 };
     assert.deepEqual(parseSettingsDocument(settingsDocument(tuned)), tuned);
@@ -91,7 +91,7 @@ test('new models round-trip, retired selections migrate, constant and custom exp
     assert.equal('turnResponse' in settingsDocument(migrated).settings, false);
     assert.equal('velocitySmoothTime' in settingsDocument(migrated).settings, false);
   }
-  for (const value of [-1, .5, 7]) assert.throws(() => parseSettingsDocument({version: 1, settings: {turnModel: value}}));
+  for (const value of [-1, .5, 8]) assert.throws(() => parseSettingsDocument({version: 1, settings: {turnModel: value}}));
   assert.throws(() => parseSettingsDocument({version: 1, settings: {smoothTime: 0}}, true));
   assert.throws(() => parseSettingsDocument({version: 1, settings: {slerpResponse: Infinity}}));
 });

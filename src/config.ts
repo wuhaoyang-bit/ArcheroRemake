@@ -16,7 +16,7 @@ export const DEFAULTS = {
   moveModel: 0, // 0 constant, 1 angle-error curve
   moveCurve: DEFAULT_MOVE_CURVE,
   turnSpeed: 1200,
-  turnModel: 0, // Stable IDs: 0 constant, 2 curve, 5 Slerp, 6 SmoothDampAngle.
+  turnModel: 0, // Stable IDs: 0 constant, 2 curve, 5 Slerp, 6 SmoothDampAngle, 7 C2 curve.
   curveSnapAngle: 0.1,
   turnCurve: exponentialCurve(10.4),
   // 120 Hz simulation: 180 * (1 - response/120)^18 <= 0.1 degrees.
@@ -66,7 +66,7 @@ export const LIMITS: Record<SettingKey, [number, number, number]> = {
   showThreshold: [0, 1, 1],
   anchorFollow: [0, 1, 1], moveModel: [0, 1, 1],
   anchorScale: [0.005, 0.08, 0.001], moveSpeed: [1, 30, 0.1],
-  turnModel: [0, 6, 1], curveSnapAngle: [0.001, 5, 0.001],
+  turnModel: [0, 7, 1], curveSnapAngle: [0.001, 5, 0.001],
   slerpResponse: [0.1, 120, 0.001], slerpSnapAngle: [0.001, 5, 0.001],
   smoothTime: [0.005, 0.5, 0.00001], smoothSnapAngle: [0.001, 5, 0.001],
   ringPlayerDiameter: [2, 80, 0.5], ringTargetDiameter: [2, 80, 0.5],
@@ -77,7 +77,7 @@ export const LIMITS: Record<SettingKey, [number, number, number]> = {
   ringPlayerHeight: [0, 5, 0.05], ringTargetHeight: [0, 5, 0.05], ringDuration: [0.05, 3, 0.01],
   targetModel: [0, 2, 1], lockRange: [0, 100, 0.1], showLockRange: [0, 1, 1],
   targetCone: [0, 360, 1], targetAdvantage: [0, 180, 0.1], targetDwell: [0, 2000, 10],
-  lockTurnModel: [0, 6, 1], lockTurnSpeed: [90, 1800, 10], lockCurveSnapAngle: [0.001, 5, 0.001],
+  lockTurnModel: [0, 7, 1], lockTurnSpeed: [90, 1800, 10], lockCurveSnapAngle: [0.001, 5, 0.001],
   lockSlerpResponse: [0.1, 120, 0.001], lockSlerpSnapAngle: [0.001, 5, 0.001],
   lockSmoothTime: [0.005, 0.5, 0.00001], lockSmoothSnapAngle: [0.001, 5, 0.001],
   turnSpeed: [90, 1800, 10], blendDuration: [0, 0.6, 0.01],
@@ -89,7 +89,7 @@ export const LIMITS: Record<SettingKey, [number, number, number]> = {
 export function sanitize(key: SettingKey, value: number): number {
   if (!Number.isFinite(value)) return DEFAULTS[key];
   if (key === 'moveModel') return value === 1 ? 1 : 0;
-  if (key === 'turnModel' || key === 'lockTurnModel') return [0, 2, 5, 6].includes(value) ? value : 0;
+  if (key === 'turnModel' || key === 'lockTurnModel') return [0, 2, 5, 6, 7].includes(value) ? value : 0;
   if (key === 'targetModel') return [0, 1, 2].includes(value) ? value : 0;
   return Math.max(LIMITS[key][0], Math.min(LIMITS[key][1], value));
 }

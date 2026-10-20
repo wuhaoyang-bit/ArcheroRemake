@@ -242,7 +242,7 @@ test('model changes retain pose, input, anchor, and independent tuning', () => {
 });
 
 test('all gradual models use directional horizontal ties and shortest non-ties', () => {
-  for (const model of [0, 2, 5, 6]) for (const side of [-1, 1]) {
+  for (const model of [0, 2, 5, 6, 7]) for (const side of [-1, 1]) {
     for (const tilt of [-10, 0, 10]) {
       const c = moving(); c.set('turnModel', model); c.heading = side * Math.PI / 2;
       const angle = tilt * Math.PI / 180;

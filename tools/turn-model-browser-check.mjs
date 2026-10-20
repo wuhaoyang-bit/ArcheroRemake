@@ -21,7 +21,7 @@ try {
   const ready = () => page.waitForFunction(() => window.__ARCHERO__?.snapshot().ready);
   await ready();
   const snapshot = () => page.evaluate(() => window.__ARCHERO__.snapshot());
-  assert.deepEqual(await page.locator('#turn-model option').evaluateAll(options => options.map(o => o.value)), ['0', '2', '5', '6']);
+   assert.deepEqual(await page.locator('#turn-model option').evaluateAll(options => options.map(o => o.value)), ['0', '2', '5', '6', '7']);
   assert.equal(await page.locator('#turn-model').inputValue(), '2');
   assert.deepEqual((await snapshot()).settings.turnCurve, curve);
   for (const [model, field, initial, tuned] of [['5','slerpResponse','40.872','30'], ['6','smoothTime','0.03039','0.04']]) {
@@ -62,5 +62,5 @@ try {
   await page.screenshot({ path: new URL('mobile.png', out).pathname });
   assert.deepEqual(errors, []);
   await writeFile(new URL('results.json', out), JSON.stringify({ passed: true, saved, errors }, null, 2));
-  console.log('PASS: four models, preserved curve, isolated JSON save/reload, in-gesture switching and mobile controls.');
+   console.log('PASS: five model options, preserved curve, isolated JSON save/reload, in-gesture switching and mobile controls.');
 } finally { await browser.close(); }

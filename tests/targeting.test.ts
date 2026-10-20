@@ -192,7 +192,7 @@ test('different rotation models clear damping, inactive model edits do not distu
 });
 
 test('lock turning preserves horizontal 180-degree tie convention in every rotation model', () => {
-  for (const lockTurnModel of [0,2,5,6]) for (const side of [-1,1]) {
+  for (const lockTurnModel of [0,2,5,6,7]) for (const side of [-1,1]) {
     const c=controller({targetModel:1,lockTurnModel}); c.press(1,0,0);
     c.offset={x:-side,z:0}; c.heading=side*Math.PI/2; c.release(1); c.update(.001);
     assert.equal(Math.sign(Math.cos(c.heading)),side);
@@ -210,7 +210,7 @@ test('old JSON copies all ordinary rotation values once, with independent curves
   s.turnSpeed=1400; assert.equal(s.lockTurnSpeed,1230);
   Object.assign(s,{targetModel:2,lockRange:12.5,showLockRange:1,targetCone:120,targetAdvantage:4,targetDwell:250,lockTurnModel:6});
   assert.deepEqual(parseSettingsDocument(JSON.parse(JSON.stringify(settingsDocument(s)))),s);
-  for (const settings of [{targetModel:3},{targetModel:.5},{lockTurnModel:7},{lockTurnCurve:null},{lockTurnCurve:[{angle:90,speed:100}]},{lockRange:-1}]) {
+  for (const settings of [{targetModel:3},{targetModel:.5},{lockTurnModel:8},{lockTurnCurve:null},{lockTurnCurve:[{angle:90,speed:100}]},{lockRange:-1}]) {
     assert.throws(()=>parseSettingsDocument({version:1,settings},true));
   }
 });

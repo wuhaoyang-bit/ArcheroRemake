@@ -156,7 +156,7 @@ macOS 默认使用 `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome
 
 ## 旋转角速度模型对比
 
-左侧下拉栏仅保留：匀速转向（ID 0）、自定义转向曲线（ID 2）、Slerp（ID 5）、SmoothDampAngle（ID 6）。旧模型 ID 1/3/4 读取时回退到匀速，旧模型参数不再保存；匀速参数和已有自定义曲线保留。新模型使用独立字段，不继承旧阻尼实验数值。
+两套下拉栏支持：匀速转向（ID 0）、自定义转向曲线（ID 2）、Slerp（ID 5）、SmoothDampAngle（ID 6）、自定义转向曲线－二阶平滑（ID 7）。旧模型 ID 1/3/4 读取时仍回退到匀速，不复用退役编号。Slerp 和 SmoothDampAngle 使用独立字段；ID 7 仅复用各自已有曲线与到位阈值，不增加参数。算法与取舍见 [二阶平滑说明](docs/smooth-turn-curve.md)。
 
 Slerp 使用 Three.js 的四元数球面插值，对应 Unity 的 `Slerp(current, target, Clamp01(response * dt))`。每次从当前朝向追赶最新锚点，不保留固定起点。它与 `1-exp(-k*dt)` 的指数模型不是同一离散公式，响应会受更新步长影响。角色只绕竖直轴转动，使用已选择最短弧的相对旋转，以保留水平 180° 特判。
 

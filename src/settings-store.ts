@@ -29,7 +29,7 @@ export function parseSettingsDocument(raw: unknown, strict = false): Settings {
     if (typeof value !== 'number' || !Number.isFinite(value)) throw new Error(`参数 ${key} 必须是有限数字`);
     if (key === 'moveModel' && value !== 0 && value !== 1) throw new Error('移动速度模型编号无效');
     if (key === 'targetModel' && ![0, 1, 2].includes(value)) throw new Error('选敌模型编号无效');
-    if ((key === 'turnModel' || key === 'lockTurnModel') && (![0, 1, 2, 3, 4, 5, 6].includes(value))) {
+    if ((key === 'turnModel' || key === 'lockTurnModel') && (![0, 1, 2, 3, 4, 5, 6, 7].includes(value))) {
       throw new Error('转向模型编号无效');
     }
     if (strict && (value < LIMITS[key][0] || value > LIMITS[key][1])) throw new Error(`参数 ${key} 超出范围`);

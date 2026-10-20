@@ -131,6 +131,16 @@ const lockCurveEditor = new TurnCurveEditor(element('lock-turn-curve-editor'), (
   title: '锁定转向速度曲线', speedLabel: '角速度', unit: '°/s', defaults: DEFAULTS.lockTurnCurve,
   warning: '存在非零角度的零速度点：锁定转向可能停在该角度。',
 });
+const smoothPreviews = ['turn', 'lock-turn'].map((prefix, i) => {
+  const select = element<HTMLSelectElement>(prefix + '-model');
+  select.add(new Option('自定义转向曲线－二阶平滑', '7'));
+  const root = document.createElement('div');
+  root.id = prefix + '-smooth-preview'; root.hidden = true;
+  element(prefix + '-curve-editor').after(root);
+  return new TurnCurveEditor(root, () => ({turnCurve: i ? controller.settings.lockTurnCurve : controller.settings.turnCurve}),
+    () => {}, () => {}, {title: i ? '锁定转向速度曲线' : '转向速度曲线', speedLabel: '角速度', unit: '°/s',
+      defaults: DEFAULTS.turnCurve, warning: '存在非零角度的零速度点：转向不会越过该点。'}, true);
+});
 const anchorEditor = new AnchorCurveEditor(element('anchor-curve-editor'), () => controller.settings.anchorCurve, points => {
   controller.setAnchorCurve(points); settingsChanged();
 });
@@ -160,6 +170,7 @@ function showStoreStatus(message: string, error = false) {
   storeStatus.classList.toggle('store-error', error);
 }
 function settingsChanged() {
+  smoothPreviews.forEach(preview => preview.render());
   history?.record(controller.settings);
   updateHistoryButtons();
   showStoreStatus(saving ? '保存中…另有新修改' : history?.dirty ? '有未保存的修改' : '与基准参数一致');
@@ -298,10 +309,13 @@ function syncSettings() {
   element('turn-model-hint').textContent = ({
     0: '固定角速度、最短路径。',
     2: '根据剩余角度查曲线速度。横轴从左侧 180° 到右侧 0°。',
+    7: '以原控制点生成 C2 连续速度曲线，驱动实际转向；不是将二阶导数当作速度。',
     5: '从当前朝向向最新目标做球面插值，越接近越慢。默认 180° 转向第 4 帧约 173.6°，第 9 帧到位（60 FPS）。',
     6: 'Unity SmoothDampAngle 递推，保留角速度。默认 180° 转向第 4 帧约 168°，第 9 帧到位（60 FPS）。反向时沿用最短路径保护。',
   } as Record<number, string>)[model];
   element('turn-curve-editor').hidden = model !== 2;
+  element('turn-smooth-preview').hidden = model !== 7;
+  smoothPreviews.forEach(preview => preview.render());
   const owners: Partial<Record<SettingKey, number>> = {
     turnSpeed: 0, curveSnapAngle: 2, slerpResponse: 5, slerpSnapAngle: 5,
     smoothTime: 6, smoothSnapAngle: 6,
@@ -313,6 +327,7 @@ function syncSettings() {
   const lockModel = controller.settings.lockTurnModel;
   element<HTMLSelectElement>('lock-turn-model').value = String(lockModel);
   element('lock-turn-curve-editor').hidden = lockModel !== 2;
+  element('lock-turn-smooth-preview').hidden = lockModel !== 7;
   const lockOwners: Partial<Record<SettingKey, number>> = {
     lockTurnSpeed: 0, lockCurveSnapAngle: 2, lockSlerpResponse: 5, lockSlerpSnapAngle: 5,
     lockSmoothTime: 6, lockSmoothSnapAngle: 6,
@@ -424,7 +439,7 @@ function updateTelemetry() {
     ? displayAngle(Math.atan2(controller.offset.x, controller.offset.z)) : '与角色重合';
   element('anchor-label').textContent = `${controller.offset.x.toFixed(3)} / ${controller.offset.z.toFixed(3)}`;
   element('position-label').textContent = `${controller.position.x.toFixed(2)} / ${controller.position.z.toFixed(2)}`;
-  element('turn-model-label').textContent = ({ 0: '匀速', 2: '自定义曲线', 5: 'Slerp', 6: 'SmoothDampAngle' } as Record<number, string>)[controller.activeTurnModel];
+  element('turn-model-label').textContent = ({ 0: '匀速', 2: '自定义曲线', 5: 'Slerp', 6: 'SmoothDampAngle', 7: '自定义曲线－二阶平滑' } as Record<number, string>)[controller.activeTurnModel];
   const targeting = controller.targeting, inLocking = controller.training === 'locking';
   element('targeting-state-label').textContent = !inLocking ? '当前场地无目标' : targeting.active ? '已启用' : '等待首次按下';
   element('targeting-model-label').textContent = ['A · 最近', 'B · 方向', 'C · 保留'][controller.settings.targetModel];

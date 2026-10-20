@@ -1,5 +1,5 @@
 import type { Settings } from './config.ts';
-import { exponentialCurve, validateCurve, type TurnCurvePoint } from './turn-curve.ts';
+import { exponentialCurve, smoothTurnSpeed, validateCurve, type TurnCurvePoint } from './turn-curve.ts';
 
 export class TurnCurveEditor {
   private selected = 180;
@@ -9,7 +9,7 @@ export class TurnCurveEditor {
   private drag: { angle: number; max: number; moved: boolean; x: number; y: number } | null = null;
   constructor(private root: HTMLElement, private read: () => Pick<Settings, 'turnCurve'>,
     private change: (points: TurnCurvePoint[]) => void, private regenerated: () => void,
-    private options = {title:'转向速度曲线',speedLabel:'角速度',unit:'°/s',defaults:exponentialCurve(10.4),warning:'存在非零角度的零速度点：转向可能停在该角度。'}) {
+    private options = {title:'转向速度曲线',speedLabel:'角速度',unit:'°/s',defaults:exponentialCurve(10.4),warning:'存在非零角度的零速度点：转向可能停在该角度。'}, private readonlyPreview = false) {
     this.expanded.className = 'curve-dialog';
     this.expanded.dataset.ui = '';
     this.expanded.innerHTML = `<button class="curve-close">关闭</button><h2>${options.title}</h2><div class="curve-large"></div>`;
@@ -17,6 +17,12 @@ export class TurnCurveEditor {
     this.form.className = 'curve-number-dialog'; this.form.dataset.ui = '';
     this.surfaces = [root, this.expanded.querySelector<HTMLElement>('.curve-large')!];
     for (const surface of this.surfaces) {
+      if (readonlyPreview) {
+        surface.innerHTML = `<svg class="curve-graph" viewBox="0 0 720 400" role="img" aria-label="${options.title}（二阶平滑只读预览）"></svg>
+          <p class="threshold-help">二阶平滑只读预览：读取原自定义曲线，修改请切回“自定义转向曲线”。保留控制点、不超调；各接点一阶、二阶导数为零，零速附近收敛更慢。沿用原曲线到位阈值，无独立参数。</p><p class="curve-warning"></p>${surface === root ? '<button data-curve="expand">放大预览</button>' : ''}`;
+        surface.querySelector('[data-curve="expand"]')?.addEventListener('click', () => this.expanded.showModal());
+        continue;
+      }
       surface.innerHTML = `<svg class="curve-graph" viewBox="0 0 720 400" role="img" aria-label="${options.title}"></svg>
         <p class="curve-selection"></p><div class="curve-actions"><button data-curve="edit">编辑数值</button><button data-curve="delete">删除点</button>${surface === root ? '<button data-curve="expand">放大编辑</button>' : ''}<button data-curve="generate">恢复默认曲线</button></div>
         <p class="threshold-help">双击空位加点；点击选点，拖动调整；双击点编辑数值。0° / 180° 端点只能改速度，不能删除。相邻点以直线连接。</p><p class="curve-warning"></p>`;
@@ -87,6 +93,11 @@ export class TurnCurveEditor {
   }
   render(){
     const points=this.read().turnCurve,max=this.max();
+    const plotted = this.readonlyPreview ? points.flatMap((p, i) => i === points.length - 1 ? [p] :
+      Array.from({length: 33}, (_, j) => {
+        const angle = p.angle + (points[i + 1].angle - p.angle) * j / 33;
+        return {angle, speed: smoothTurnSpeed(angle, p, points[i + 1])};
+      })) : points;
     if(!points.some(p=>p.angle===this.selected))this.selected=180;
     const selected=points.find(p=>p.angle===this.selected)!;
     for(const surface of this.surfaces){
@@ -94,10 +105,12 @@ export class TurnCurveEditor {
         ${[0,1,2,3,4].map(i=>{const y=345-i*75;return `<path d="M70 ${y}H690" stroke="#365148"/><text x="62" y="${y+5}" text-anchor="end">${Math.round(max*i/4)}</text>`;}).join('')}
         ${[180,150,120,90,60,30,0].map(a=>`<text x="${this.x(a)}" y="370" text-anchor="middle">${a}°</text>`).join('')}
         <text x="70" y="25">${this.options.speedLabel}（${this.options.unit}）</text><text x="690" y="395" text-anchor="end">角度差：180° → 0°</text>
-        <path d="${points.map((p,i)=>`${i?'L':'M'}${this.x(p.angle)} ${this.y(p.speed,max)}`).join(' ')}" fill="none" stroke="#b6e284" stroke-width="3"/>
+        <path d="${plotted.map((p,i)=>`${i?'L':'M'}${this.x(p.angle)} ${this.y(p.speed,max)}`).join(' ')}" fill="none" stroke="#b6e284" stroke-width="3"/>
         ${points.map(p=>`<circle cx="${this.x(p.angle)}" cy="${this.y(p.speed,max)}" r="${p.angle===this.selected?8:6}" fill="${p.angle===this.selected?'#fff':'#b6e284'}" stroke="#20362d" stroke-width="2"/>`).join('')}`;
-      surface.querySelector('.curve-selection')!.textContent=`已选：${selected.angle}° · ${Number(selected.speed.toFixed(3))}${this.options.unit}${selected.angle===0||selected.angle===180?'（端点速度可编辑）':''}`;
-      (surface.querySelector('[data-curve="delete"]') as HTMLButtonElement).disabled=this.selected===0||this.selected===180;
+      if (!this.readonlyPreview) {
+        surface.querySelector('.curve-selection')!.textContent=`已选：${selected.angle}° · ${Number(selected.speed.toFixed(3))}${this.options.unit}${selected.angle===0||selected.angle===180?'（端点速度可编辑）':''}`;
+        (surface.querySelector('[data-curve="delete"]') as HTMLButtonElement).disabled=this.selected===0||this.selected===180;
+      }
       surface.querySelector('.curve-warning')!.textContent=points.some(p=>p.angle>0&&p.speed===0)?this.options.warning:'';
     }
   }

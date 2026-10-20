@@ -3,7 +3,7 @@ import { movementMultiplier, validateMoveCurve } from './move-speed.ts';
 import { remainingAnchorDistance, validateAnchorCurve, type AnchorCurvePoint } from './anchor-follow.ts';
 import { trainingCourse, lockingTargets, moveAroundObstacles, CHECKPOINT_RADIUS, type TrainingMode } from './training.ts';
 import { TargetSelection } from './targeting.ts';
-import { remainingCurveAngle, validateCurve, type TurnCurvePoint } from './turn-curve.ts';
+import { remainingCurveAngle, remainingSmoothCurveAngle, validateCurve, type TurnCurvePoint } from './turn-curve.ts';
 import { DEFAULTS, sanitize, type SettingKey, type Settings } from './config.ts';
 import { slerpTurn, smoothDampAngleTurn } from './turn-damping.ts';
 
@@ -285,9 +285,9 @@ export class MovementController {
       difference = -Math.PI;
     }
     let turn: number;
-    if (model === 2) {
+    if (model === 2 || model === 7) {
       const degrees = Math.abs(difference) * 180 / Math.PI;
-      const residual = remainingCurveAngle(degrees, dt, locked ? this.settings.lockTurnCurve : this.settings.turnCurve,
+      const residual = (model === 7 ? remainingSmoothCurveAngle : remainingCurveAngle)(degrees, dt, locked ? this.settings.lockTurnCurve : this.settings.turnCurve,
         locked ? this.settings.lockCurveSnapAngle : this.settings.curveSnapAngle);
       turn = Math.sign(difference) * (degrees - residual) * Math.PI / 180;
     } else if (model === 5) {
