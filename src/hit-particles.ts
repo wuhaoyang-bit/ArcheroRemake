@@ -1,7 +1,7 @@
 // REEBOO masks, ramps and base parameters: Copyright (c) 2026 REEBOO Labs, MIT.
 // See public/licenses/REEBOO-LICENSE.txt. Ported to TSL for the existing WebGPU renderer.
 import * as T from 'three/webgpu';
-import { uv, attribute, float, max, smoothstep, texture, orthographicDepthToViewZ, cameraNear, cameraFar, positionView } from 'three/tsl';
+import { uv, attribute, float, max, smoothstep, texture, orthographicDepthToViewZ, cameraNear, cameraFar, positionView, screenUV } from 'three/tsl';
 import type { HitSettings } from './hit-feedback-config.ts';
 type Kind='flash'|'glow'|'ring'|'spark'|'ember'|'direction';
 type Particle={active:boolean;age:number;life:number;kind:Kind;origin:T.Vector3;velocity:T.Vector3;position:T.Vector3;initialVelocity:T.Vector3;drag:number;gravity:number;scale:number;spin:number;pathCount:number;path:T.Vector3[];speeds:T.Vector3[]};
@@ -23,10 +23,10 @@ export class HitParticles {
     const spark=float(1).sub(p.x.abs()).clamp().pow(2.5).mul(float(1).sub(p.y.abs()).clamp().pow(.6));
     const ring=float(1).sub(smoothstep(0,.05,r.sub(.95).abs())).mul(r.lessThanEqual(1).select(1,0));
     const mask=s.lessThan(.5).select(radial,s.lessThan(1.5).select(star,s.lessThan(2.5).select(spark,s.lessThan(3.5).select(ring,radial))));
-    // Orthographic view-space depth: preserve opaque occlusion and soften intersections.
-    const sceneZ=orthographicDepthToViewZ(texture(this.depthTarget.depthTexture!).r,cameraNear,cameraFar);
+    // Screen-space depth excludes ground; object occlusion and soft intersections remain.
+    const sceneZ=orthographicDepthToViewZ(texture(this.depthTarget.depthTexture!, screenUV).r,cameraNear,cameraFar);
     const soft=smoothstep(0,.25,positionView.z.sub(sceneZ));
-    const material=new T.MeshBasicNodeMaterial({transparent:true,depthWrite:false,depthTest:true,side:T.DoubleSide,blending:T.AdditiveBlending,toneMapped:false});
+    const material=new T.MeshBasicNodeMaterial({transparent:true,depthWrite:false,depthTest:false,side:T.DoubleSide,blending:T.AdditiveBlending,toneMapped:false});
     material.colorNode=attribute('hitTint','vec3');material.opacityNode=mask.mul(attribute('hitAlpha','float')).mul(soft);
     const mesh=new T.InstancedMesh(geometry,material,256);mesh.name='REEBOO pooled hit quads';mesh.instanceMatrix.setUsage(T.DynamicDrawUsage);mesh.count=0;mesh.frustumCulled=false;mesh.renderOrder=10;this.group.add(mesh);
     this.batches.push({mesh,shape,tint,alpha,particles:Array.from({length:256},()=>({active:false,age:0,life:0,kind:'spark',origin:new T.Vector3(),velocity:new T.Vector3(),position:new T.Vector3(),initialVelocity:new T.Vector3(),drag:0,gravity:0,scale:1,spin:0,pathCount:0,path:[],speeds:[]}))});
@@ -53,8 +53,14 @@ export class HitParticles {
     if(!this.batches.some(b=>b.mesh.count>0))return;
     renderer.getDrawingBufferSize(this.targetSize);if(this.depthTarget.width!==this.targetSize.x||this.depthTarget.height!==this.targetSize.y)this.depthTarget.setSize(this.targetSize.x,this.targetSize.y);
     const previousTarget=renderer.getRenderTarget(),previousOverride=this.scene.overrideMaterial,visible=this.group.visible;
+    const excluded:T.Object3D[]=[];
+    this.scene.traverse(o=>{
+      const decorative=o instanceof T.Mesh && (Array.isArray(o.material)?o.material:[o.material]).every(m=>!m.depthWrite);
+      if(o.visible && (o.userData.hitParticleGround || decorative)){excluded.push(o);o.visible=false;}
+    });
+    // Hardware scene depth includes the floor, so particles use the filtered depth texture instead.
     try{this.group.visible=false;this.scene.overrideMaterial=this.depthMaterial;renderer.setRenderTarget(this.depthTarget);renderer.render(this.scene,camera);}
-    finally{renderer.setRenderTarget(previousTarget);this.scene.overrideMaterial=previousOverride;this.group.visible=visible;}
+    finally{renderer.setRenderTarget(previousTarget);this.scene.overrideMaterial=previousOverride;this.group.visible=visible;for(const o of excluded)o.visible=true;}
   }
   clear(){for(const b of this.batches){b.particles.forEach(p=>p.active=false);b.mesh.count=0;}for(const l of this.lights){l.age=Infinity;l.light.intensity=0;}}
   snapshot(){const particles=this.batches.flatMap(b=>b.particles.filter(p=>p.active));return {active:particles.length,capacity:this.batches.length*256,emitted:this.emitted,lights:this.lights.filter(l=>l.light.intensity>0).length,particles:particles.slice(0,100).map(p=>({kind:p.kind,age:p.age,life:p.life,origin:p.origin.toArray(),position:p.position.toArray()}))};}

@@ -46,9 +46,11 @@ function buildRoom(size: number, length: number) {
   geo.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
   geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
   const floor = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 }));
+  floor.userData.hitParticleGround = true;
   floor.receiveShadow = true; group.add(floor);
 
   const base = new THREE.Mesh(new RoundedBoxGeometry(size + 0.48, 0.4, length + 0.48, 2, 0.12), mat(0xd3ad63));
+  base.userData.hitParticleGround = true;
   base.position.y = -0.25; base.receiveShadow = true; group.add(base);
   const across = Math.ceil(size / 0.78), alongCount = Math.ceil(length / 0.78);
   const count = 2 * (across + alongCount);
