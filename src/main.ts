@@ -35,7 +35,7 @@ const settings: { title: string; items: [SettingKey, string, string, string][] }
     ['arrowScale', '箭缩放', '倍', '调整箭的大小，立即生效，飞行速度保持不变。'],
   ] },
   { title: '训练场 · 受击反馈', items: HIT_CONTROLS },
-  { title: '怪物训练场', items: [['monsterSpeed','假人追赶速度','u/s','朝角色匀速移动，受击击退期间暂停追赶。']] },
+  { title: '怪物训练场', items: [['monsterHitSpeed','怪物受伤动画倍率','倍','默认 1 倍；只调整原作受伤动作，修改后下一次命中生效。击退、边缘光和缩放时长独立控制。'],['monsterScale','怪物模型缩放','倍','默认 1 倍；两个训练场即时生效，命中范围和瞄准高度同步缩放，移动碰撞半径保持不变。'],['monsterSpeed','怪物追赶速度','u/s','朝角色匀速移动，受击击退期间暂停追赶。']] },
   { title: '房间与镜头', items: [
     ['roomSize', '房间宽度', '单位', '调整横向可移动范围。'],
     ['roomLength', '房间纵向长度', '单位', '调整画面上下方向的可移动范围，独立于宽度。'],
@@ -91,7 +91,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     </aside>
     <section class="stage" aria-label="游戏测试区域">
       <div class="viewport" id="viewport">
-        <div class="game-top"><div class="game-label"><i></i><span id="training-label">移动试验场</span></div><div class="training-actions"><div class="training-arena-buttons"><button id="reset-dummies" class="training-arena-button" data-ui hidden>重置假人</button><button id="switch-training" class="training-arena-button" data-ui aria-pressed="false" disabled>障碍物训练场</button><button id="switch-monster-training" class="training-arena-button" data-ui aria-pressed="false" disabled>怪物训练场</button><button id="switch-locking-training" class="training-arena-button" data-ui aria-pressed="false" disabled>锁定训练场</button></div><button id="open-settings" class="mobile-only" data-ui aria-label="打开调试面板">调参 <span>☷</span></button></div></div><div id="targeting-hud" class="targeting-hud" hidden></div><div id="training-result" role="status" aria-live="polite" hidden></div>
+        <div class="game-top"><div class="game-label"><i></i><span id="training-label">移动试验场</span></div><div class="training-actions"><div class="training-arena-buttons"><button id="reset-dummies" class="training-arena-button" data-ui hidden>重置怪物</button><button id="switch-training" class="training-arena-button" data-ui aria-pressed="false" disabled>障碍物训练场</button><button id="switch-monster-training" class="training-arena-button" data-ui aria-pressed="false" disabled>怪物训练场</button><button id="switch-locking-training" class="training-arena-button" data-ui aria-pressed="false" disabled>锁定训练场</button></div><button id="open-settings" class="mobile-only" data-ui aria-label="打开调试面板">调参 <span>☷</span></button></div></div><div id="targeting-hud" class="targeting-hud" hidden></div><div id="training-result" role="status" aria-live="polite" hidden></div>
         <div class="state-pill"><i></i><span id="game-state">准备中</span></div>
         <div class="joystick" id="joystick" aria-hidden="true"><div class="joystick-ring"><span class="chevron top"></span><span class="chevron right"></span><span class="chevron bottom"></span><span class="chevron left"></span></div><div class="knob"></div><div class="threshold"></div></div>
         <div class="game-hint" id="game-hint">按住任意位置，拖动开始移动</div>

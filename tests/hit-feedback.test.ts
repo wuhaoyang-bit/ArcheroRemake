@@ -33,3 +33,49 @@ test('old offset settings migrate to direct seconds; explicit new time wins and 
   const current=parseSettingsDocument({version:1,settings:{...legacy,hitReleaseTime:.7,hitReleaseOffset:-.2}});close(current.hitReleaseTime,.7);
   close(parseSettingsDocument({version:1,settings:current}).hitReleaseTime,.7);
 });
+
+
+test('rim holds, fades independently, ends on time and restarts on hit',()=>{
+ const c={...HIT_DEFAULTS,hitRimFadeStart:.4,hitRimTime:.8},r=make();
+ r.hit({x:1,z:0},c);r.update(.4,c);close(r.rim(c),1);
+ r.update(.2,c);close(r.rim(c),.25);
+ // Timing edits apply to the next hit, not midway through the current flash.
+ close(r.rim({...c,hitRimFadeStart:0,hitRimTime:5}),.25);
+ r.hit({x:1,z:0},c);close(r.rim(c),1);r.update(.8,c);close(r.rim(c),0);
+ for(const start of [0,.8,1]){const settings={...c,hitRimFadeStart:start};r.hit({x:1,z:0},settings);r.update(.4,settings);close(r.rim(settings),start===0?.25:1);r.update(.4,settings);close(r.rim(settings),0);}
+ close(parseSettingsDocument({version:1,settings:{}}).hitRimFadeStart,.2);
+ close(parseSettingsDocument({version:1,settings:{hitRimFadeStart:1.2,hitRimTime:3}}).hitRimFadeStart,1.2);
+});
+
+
+test('squash total duration smoothly finishes even before release; independent clocks and repeated hits',()=>{
+ for(const duration of [.05,.15,.6,2,5]){
+  const c={...HIT_DEFAULTS,hitSquashTime:duration,hitReleaseTime:.2},a=make(),b=make();
+  a.hit({x:1,z:0},c);b.hit({x:1,z:0},c);
+  a.update(duration-1e-7,c);assert.ok(Math.abs(a.x)<1e-8);assert.ok(Math.abs(a.v)<.001);
+  a.update(1e-6,c);close(a.scale,1);close(a.v,0);
+  for(let i=0;i<100;i++)b.update(duration/100,c);close(b.scale,1);
+ }
+ const c={...HIT_DEFAULTS,hitSquashTime:.1},r=make();r.hit({x:1,z:0},c);r.update(.06,c);
+ const compressed=r.scale;r.hit({x:1,z:0},c);close(r.scale,compressed);r.update(.06,c);assert.ok(r.scale<1);
+ r.update(.05,c);close(r.scale,1);assert.ok(r.knockingBack);assert.ok(r.rim(c)>0);
+ close(parseSettingsDocument({version:1,settings:{}}).hitSquashTime,2);
+ close(parseSettingsDocument({version:1,settings:{hitSquashTime:.7}}).hitSquashTime,.7);
+});
+
+
+test('overall spark duration scales every layer, expires lights, and is captured per hit',()=>{
+ const originalRandom=Math.random;Math.random=()=>.5;
+ try{
+  const a=new HitParticles(new T.Scene()),b=new HitParticles(new T.Scene());
+  a.emit(new T.Vector3(),new T.Vector3(1,0,0),HIT_DEFAULTS);
+  const short={...HIT_DEFAULTS,hitParticleDuration:.4};b.emit(new T.Vector3(),new T.Vector3(1,0,0),short);
+  const full=a.snapshot().particles,half=b.snapshot().particles;
+  assert.equal(full.length,47);full.forEach((p,i)=>close(half[i].life,p.life*.5));
+  b.update(.03,HIT_DEFAULTS);a.update(.03,HIT_DEFAULTS);
+  a.snapshot().particles.forEach((p,i)=>p.position.forEach((v,j)=>close(v,b.snapshot().particles[i].position[j])));
+  b.update(.37,HIT_DEFAULTS);assert.equal(b.snapshot().active,0);assert.equal(b.snapshot().lights,0);
+  a.update(.37,HIT_DEFAULTS);assert.ok(a.snapshot().active>0);
+  for(const duration of [.05,3]){const c={...HIT_DEFAULTS,hitParticleDuration:duration,hitParticleLife:1};b.emit(new T.Vector3(),new T.Vector3(1,0,0),c);assert.ok(b.snapshot().particles.every(p=>p.life<=duration));b.update(duration,c);assert.equal(b.snapshot().active,0);assert.equal(b.snapshot().lights,0);}
+ }finally{Math.random=originalRandom;}
+});

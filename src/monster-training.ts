@@ -2,7 +2,7 @@
 export const DUMMY_RADIUS = 1.3;
 type Point = {x:number;z:number};
 export function monsterTargets(width:number,length:number) {
-  return [-1,1].map((side,i)=>({id:`monster-${i+1}`,label:`移动假人 ${i+1}`,x:side*Math.min(3,width/2-1.5),z:-Math.min(6,length/2-1.5)}));
+  return [-1,1].map((side,i)=>({id:`monster-${i+1}`,label:`蜘蛛 ${i+1}`,x:side*Math.min(3,width/2-1.5),z:-Math.min(6,length/2-1.5)}));
 }
 export function separateMonsters(targets:Point[],player:Point,playerRadius:number,width:number,length:number) {
   const ex=width/2-.155-DUMMY_RADIUS,ez=length/2-.155-DUMMY_RADIUS;

@@ -1,0 +1,18 @@
+{
+  "source": "/Applications/\u5f13\u7bad\u4f20\u8bf4.app/Wrapper/ProductName.app/Data/resources.assets",
+  "version": "3.13.0",
+  "gameObject": 40641,
+  "renderer": 274135,
+  "mesh": 6455,
+  "material": 643,
+  "texture": 3044,
+  "clips": {
+    "11056": "Run",
+    "11052": "Hitted",
+    "11050": "Dead",
+    "11053": "Idle"
+  },
+  "exportSha256": "63239fdbacb367e8268d325626fdd1721ed9a04c94b807493fbf4d17e971f108",
+  "chapterMappingVerified": false,
+  "bindPoseFix": "Preserve full inverse-bind scale (2.54) through desired pose matrices; verified against source LBS."
+}

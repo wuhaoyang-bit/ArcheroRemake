@@ -34,12 +34,12 @@ function practiceDummy() {
   return group;
 }
 
-export function buildLockingTraining(width: number, length: number, targets = lockingTargets(width,length)) {
+export function buildLockingTraining(width: number, length: number, targets = lockingTargets(width,length), createModel?:()=>THREE.Group) {
   const group = new THREE.Group(); group.name = 'locking-training';
-  const dummy = practiceDummy();
+  const dummy = createModel ? undefined : practiceDummy();
   for (const target of targets) {
-    const prop = dummy.clone(true);
-    prop.name = `practice-dummy-${target.id}`;
+    const prop = createModel ? createModel() : dummy!.clone(true);
+    prop.name = `training-enemy-${target.id}`;
     prop.userData.practiceTarget = target.id;
     prop.position.set(target.x, 0, target.z);
     prop.rotation.y = Math.atan2(-target.x, -target.z);

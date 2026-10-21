@@ -21,12 +21,16 @@ export class HitResponse {
       fraction=Math.max(0,Math.min(1,fraction));this.position.x+=dx*fraction;this.position.z+=dz*fraction;if(fraction<1)this.blocked=true;
     }
     const release=Math.max(0,c.hitReleaseTime);
-    if(!c.hitSquashEnabled||!current.hitSquashEnabled){this.x=this.v=0;return;}
+    if(!c.hitSquashEnabled||!current.hitSquashEnabled||this.age>=c.hitSquashTime){this.x=this.v=0;return;}
     const s=this.age<release?compress(this.start,this.age,c):(()=>{const initial=compress(this.start,release,c);return spring(initial.x,initial.v,this.age-release,c.hitSpringFrequency,c.hitSpringDamping);})();
+    // A short smooth envelope guarantees zero displacement AND velocity at the deadline.
+    // Analytic evaluation keeps the result independent of frame rate and timestep partition.
+    const tail=Math.min(.1,c.hitSquashTime*.2),tailStart=c.hitSquashTime-tail;
+    if(this.age>tailStart){const u=(this.age-tailStart)/tail,weight=1-u*u*(3-2*u),derivative=-6*u*(1-u)/tail;s.v=s.v*weight+s.x*derivative;s.x*=weight;}
     this.x=s.x;this.v=s.v;if(this.age>=release&&Math.abs(this.x)<1e-4&&Math.abs(this.v)<1e-3)this.x=this.v=0;
   }
   get knockingBack(){return !!this.config?.hitKnockEnabled && this.age<this.config.hitKnockTime;}
   get scale(){return Math.max(.15,Math.min(1.85,1-this.x));}
-  rim(current:HitSettings){const c=this.config;if(!c||!c.hitRimEnabled||!current.hitRimEnabled)return 0;return this.age<c.hitRimTime?c.hitRimStrength*(1-this.age/c.hitRimTime)**2:0;}
+  rim(current:HitSettings){const c=this.config;if(!c||!c.hitRimEnabled||!current.hitRimEnabled)return 0;if(this.age>=c.hitRimTime)return 0;const start=Math.max(0,Math.min(c.hitRimTime,c.hitRimFadeStart));if(this.age<=start)return c.hitRimStrength;const progress=(this.age-start)/(c.hitRimTime-start);return c.hitRimStrength*(1-progress)**2;}
   reset(){this.age=Infinity;this.start=this.x=this.v=0;this.config=null;this.blocked=false;}
 }

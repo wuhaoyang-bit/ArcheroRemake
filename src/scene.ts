@@ -1,3 +1,4 @@
+import { TrainingMonsterFactory } from './training-monster.ts';
 import { HitParticles } from './hit-particles.ts';
 import { TrainingFeedback } from './training-feedback.ts';
 import { ArrowProjectiles } from './arrow-projectiles.ts';
@@ -133,6 +134,7 @@ export class GameScene {
   private room!: THREE.Group;
   private trainingMode = 'free';
   feedback?: TrainingFeedback;
+  private monsterFactory?:TrainingMonsterFactory;
   particles?: HitParticles;
   private practiceRevision=-1;
   private trainingVisual?: THREE.Group;
@@ -207,7 +209,8 @@ export class GameScene {
     }
     this.candidateMarker.renderOrder = 102;
 
-    const [character, arrows] = await Promise.all([loadCharacter(), ArrowProjectiles.load(this.scene)]);
+    const [character, arrows, monsters] = await Promise.all([loadCharacter(), ArrowProjectiles.load(this.scene), TrainingMonsterFactory.load()]);
+    this.monsterFactory=monsters;
     this.arrows = arrows;
     this.arrows.setTargets(this.feedback?.proxies ?? []);
     this.arrows.onHit=hit=>{if(!this.controller.combatTraining)return;if(this.feedback?.hit(hit.id,hit.direction,this.controller.settings))this.particles?.emit(hit.point,hit.direction,this.controller.settings);};
@@ -227,6 +230,7 @@ export class GameScene {
   private setRoom() {
     this.particles?.clear();
     this.practiceRevision=this.controller.practiceRevision;
+    this.feedback?.dispose();
     this.feedback=undefined;
     if (this.room) { this.scene.remove(this.room); disposeGroup(this.room); }
     this.roomSize = this.controller.settings.roomSize;
@@ -234,7 +238,7 @@ export class GameScene {
     this.trainingMode = this.controller.training;
     this.room = buildRoom(this.roomSize, this.roomLength);
     this.trainingVisual = this.trainingMode === 'obstacles' ? buildTraining(this.roomSize, this.roomLength)
-      : this.controller.combatTraining ? buildLockingTraining(this.roomSize, this.roomLength,this.controller.getPracticeTargets()) : undefined;
+      : this.controller.combatTraining ? buildLockingTraining(this.roomSize, this.roomLength,this.controller.getPracticeTargets(),()=>this.monsterFactory!.create()) : undefined;
     if (this.trainingVisual) this.room.add(this.trainingVisual);
     if(this.controller.combatTraining&&this.trainingVisual)this.feedback=new TrainingFeedback(this.trainingVisual,this.controller.getPracticeTargets(),this.roomSize,this.roomLength);
     this.scene.add(this.room);
@@ -295,7 +299,7 @@ export class GameScene {
       marker.visible = ctl.combatTraining && target !== null;
       if (target) marker.position.set(target.x, .08, target.z);
     }
-    this.feedback?.refresh(ctl.settings);
+    this.feedback?.animate(dt,ctl.settings);
     this.trainingVisual?.updateWorldMatrix(true, true);
     this.bowGrip.scale.setScalar(ctl.settings.bowScale);
     this.arrows?.setScale(ctl.settings.arrowScale);
@@ -305,7 +309,7 @@ export class GameScene {
       const enemy = ctl.targeting.target;
       if (!enemy || !ctl.combatTraining) return;
       this.bowGrip.getWorldPosition(this.shotOrigin);
-      this.shotAim.set(enemy.x, 1.65, enemy.z);
+      this.shotAim.set(enemy.x, this.feedback?.aimHeight(enemy.id) ?? 1.65, enemy.z);
       this.arrows?.fire(this.shotOrigin, this.shotAim, Math.max(32, ctl.settings.lockRange + 4), remaining);
     }, ctl.settings.attackSpeed);
     this.cameraZ = follow(this.cameraZ, ctl.position.z, ctl.settings.cameraResponse, dt);

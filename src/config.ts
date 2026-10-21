@@ -9,6 +9,8 @@ export const ASPECT = 9 / 19.5;
 export const DEFAULTS = {
   ...HIT_DEFAULTS,
   monsterSpeed: 3,
+  monsterScale: 1,
+  monsterHitSpeed: 1,
   joystickRadius: 64,
   unlockDistance: 12,
   showThreshold: 0,
@@ -69,6 +71,8 @@ export const LOCK_TURN_KEYS = {
 export const LIMITS: Record<SettingKey, [number, number, number]> = {
   ...HIT_LIMITS,
   monsterSpeed: [0,10,.1],
+  monsterScale: [0.1,6,0.1],
+  monsterHitSpeed: [0.25,6,0.05],
   joystickRadius: [32, 100, 1], unlockDistance: [1, 40, 1],
   showThreshold: [0, 1, 1],
   anchorFollow: [0, 1, 1], moveModel: [0, 1, 1],
