@@ -5,7 +5,9 @@ export const ARROW_SPEED = 50; // World units/second; independent of attack and 
 type Arrow = { object: THREE.Object3D; direction: THREE.Vector3; distance: number; range: number; active: boolean };
 
 /** Straight flight, shared immutable geometry/materials, and swept arrow-tip collision. */
+export type ArrowHit = {id:string;point:THREE.Vector3;direction:THREE.Vector3};
 export class ArrowProjectiles {
+  onHit?: (hit:ArrowHit)=>void;
   private pool: Arrow[] = [];
   private targets: THREE.Object3D[] = [];
   private ray = new THREE.Raycaster();
@@ -86,7 +88,10 @@ export class ArrowProjectiles {
     let object: THREE.Object3D | null = this.hits[0].object;
     while (object && !object.userData.practiceTarget) object = object.parent;
     this.lastHit = object?.userData.practiceTarget ?? null;
-    this.hitCount++; this.recycle(arrow); return true;
+    const hit = this.lastHit ? {id:this.lastHit,point:this.hits[0].point.clone(),direction:arrow.direction.clone()} : null;
+    this.hitCount++; this.recycle(arrow);
+    if(hit)this.onHit?.(hit);
+    return true;
   }
 
   private advance(arrow: Arrow, dt: number) {

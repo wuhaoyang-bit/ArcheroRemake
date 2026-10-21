@@ -1,3 +1,5 @@
+import { HitParticles } from './hit-particles.ts';
+import { TrainingFeedback } from './training-feedback.ts';
 import { ArrowProjectiles } from './arrow-projectiles.ts';
 import { LockRingView } from './lock-ring-view.ts';
 import { buildTraining } from './training-scene.ts';
@@ -128,6 +130,9 @@ export class GameScene {
   run!: THREE.AnimationAction;
   private room!: THREE.Group;
   private trainingMode = 'free';
+  feedback?: TrainingFeedback;
+  particles?: HitParticles;
+  private practiceRevision=-1;
   private trainingVisual?: THREE.Group;
   private roomSize = 0;
   private roomLength = 0;
@@ -170,6 +175,7 @@ export class GameScene {
     this.scene.add(sun);
     const outside = new THREE.Mesh(new THREE.PlaneGeometry(120, 160), mat(0xa0c74b));
     outside.rotation.x = -Math.PI / 2; outside.position.y = -0.22; outside.receiveShadow = true; this.scene.add(outside);
+    this.particles=new HitParticles(this.scene);
     this.setRoom();
     const halo = groundCircle(1.05, 0x63e5d6, 0.15); halo.position.y = 0.025; this.player.add(halo);
     const ring = new THREE.Mesh(new THREE.RingGeometry(1.01, 1.05, 48), new THREE.MeshBasicMaterial({ color: 0x8df3e3, transparent: true, opacity: 0.72, depthWrite: false }));
@@ -201,7 +207,8 @@ export class GameScene {
 
     const [character, arrows] = await Promise.all([loadCharacter(), ArrowProjectiles.load(this.scene)]);
     this.arrows = arrows;
-    this.arrows.setTargets(this.trainingVisual?.children.filter(o => o.userData.practiceTarget) ?? []);
+    this.arrows.setTargets(this.feedback?.proxies ?? []);
+    this.arrows.onHit=hit=>{if(this.controller.training!=='locking')return;if(this.feedback?.hit(hit.id,hit.direction,this.controller.settings))this.particles?.emit(hit.point,hit.direction,this.controller.settings);};
     this.bowGrip = character.model.getObjectByName('RedBowGrip')!;
     this.body.add(character.model);
     this.mixer = character.mixer;
@@ -216,6 +223,9 @@ export class GameScene {
   }
 
   private setRoom() {
+    this.particles?.clear();
+    this.practiceRevision=this.controller.practiceRevision;
+    this.feedback=undefined;
     if (this.room) { this.scene.remove(this.room); disposeGroup(this.room); }
     this.roomSize = this.controller.settings.roomSize;
     this.roomLength = this.controller.settings.roomLength;
@@ -224,8 +234,16 @@ export class GameScene {
     this.trainingVisual = this.trainingMode === 'obstacles' ? buildTraining(this.roomSize, this.roomLength)
       : this.trainingMode === 'locking' ? buildLockingTraining(this.roomSize, this.roomLength) : undefined;
     if (this.trainingVisual) this.room.add(this.trainingVisual);
+    if(this.trainingMode==='locking'&&this.trainingVisual)this.feedback=new TrainingFeedback(this.trainingVisual,this.controller.getPracticeTargets(),this.roomSize,this.roomLength);
     this.scene.add(this.room);
-    this.arrows?.setTargets(this.trainingVisual?.children.filter(o => o.userData.practiceTarget) ?? []);
+    this.arrows?.setTargets(this.feedback?.proxies ?? []);
+  }
+
+  resetDummies(){this.controller.cancel();this.arrows?.clear();this.particles?.clear();this.feedback?.reset();this.controller.refreshTargetPositions();this.sync(0);}
+
+  advanceFeedback(dt:number){
+    if(this.trainingMode!==this.controller.training || this.practiceRevision!==this.controller.practiceRevision || this.roomSize!==this.controller.settings.roomSize || this.roomLength!==this.controller.settings.roomLength)this.setRoom();
+    this.feedback?.update(dt,this.controller.settings);this.particles?.update(dt,this.controller.settings);
   }
 
   /** Read-only visual diagnostics for the development browser checks. */
@@ -256,7 +274,7 @@ export class GameScene {
 
   sync(dt: number) {
     const ctl = this.controller;
-    if (this.trainingMode !== ctl.training || this.roomSize !== ctl.settings.roomSize || this.roomLength !== ctl.settings.roomLength) this.setRoom();
+    if (this.practiceRevision!==ctl.practiceRevision || this.trainingMode !== ctl.training || this.roomSize !== ctl.settings.roomSize || this.roomLength !== ctl.settings.roomLength) this.setRoom();
     if (this.viewWidth !== ctl.settings.viewWidth || this.offset !== ctl.settings.cameraOffset) this.projection();
     this.trainingVisual?.userData.setProgress?.(ctl.passedCheckpoints, dt);
     this.player.position.set(ctl.position.x, 0, ctl.position.z);
@@ -292,5 +310,5 @@ export class GameScene {
     this.rings.update(dt, ctl.settings, this.camera, ctl.position, ctl.training === 'locking' ? ctl.targeting.target : null, this.animation.snapshot());
   }
 
-  render() { this.renderer.render(this.scene, this.camera); }
+  render() { this.particles?.prepare(this.camera,this.controller.settings);this.particles?.renderDepth(this.renderer,this.camera);this.renderer.render(this.scene, this.camera); }
 }

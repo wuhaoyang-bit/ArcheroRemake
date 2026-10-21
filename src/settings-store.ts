@@ -35,6 +35,12 @@ export function parseSettingsDocument(raw: unknown, strict = false): Settings {
     if (strict && (value < LIMITS[key][0] || value > LIMITS[key][1])) throw new Error(`参数 ${key} 超出范围`);
     settings[key] = sanitize(key, value);
   }
+  // Preserve the actual release time in files saved before the direct timing control.
+  if (source.hitReleaseTime === undefined && (source.hitReleaseOffset !== undefined || source.hitKnockTime !== undefined)) {
+    const offset = source.hitReleaseOffset ?? 0;
+    if (typeof offset !== 'number' || !Number.isFinite(offset)) throw new Error('参数 hitReleaseOffset 必须是有限数字');
+    settings.hitReleaseTime = sanitize('hitReleaseTime', settings.hitKnockTime + Math.max(-.5, Math.min(1, offset)));
+  }
   settings.turnCurve = source.turnCurve === undefined ? exponentialCurve(typeof source.turnResponse === 'number' && Number.isFinite(source.turnResponse) ? Math.max(0.1, Math.min(60, source.turnResponse)) : 10.4) : validateCurve(source.turnCurve);
   if (source.curveSnapAngle === undefined) settings.curveSnapAngle = typeof source.turnSnapAngle === 'number' ? sanitize('curveSnapAngle', source.turnSnapAngle) : DEFAULTS.curveSnapAngle;
   settings.anchorCurve = validateAnchorCurve(source.anchorCurve ?? DEFAULTS.anchorCurve);

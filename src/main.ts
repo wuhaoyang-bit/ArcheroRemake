@@ -1,3 +1,4 @@
+import { HIT_CONTROLS } from './hit-feedback-config.ts';
 import { ProgressCurveEditor } from './progress-curve-editor.ts';
 import { AnchorCurveEditor } from './anchor-curve-editor.ts';
 import { TurnCurveEditor } from './turn-curve-editor.ts';
@@ -32,6 +33,7 @@ const settings: { title: string; items: [SettingKey, string, string, string][] }
     ['arrowSpeed', '箭飞行速度', '单位/s', '调整箭的匀速飞行速度，立即作用于飞行中的箭；不改变射箭动作频率。'],
     ['arrowScale', '箭缩放', '倍', '调整箭的大小，立即生效，飞行速度保持不变。'],
   ] },
+  { title: '锁定训练场 · 受击反馈', items: HIT_CONTROLS },
   { title: '房间与镜头', items: [
     ['roomSize', '房间宽度', '单位', '调整横向可移动范围。'],
     ['roomLength', '房间纵向长度', '单位', '调整画面上下方向的可移动范围，独立于宽度。'],
@@ -87,7 +89,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     </aside>
     <section class="stage" aria-label="游戏测试区域">
       <div class="viewport" id="viewport">
-        <div class="game-top"><div class="game-label"><i></i><span id="training-label">移动试验场</span></div><div class="training-actions"><div class="training-arena-buttons"><button id="switch-training" class="training-arena-button" data-ui aria-pressed="false" disabled>障碍物训练场</button><button id="switch-locking-training" class="training-arena-button" data-ui aria-pressed="false" disabled>锁定训练场</button></div><button id="open-settings" class="mobile-only" data-ui aria-label="打开调试面板">调参 <span>☷</span></button></div></div><div id="targeting-hud" class="targeting-hud" hidden></div><div id="training-result" role="status" aria-live="polite" hidden></div>
+        <div class="game-top"><div class="game-label"><i></i><span id="training-label">移动试验场</span></div><div class="training-actions"><div class="training-arena-buttons"><button id="reset-dummies" class="training-arena-button" data-ui hidden>重置假人</button><button id="switch-training" class="training-arena-button" data-ui aria-pressed="false" disabled>障碍物训练场</button><button id="switch-locking-training" class="training-arena-button" data-ui aria-pressed="false" disabled>锁定训练场</button></div><button id="open-settings" class="mobile-only" data-ui aria-label="打开调试面板">调参 <span>☷</span></button></div></div><div id="targeting-hud" class="targeting-hud" hidden></div><div id="training-result" role="status" aria-live="polite" hidden></div>
         <div class="state-pill"><i></i><span id="game-state">准备中</span></div>
         <div class="joystick" id="joystick" aria-hidden="true"><div class="joystick-ring"><span class="chevron top"></span><span class="chevron right"></span><span class="chevron bottom"></span><span class="chevron left"></span></div><div class="knob"></div><div class="threshold"></div></div>
         <div class="game-hint" id="game-hint">按住任意位置，拖动开始移动</div>
@@ -254,6 +256,7 @@ function switchTraining(training: MovementController['training']) {
   game.cameraZ = controller.position.z;
   clearTimeout(resultTimer); element('training-result').hidden = true;
   const obstacles = training === 'obstacles', locking = training === 'locking';
+  element('reset-dummies').hidden=!locking;
   element('training-label').textContent = obstacles ? '障碍物训练场' : locking ? '锁定训练场' : '移动试验场';
   element('switch-training').textContent = obstacles ? '返回普通训练场' : '障碍物训练场';
   element('switch-locking-training').textContent = locking ? '返回普通训练场' : '锁定训练场';
@@ -263,6 +266,7 @@ function switchTraining(training: MovementController['training']) {
     : locking ? '原地跑步朝目标 · 松手射箭 · 拖动移动' : '按住任意位置，拖动开始移动';
   game.sync(0); drawJoystick(); updateTelemetry();
 }
+element('reset-dummies').addEventListener('click',()=>{if(ready){game.resetDummies();updateTelemetry();}});
 element('switch-training').addEventListener('click', () => {
   switchTraining(controller.training === 'obstacles' ? 'free' : 'obstacles');
 });
@@ -483,6 +487,7 @@ function frame(time: number) {
   while (remaining > 0) {
     const step = Math.min(remaining, 1 / 120);
     const completed = controller.completions, pointer = controller.pointerId;
+    game.advanceFeedback(step);
     controller.update(step);
     if (controller.completions !== completed) {
       if (pointer !== null && viewport.hasPointerCapture(pointer)) viewport.releasePointerCapture(pointer);
@@ -542,7 +547,8 @@ async function start() {
     game.renderer.setAnimationLoop(frame);
     if (import.meta.env.DEV) {
       Object.assign(window, { __ARCHERO__: {
-        snapshot: () => ({ ...controller.snapshot(), settings: { ...controller.settings }, center: { ...controller.center }, cameraZ: game.cameraZ, cameraX: game.camera.position.x, footNdc: game.player.position.clone().project(game.camera).toArray(), anchorNdc: game.anchor.position.clone().project(game.camera).toArray(), trainingTargets: game.trainingTargetsSnapshot(), attack: game.animation.snapshot(), arrows: game.arrows?.snapshot(), runWeight: game.blend.weight, runTime: game.run.time, runTimeScale: game.run.getEffectiveTimeScale(), idleTimeScale: game.idle.getEffectiveTimeScale(), debug: { headingVisible: game.headingGuide.visible, heading: game.headingGuide.rotation.y, anchorVisible: game.anchor.visible, anchorOutlineVisible: game.anchor.visible && game.anchorOutline.visible, lockRangeVisible: game.lockRangeGuide.visible, lockRangeRadius: game.lockRangeGuide.scale.x, rings: game.rings.state.snapshot(), candidateMarkerVisible: game.candidateMarker.visible }, renderer: 'webgpu', ready }),
+        pauseForInspection: (paused:boolean) => {game.renderer.setAnimationLoop(paused?null:frame);lastFrame=0;if(paused)game.render();},
+        snapshot: () => ({ ...controller.snapshot(), settings: { ...controller.settings }, center: { ...controller.center }, cameraZ: game.cameraZ, cameraX: game.camera.position.x, footNdc: game.player.position.clone().project(game.camera).toArray(), anchorNdc: game.anchor.position.clone().project(game.camera).toArray(), trainingTargets: game.trainingTargetsSnapshot(), feedback: game.feedback?.snapshot() ?? [], particles: game.particles?.snapshot(), attack: game.animation.snapshot(), arrows: game.arrows?.snapshot(), runWeight: game.blend.weight, runTime: game.run.time, runTimeScale: game.run.getEffectiveTimeScale(), idleTimeScale: game.idle.getEffectiveTimeScale(), debug: { headingVisible: game.headingGuide.visible, heading: game.headingGuide.rotation.y, anchorVisible: game.anchor.visible, anchorOutlineVisible: game.anchor.visible && game.anchorOutline.visible, lockRangeVisible: game.lockRangeGuide.visible, lockRangeRadius: game.lockRangeGuide.scale.x, rings: game.rings.state.snapshot(), candidateMarkerVisible: game.candidateMarker.visible }, renderer: 'webgpu', ready }),
       } });
     }
   } catch (error) {

@@ -23,7 +23,8 @@
     "test:settings": "node tools/settings-browser-check.mjs",
     "android:sync": "npm run build && tsx tools/sync-android.ts",
     "android:build": "npm run android:sync && bash tools/build-android.sh && tsx tools/verify-apk.ts",
-    "test:arrows": "node tools/arrow-browser-check.mjs"
+    "test:arrows": "node tools/arrow-browser-check.mjs",
+    "test:hit-feedback": "node tools/hit-feedback-browser-check.mjs"
   },
   "dependencies": {
     "three": "0.186.1"

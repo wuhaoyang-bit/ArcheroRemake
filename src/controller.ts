@@ -21,6 +21,13 @@ export class MovementController {
   targeting = new TargetSelection();
   private targetCache: ReturnType<typeof lockingTargets> = [];
   private targetCacheKey = '';
+  practiceRevision = 0;
+  getPracticeTargets() {
+    const key = `${this.settings.roomSize}/${this.settings.roomLength}/${this.practiceRevision}`;
+    if(key !== this.targetCacheKey){this.targetCacheKey=key;this.targetCache=lockingTargets(this.settings.roomSize,this.settings.roomLength);}
+    return this.targetCache;
+  }
+  refreshTargetPositions(){this.updateTargeting(0);}
   private lastTurnModel: number | null = null;
   completions = 0;
   passedCheckpoints = 0;
@@ -43,6 +50,7 @@ export class MovementController {
     this.restartTraining();
   }
   restartTraining() {
+    this.practiceRevision++;
     this.passedCheckpoints = 0;
     this.cancel();
     this.pointerId = null; this.pendingRelease = null;
@@ -95,11 +103,7 @@ export class MovementController {
   get activeTurnModel() { return this.usesLockTurn ? this.settings.lockTurnModel : this.settings.turnModel; }
   private updateTargeting(dt: number) {
     if (this.training !== 'locking') return;
-    const key = `${this.settings.roomSize}/${this.settings.roomLength}`;
-    if (key !== this.targetCacheKey) {
-      this.targetCacheKey = key;
-      this.targetCache = lockingTargets(this.settings.roomSize, this.settings.roomLength);
-    }
+    this.getPracticeTargets();
     this.targeting.update(this.targetCache, this.position, this.anchorHeading, this.settings, dt);
   }
 
