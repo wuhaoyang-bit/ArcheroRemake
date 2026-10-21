@@ -34,10 +34,10 @@ function practiceDummy() {
   return group;
 }
 
-export function buildLockingTraining(width: number, length: number) {
+export function buildLockingTraining(width: number, length: number, targets = lockingTargets(width,length)) {
   const group = new THREE.Group(); group.name = 'locking-training';
   const dummy = practiceDummy();
-  for (const target of lockingTargets(width, length)) {
+  for (const target of targets) {
     const prop = dummy.clone(true);
     prop.name = `practice-dummy-${target.id}`;
     prop.userData.practiceTarget = target.id;

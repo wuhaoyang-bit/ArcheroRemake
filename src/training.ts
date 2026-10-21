@@ -1,5 +1,5 @@
 export const CHECKPOINT_RADIUS = 0.65;
-export type TrainingMode = 'free' | 'obstacles' | 'locking';
+export type TrainingMode = 'free' | 'obstacles' | 'locking' | 'monsters';
 export type RoutePoint = { x: number; z: number };
 export type Obstacle = { x: number; z: number; radius: number };
 

@@ -25,6 +25,7 @@ export class HitResponse {
     const s=this.age<release?compress(this.start,this.age,c):(()=>{const initial=compress(this.start,release,c);return spring(initial.x,initial.v,this.age-release,c.hitSpringFrequency,c.hitSpringDamping);})();
     this.x=s.x;this.v=s.v;if(this.age>=release&&Math.abs(this.x)<1e-4&&Math.abs(this.v)<1e-3)this.x=this.v=0;
   }
+  get knockingBack(){return !!this.config?.hitKnockEnabled && this.age<this.config.hitKnockTime;}
   get scale(){return Math.max(.15,Math.min(1.85,1-this.x));}
   rim(current:HitSettings){const c=this.config;if(!c||!c.hitRimEnabled||!current.hitRimEnabled)return 0;return this.age<c.hitRimTime?c.hitRimStrength*(1-this.age/c.hitRimTime)**2:0;}
   reset(){this.age=Infinity;this.start=this.x=this.v=0;this.config=null;this.blocked=false;}

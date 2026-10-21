@@ -38,10 +38,10 @@ try {
     const looping=await snap(page);assert.equal(looping.attack.playing,true);assert.equal(looping.attackRequest,1);
     assert.equal(looping.attack.weight,1);assert.equal(looping.attack.runWeight,0);assert.deepEqual(looping.position,position);
   });
-  await check('target loss stops the loop; reacquisition during the same released gesture resumes it',async()=>{
+  await check('stationary range edits preserve the locked identity and attack loop',async()=>{
     const range=page.locator('#value-lockRange');
     const set=async value=>{await range.evaluate((input,value)=>{input.value=String(value);input.dispatchEvent(new Event('change',{bubbles:true}))},value);await frame(page)};
-    await set(0);let s=await snap(page);assert.equal(s.attack.playing,false);assert.equal(s.attack.idleWeight,1);
+    const id=(await snap(page)).targeting.target.id;await set(0);let s=await snap(page);assert.equal(s.attack.playing,true);assert.equal(s.targeting.target.id,id);
     await set(30);s=await snap(page);assert.equal(s.attack.playing,true);assert.equal(s.attackRequest,1);
   });
   await check('pressing during attack immediately shows Run; next release restarts the attack',async()=>{

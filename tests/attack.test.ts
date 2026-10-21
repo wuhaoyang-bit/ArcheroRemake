@@ -17,12 +17,12 @@ test('attack requires owner pointerup with a target; pressing, moving and idle a
   c.move(1,40,0); c.update(.01); assert.equal(c.attackRequest,null);
   const position = {...c.position};
   c.release(1,{x:0,y:-40},'pointerup');
-  assert.equal(c.targeting.target?.id,'north'); assert.equal(c.attackRequest,1);
+  assert.equal(c.targeting.target?.id,'east'); assert.equal(c.attackRequest,1);
   assert.equal(c.mode,'idle'); assert.equal(c.movementSpeed,0); assert.equal(c.usesLockTurn,true);
   c.update(.5); assert.deepEqual(c.position,position);
   c.release(1,{x:40,y:0},'pointerup'); assert.equal(c.attackRequest,1);
-  c.set('lockRange',0); c.press(2,0,0); c.release(2,undefined,'pointerup'); assert.equal(c.attackRequest,null);
-  c.set('lockRange',30); c.update(.1); assert.ok(c.targeting.target); assert.equal(c.attackRequest,null);
+  c.set('lockRange',0); c.press(2,0,0); c.move(2,40,0); c.update(.01); c.release(2,undefined,'pointerup'); assert.equal(c.attackRequest,null);
+  c.set('lockRange',30); c.update(.1); assert.equal(c.targeting.target,null); assert.equal(c.attackRequest,null);
   c.setTraining('free'); c.press(3,0,0); c.release(3,undefined,'pointerup'); assert.equal(c.attackRequest,null);
 });
 
@@ -47,11 +47,10 @@ test('handoff ignores old finger release; re-press cancels and next owner releas
   c.release(3,undefined,'pointerup'); assert.equal(c.attackRequest,2);
 });
 
-test('released attack pauses without a target, resumes on reacquisition, and stays cancelled after press or blur', () => {
+test('released attack follows death replacement and stays cancelled after press or blur', () => {
   const c=locking();c.press(1,0,0);c.release(1,undefined,'pointerup');
   assert.equal(c.activeAttackRequest,1);
-  c.set('lockRange',0);assert.equal(c.activeAttackRequest,null);
-  c.set('lockRange',30);assert.equal(c.activeAttackRequest,1);
+  const old=c.targeting.target!.id;c.notifyTargetDeath(old);assert.notEqual(c.targeting.target?.id,old);assert.equal(c.activeAttackRequest,1);
   c.press(2,0,0);assert.equal(c.activeAttackRequest,null);
   c.release(2,undefined,'pointerup');assert.equal(c.activeAttackRequest,2);
   c.cancel();c.set('lockRange',0);c.set('lockRange',30);assert.equal(c.activeAttackRequest,null);

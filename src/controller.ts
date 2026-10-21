@@ -1,3 +1,4 @@
+import { monsterTargets, separateMonsters, DUMMY_RADIUS } from './monster-training.ts';
 import { validateProgressCurve, validateSwitchCurve, validateStrokeCurve, type StrokePoint, type ProgressPoint } from './lock-rings.ts';
 import { movementMultiplier, validateMoveCurve } from './move-speed.ts';
 import { remainingAnchorDistance, validateAnchorCurve, type AnchorCurvePoint } from './anchor-follow.ts';
@@ -22,9 +23,12 @@ export class MovementController {
   private targetCache: ReturnType<typeof lockingTargets> = [];
   private targetCacheKey = '';
   practiceRevision = 0;
+  private deadTargetIds = new Set<string>();
+  get combatTraining(){return this.training === 'locking' || this.training === 'monsters';}
+  resolveMonsterContacts(){if(this.training==='monsters')separateMonsters(this.getPracticeTargets(),this.position,PLAYER_RADIUS,this.settings.roomSize,this.settings.roomLength);}
   getPracticeTargets() {
     const key = `${this.settings.roomSize}/${this.settings.roomLength}/${this.practiceRevision}`;
-    if(key !== this.targetCacheKey){this.targetCacheKey=key;this.targetCache=lockingTargets(this.settings.roomSize,this.settings.roomLength);}
+    if(key !== this.targetCacheKey){this.targetCacheKey=key;this.targetCache=(this.training==='monsters'?monsterTargets:lockingTargets)(this.settings.roomSize,this.settings.roomLength);}
     return this.targetCache;
   }
   refreshTargetPositions(){this.updateTargeting(0);}
@@ -51,6 +55,7 @@ export class MovementController {
   }
   restartTraining() {
     this.practiceRevision++;
+    this.deadTargetIds.clear();
     this.passedCheckpoints = 0;
     this.cancel();
     this.pointerId = null; this.pendingRelease = null;
@@ -60,7 +65,7 @@ export class MovementController {
     this.raw = {x: 0, y: 0}; this.stick = {x: 0, y: 0};
     this.heading = Math.PI; this.angularSpeed = 0; this.dampedVelocity = 0;
     this.lastTurnModel = null; this.targeting.reset();
-    this.position = {x: 0, z: this.training === 'obstacles' ? this.course.startZ : this.training === 'locking' ? 0 : this.settings.roomSize * .27};
+    this.position = {x: 0, z: this.training === 'obstacles' ? this.course.startZ : this.combatTraining ? 0 : this.settings.roomSize * .27};
     this.constrain();
   }
   movementAngleError = 0;
@@ -73,7 +78,7 @@ export class MovementController {
   private attackSequence = 0;
   attackRequest: number | null = null;
   get activeAttackRequest() {
-    return this.mode === 'idle' && this.training === 'locking' && this.targeting.target
+    return this.mode === 'idle' && this.combatTraining && this.targeting.target
       ? this.attackRequest : null;
   }
   unlocked = false;
@@ -94,17 +99,34 @@ export class MovementController {
     return this.direction ? Math.atan2(this.direction.x, this.direction.z) : Math.PI;
   }
   // A new locked stick during a moving handoff is still "moving", not in-place.
-  get usesLockTurn() { return this.mode !== 'moving' && this.training === 'locking' && this.targeting.target !== null; }
+  get usesLockTurn() { return this.mode !== 'moving' && this.combatTraining && this.targeting.target !== null; }
   get targetHeading() {
     const target = this.targeting.target;
     return this.usesLockTurn && target
       ? Math.atan2(target.x - this.position.x, target.z - this.position.z) : this.anchorHeading;
   }
   get activeTurnModel() { return this.usesLockTurn ? this.settings.lockTurnModel : this.settings.turnModel; }
-  private updateTargeting(dt: number) {
-    if (this.training !== 'locking') return;
+  /** Death integration hook: exclude once, and reacquire once only if this was the locked enemy.
+   * Entity visuals/collision removal remain the responsibility of the future death system. */
+  notifyTargetDeath(id: string) {
+    if (!this.combatTraining || this.deadTargetIds.has(id)) return;
+    this.deadTargetIds.add(id);
+    if (this.targeting.target?.id === id) {
+      this.targeting.reselect();
+      this.updateTargeting(0, true);
+    } else if (this.targeting.candidate?.id === id) this.targeting.clearCandidate();
+  }
+  private updateTargeting(dt: number, acquireOnce = false) {
+    if (!this.combatTraining) return;
     this.getPracticeTargets();
-    this.targeting.update(this.targetCache, this.position, this.anchorHeading, this.settings, dt);
+    const targets = this.targetCache.filter(t => !this.deadTargetIds.has(t.id));
+    if (this.mode !== 'moving' && !acquireOnce) {
+      // Freeze identity, not coordinates. Do not poll for a replacement while stopped.
+      if (this.targeting.target) this.targeting.target = targets.find(t => t.id === this.targeting.target!.id) ?? null;
+      this.targeting.clearCandidate();
+      return;
+    }
+    this.targeting.update(targets, this.position, this.anchorHeading, this.settings, dt);
   }
 
   constructor(settings: Settings = { ...DEFAULTS }) {
@@ -128,7 +150,7 @@ export class MovementController {
     this.raw = { x: 0, y: 0 };
     this.stick = { x: 0, y: 0 };
     this.unlocked = false;
-    if (this.training === 'locking') { this.targeting.active = true; this.updateTargeting(0); }
+    if (this.combatTraining) { const firstActivation = !this.targeting.active; this.targeting.active = true; this.updateTargeting(0, firstActivation); }
   }
 
   move(id: number, dx: number, dy: number) {
@@ -211,7 +233,7 @@ export class MovementController {
     this.updateTargeting(0);
     // Only an authoritative owner pointerup requests a shot, after final-position
     // mapping and target selection. Cancellation/capture loss is not a release shot.
-    this.attackRequest = reason === 'pointerup' && this.training === 'locking' && this.targeting.target
+    this.attackRequest = reason === 'pointerup' && this.combatTraining && this.targeting.target
       ? ++this.attackSequence : null;
   }
 
@@ -239,7 +261,7 @@ export class MovementController {
     // Changing model starts fresh velocity state, without changing pose, input, or anchor.
     if ((key === 'turnModel' && !this.usesLockTurn || key === 'lockTurnModel' && this.usesLockTurn)
       && next !== this.settings[key]) this.dampedVelocity = 0;
-    if (key === 'targetModel' && next !== this.settings.targetModel) this.targeting.reselect();
+    if (key === 'targetModel' && next !== this.settings.targetModel && this.mode === 'moving') this.targeting.reselect();
     this.settings[key] = next;
     if (key === 'anchorFollow' && !next) { this.offset = {...this.targetOffset}; this.syncAnchorDirection(); }
     if (this.unlocked && (key === 'joystickRadius' || key === 'anchorScale')) this.mapStick();
@@ -269,12 +291,14 @@ export class MovementController {
       this.movementSpeed = this.movementBaseSpeed * this.movementSpeedRatio;
       const dx = this.direction.x * this.movementSpeed * dt, dz = this.direction.z * this.movementSpeed * dt;
       if (this.training === 'obstacles') moveAroundObstacles(this.position, dx, dz, this.course.obstacles, PLAYER_RADIUS, () => this.checkTrainingProgress());
+      else if(this.training==='monsters') moveAroundObstacles(this.position,dx,dz,this.getPracticeTargets().map(t=>({...t,radius:DUMMY_RADIUS})),PLAYER_RADIUS);
       else { this.position.x += dx; this.position.z += dz; }
       this.constrain();
       if (this.training === 'obstacles' && this.position.z <= this.course.finishZ) {
         this.completions++; this.restartTraining(); return;
       }
     }
+    this.resolveMonsterContacts();
     this.updateTargeting(dt);
     const locked = this.usesLockTurn, model = this.activeTurnModel;
     if (this.lastTurnModel !== null && this.lastTurnModel !== model) this.dampedVelocity = 0;

@@ -24,6 +24,12 @@ export class TrainingFeedback {
   hit(id:string,direction:Point,settings:HitSettings){const d=this.dummies.find(d=>d.root.userData.practiceTarget===id);if(!d)return false;d.response.hit(direction,settings);d.response.update(0,settings);this.apply(d,settings);return true;}
   private apply(d:Dummy,c:HitSettings){d.root.position.set(d.response.position.x,0,d.response.position.z);d.visual.scale.setScalar(c.hitSquashEnabled?d.response.scale:1);d.rim.value=d.response.rim(c);d.brightness.value=c.hitRimBrightness;d.power.value=8*Math.pow(.05,(c.hitRimWidth-.1)/.9);d.root.updateWorldMatrix(true,true);}
   update(dt:number,c:HitSettings){for(const d of this.dummies){d.response.update(dt,c);this.apply(d,c);}}
+  pursue(dt:number,player:Point,speed:number,c:HitSettings){for(const d of this.dummies){
+    const p=d.response.position,dx=player.x-p.x,dz=player.z-p.z,distance=Math.hypot(dx,dz);
+    if(distance>1e-8){d.root.rotation.y=Math.atan2(dx,dz);if(!d.response.knockingBack){const step=Math.min(distance,speed*dt);p.x+=dx/distance*step;p.z+=dz/distance*step;}}
+    this.apply(d,c);
+  }}
+  refresh(c:HitSettings){for(const d of this.dummies)this.apply(d,c);}
   reset(){for(const d of this.dummies){Object.assign(d.response.position,d.initial);d.response.reset();d.root.position.set(d.initial.x,0,d.initial.z);d.root.quaternion.copy(d.initialRotation);d.visual.scale.setScalar(1);d.rim.value=0;d.root.updateWorldMatrix(true,true);}}
   snapshot(){return this.dummies.map(d=>({id:d.root.userData.practiceTarget as string,position:{...d.response.position},age:Number.isFinite(d.response.age)?d.response.age:null,scale:d.visual.scale.x,rim:d.rim.value,compression:d.response.x,blocked:d.response.blocked,bounds:{...d.response.bounds},proxyScale:d.proxy.scale.toArray(),parts:d.visual.children.length}));}
 }

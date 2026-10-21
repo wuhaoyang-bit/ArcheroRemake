@@ -91,7 +91,7 @@ test('entry and re-entry never acquire until game press; UI model change cannot 
 test('B/C use initial facing then actual anchor, retaining last valid direction at zero', () => {
   for (const targetModel of [1,2]) {
     const c=controller({targetModel,targetDwell:0}); c.press(1,0,0); assert.equal(c.targeting.snapshot().target?.id,'north');
-    c.offset={x:1,z:0}; c.heading=0; c.update(.01); assert.equal(c.targeting.snapshot().target?.id,'east');
+    c.move(1,40,0); c.offset={x:1,z:0}; c.heading=0; c.update(.01); assert.equal(c.targeting.snapshot().target?.id,'east');
     c.offset={x:0,z:0}; c.update(.01); assert.equal(c.targeting.snapshot().target?.id,'east');
   }
 });
@@ -101,24 +101,25 @@ test('anchor smoothing: target endpoint and raw stick cannot choose before actua
   c.press(1,0,0); c.move(1,0,-40); c.update(.01);
   c.move(1,40,0); c.update(.01);
   assert.ok(c.targetOffset.x>0); assert.equal(c.offset.x,0); assert.equal(c.targeting.snapshot().target?.id,'north');
-  c.release(1,{x:40,y:0}); assert.equal(c.offset.z,0); assert.equal(c.targeting.snapshot().target?.id,'east');
+  c.release(1,{x:40,y:0}); assert.equal(c.offset.z,0); assert.equal(c.targeting.snapshot().target?.id,'north');
 });
 
 test('C: release resets candidate dwell, handoff preserves it, ignored old fingers cannot reset it', () => {
-  const c=controller({targetModel:2}); c.press(1,0,0); c.offset={x:1,z:0}; c.update(.1);
+  const c=controller({targetModel:2}); c.press(1,0,0); c.move(1,40,0); c.update(.1);
   assert.equal(c.targeting.snapshot().target?.id,'north'); near(c.targeting.elapsed,.1);
   c.press(2,50,50); near(c.targeting.elapsed,.1);
   c.release(1); near(c.targeting.elapsed,.1); assert.equal(c.pointerId,2);
   c.release(2); near(c.targeting.elapsed,0); assert.equal(c.targeting.snapshot().target?.id,'north');
   c.update(.159); assert.equal(c.targeting.snapshot().target?.id,'north');
-  c.update(.001); assert.equal(c.targeting.snapshot().target?.id,'east'); assert.equal(c.mode,'idle');
+  c.update(.001); assert.equal(c.targeting.snapshot().target?.id,'north'); assert.equal(c.mode,'idle');
+  c.press(3,0,0); c.move(3,40,0); c.update(.16); assert.equal(c.targeting.snapshot().target?.id,'east');
 });
 
-test('switching selection model immediately reacquires without C delay; range changes invalidate immediately', () => {
-  const c=controller({targetModel:2}); c.press(1,0,0); c.offset={x:1,z:0}; c.update(.05);
+test('moving model changes reacquire; stopped model/range changes preserve the selected identity', () => {
+  const c=controller({targetModel:2}); c.press(1,0,0); c.move(1,40,0); c.update(.05);
   assert.equal(c.targeting.snapshot().target?.id,'north'); c.set('targetModel',1); assert.equal(c.targeting.snapshot().target?.id,'east');
   c.set('targetModel',2); assert.equal(c.targeting.snapshot().target?.id,'east'); near(c.targeting.elapsed,0);
-  c.release(1); c.set('lockRange',5); assert.equal(c.targeting.target,null); assert.equal(c.usesLockTurn,false);
+  c.release(1); c.set('lockRange',5); assert.equal(c.targeting.snapshot().target?.id,'east'); assert.equal(c.usesLockTurn,true);
   c.set('lockRange',22); assert.equal(c.targeting.snapshot().target?.id,'east'); assert.equal(c.usesLockTurn,true);
 });
 
@@ -132,8 +133,8 @@ test('in-place and idle use lock turning; threshold unlock switches to ordinary 
   assert.equal(c.mode,'in-place'); assert.equal(c.usesLockTurn,true); near(c.angularSpeed,180);
   assert.deepEqual(c.position,heldPosition); assert.deepEqual(c.offset,{x:0,z:1});
   c.press(2,50,50); c.release(1); assert.equal(c.mode,'in-place'); assert.equal(c.usesLockTurn,true);
-  c.set('lockRange',0); assert.equal(c.usesLockTurn,false); near(c.targetHeading,0);
-  c.update(.1); near(c.angularSpeed,90);
+  c.set('lockRange',0); assert.equal(c.usesLockTurn,true); near(c.targetHeading,Math.PI/2);
+  c.update(.1); near(c.angularSpeed,180);
   c.set('lockRange',22); assert.equal(c.usesLockTurn,true);
   c.move(2,0,40); assert.equal(c.mode,'moving'); assert.equal(c.usesLockTurn,false); near(c.targetHeading,0);
   c.update(.1); near(c.angularSpeed,90); assert.ok(c.position.z>heldPosition.z);
@@ -144,11 +145,11 @@ test('in-place and idle use lock turning; threshold unlock switches to ordinary 
   c.update(.01); assert.deepEqual(c.position,position);
 });
 
-test('release uses final pointer despite stale stick and lost capture, then selects from final anchor', () => {
+test('release keeps the last moving target despite final anchor and lost capture', () => {
   const c=controller({targetModel:1}); c.press(1,0,0); c.move(1,-40,0); c.update(.01);
   c.loseCapture(1); c.stick={x:40,y:0}; c.release(1,{x:0,y:-200});
   near(c.offset.x,0); near(c.offset.z,-64*c.settings.anchorScale);
-  assert.equal(c.targeting.snapshot().target?.id,'north'); assert.deepEqual(c.remembered,c.offset);
+  assert.equal(c.targeting.snapshot().target?.id,'west'); assert.deepEqual(c.remembered,c.offset);
   const pos={...c.position}; c.update(.1); assert.deepEqual(c.position,pos);
 });
 
@@ -194,7 +195,7 @@ test('different rotation models clear damping, inactive model edits do not distu
 test('lock turning preserves horizontal 180-degree tie convention in every rotation model', () => {
   for (const lockTurnModel of [0,2,5,6,7]) for (const side of [-1,1]) {
     const c=controller({targetModel:1,lockTurnModel}); c.press(1,0,0);
-    c.offset={x:-side,z:0}; c.heading=side*Math.PI/2; c.release(1); c.update(.001);
+    c.move(1,-side*40,0); c.update(.001); c.offset={x:-side,z:0}; c.heading=side*Math.PI/2; c.release(1); c.update(.001);
     assert.equal(Math.sign(Math.cos(c.heading)),side);
   }
 });
@@ -213,4 +214,30 @@ test('old JSON copies all ordinary rotation values once, with independent curves
   for (const settings of [{targetModel:3},{targetModel:.5},{lockTurnModel:8},{lockTurnCurve:null},{lockTurnCurve:[{angle:90,speed:100}]},{lockRange:-1}]) {
     assert.throws(()=>parseSettingsDocument({version:1,settings},true));
   }
+});
+
+test('stationary target identity stays fixed across distance crossings and tracks live coordinates',()=>{
+ for(const training of ['locking','monsters'] as const){
+  const c=controller();c.setTraining(training);c.press(1,0,0);c.release(1);
+  const chosen=c.targeting.target!,other=c.getPracticeTargets().find(t=>t.id!==chosen.id)!;
+  for(let i=0;i<100;i++){chosen.x=20+i;other.x=.1;other.z=.1;c.update(.02);assert.equal(c.targeting.target?.id,chosen.id);assert.equal(c.targeting.target?.x,chosen.x);}
+  c.press(2,0,0);c.move(2,1,0);c.update(.1);assert.equal(c.mode,'in-place');assert.equal(c.targeting.target?.id,chosen.id);
+  c.move(2,40,0);c.update(.01);assert.notEqual(c.targeting.target?.id,chosen.id);
+ }
+});
+test('death selects once, ignores repeated or other deaths, and empty selection waits for movement',()=>{
+ const c=controller();c.setTraining('monsters');c.press(1,0,0);c.release(1);
+ const old=c.targeting.target!,other=c.getPracticeTargets().find(t=>t.id!==old.id)!;
+ c.notifyTargetDeath('unrelated');assert.equal(c.targeting.target?.id,old.id);
+ c.notifyTargetDeath(old.id);assert.equal(c.targeting.target?.id,other.id);
+ c.notifyTargetDeath(old.id);assert.equal(c.targeting.target?.id,other.id);
+ c.notifyTargetDeath(other.id);assert.equal(c.targeting.target,null);
+ c.getPracticeTargets().push({id:'new',label:'new',x:0,z:1});c.update(1);c.press(2,0,0);c.update(.1);assert.equal(c.targeting.target,null);
+ c.move(2,40,0);c.update(.01);assert.equal(c.targeting.snapshot().target?.id,'new');
+ c.restartTraining();c.press(3,0,0);assert.ok(c.targeting.target);assert.notEqual(c.targeting.snapshot().target?.id,'new');
+});
+test('no target at first activation stays empty until movement, even when an enemy enters range',()=>{
+ const c=controller({lockRange:0});c.press(1,0,0);assert.equal(c.targeting.target,null);c.release(1);
+ c.set('lockRange',30);c.update(1);c.press(2,0,0);assert.equal(c.targeting.target,null);
+ c.move(2,40,0);c.update(.01);assert.ok(c.targeting.target);
 });

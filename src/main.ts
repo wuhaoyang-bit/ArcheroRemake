@@ -33,7 +33,8 @@ const settings: { title: string; items: [SettingKey, string, string, string][] }
     ['arrowSpeed', '箭飞行速度', '单位/s', '调整箭的匀速飞行速度，立即作用于飞行中的箭；不改变射箭动作频率。'],
     ['arrowScale', '箭缩放', '倍', '调整箭的大小，立即生效，飞行速度保持不变。'],
   ] },
-  { title: '锁定训练场 · 受击反馈', items: HIT_CONTROLS },
+  { title: '训练场 · 受击反馈', items: HIT_CONTROLS },
+  { title: '怪物训练场', items: [['monsterSpeed','假人追赶速度','u/s','朝角色匀速移动，受击击退期间暂停追赶。']] },
   { title: '房间与镜头', items: [
     ['roomSize', '房间宽度', '单位', '调整横向可移动范围。'],
     ['roomLength', '房间纵向长度', '单位', '调整画面上下方向的可移动范围，独立于宽度。'],
@@ -42,10 +43,10 @@ const settings: { title: string; items: [SettingKey, string, string, string][] }
     ['viewWidth', '固定视野宽度', '单位', '手动校准构图，游玩中不自动缩放。'],
   ] },
   { title: '目标锁定', items: [
-    ['lockRange', '锁定距离', '单位', '双方脚下中心的地面距离；屏幕外也参与选敌。'],
+    ['lockRange', '锁定距离', '单位', '双方脚下中心的地面距离；用于移动时选敌和死亡补选，停下后不会因距离变化换目标。'],
     ['targetCone', '方向扇形总角度', '°', 'B / C 使用，左右各占一半角度；方向取实际移动锚点。'],
     ['targetAdvantage', 'C：切换角度优势', '°', '新候选比旧目标更贴合锚点方向，优势达到此值才开始累计时间。'],
-    ['targetDwell', 'C：候选持续时间', 'ms', '同一候选连续满足优势的时间。松手归零；旧目标失效立即重选。'],
+    ['targetDwell', 'C：候选持续时间', 'ms', '移动期间，同一候选连续满足优势的时间。松手归零并保留当前目标。'],
   ] },
   { title: '锁定圆环 UI', items: [
     ['ringPlayerDiameter', '角色圆直径', 'px', '390 宽基准；下一次入场生效。'],
@@ -73,7 +74,7 @@ const settings: { title: string; items: [SettingKey, string, string, string][] }
   ] },
 ];
 
-const targetingControls = `<div class="turn-model-field"><label for="target-model">选敌模型</label><select id="target-model" disabled><option value="0">A · 最近目标</option><option value="1">B · 方向扇形</option><option value="2">C · 方向＋保留条件</option></select><p id="target-model-hint" class="threshold-help"></p></div><label class="threshold-toggle"><input id="show-lock-range" type="checkbox" disabled>显示锁定距离范围</label><p class="threshold-help">锁定训练场中，首次按下开始选敌；待机或原地跑步时身体朝敌人转向，真正移动时朝移动锚点转向。红圈为当前目标，浅色圈为 C 待确认候选。</p>`;
+const targetingControls = `<div class="turn-model-field"><label for="target-model">选敌模型</label><select id="target-model" disabled><option value="0">A · 最近目标</option><option value="1">B · 方向扇形</option><option value="2">C · 方向＋保留条件</option></select><p id="target-model-hint" class="threshold-help"></p></div><label class="threshold-toggle"><input id="show-lock-range" type="checkbox" disabled>显示锁定距离范围</label><p class="threshold-help">战斗训练场中，首次按下选敌一次；只有真正移动期间持续选敌，停下或原地跑步保持当前目标并跟随其位置瞄准。锁定敌人死亡时补选一次。红圈为当前目标，浅色圈为 C 待确认候选。</p>`;
 const lockTurnControls = `<div class="turn-model-field"><label for="lock-turn-model">锁定转向模型</label><select id="lock-turn-model" disabled><option value="0">匀速转向</option><option value="2">自定义转向曲线</option><option value="5">Slerp</option><option value="6">SmoothDampAngle</option></select><p class="threshold-help">待机或原地跑步且有目标时使用；真正移动时使用普通转向。两套配置分别保存。旧参数首次加载时复制当前普通转向配置。</p><div id="lock-turn-curve-editor" hidden></div></div>`;
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
@@ -89,7 +90,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     </aside>
     <section class="stage" aria-label="游戏测试区域">
       <div class="viewport" id="viewport">
-        <div class="game-top"><div class="game-label"><i></i><span id="training-label">移动试验场</span></div><div class="training-actions"><div class="training-arena-buttons"><button id="reset-dummies" class="training-arena-button" data-ui hidden>重置假人</button><button id="switch-training" class="training-arena-button" data-ui aria-pressed="false" disabled>障碍物训练场</button><button id="switch-locking-training" class="training-arena-button" data-ui aria-pressed="false" disabled>锁定训练场</button></div><button id="open-settings" class="mobile-only" data-ui aria-label="打开调试面板">调参 <span>☷</span></button></div></div><div id="targeting-hud" class="targeting-hud" hidden></div><div id="training-result" role="status" aria-live="polite" hidden></div>
+        <div class="game-top"><div class="game-label"><i></i><span id="training-label">移动试验场</span></div><div class="training-actions"><div class="training-arena-buttons"><button id="reset-dummies" class="training-arena-button" data-ui hidden>重置假人</button><button id="switch-training" class="training-arena-button" data-ui aria-pressed="false" disabled>障碍物训练场</button><button id="switch-monster-training" class="training-arena-button" data-ui aria-pressed="false" disabled>怪物训练场</button><button id="switch-locking-training" class="training-arena-button" data-ui aria-pressed="false" disabled>锁定训练场</button></div><button id="open-settings" class="mobile-only" data-ui aria-label="打开调试面板">调参 <span>☷</span></button></div></div><div id="targeting-hud" class="targeting-hud" hidden></div><div id="training-result" role="status" aria-live="polite" hidden></div>
         <div class="state-pill"><i></i><span id="game-state">准备中</span></div>
         <div class="joystick" id="joystick" aria-hidden="true"><div class="joystick-ring"><span class="chevron top"></span><span class="chevron right"></span><span class="chevron bottom"></span><span class="chevron left"></span></div><div class="knob"></div><div class="threshold"></div></div>
         <div class="game-hint" id="game-hint">按住任意位置，拖动开始移动</div>
@@ -255,17 +256,20 @@ function switchTraining(training: MovementController['training']) {
   game.rings.reset();
   game.cameraZ = controller.position.z;
   clearTimeout(resultTimer); element('training-result').hidden = true;
-  const obstacles = training === 'obstacles', locking = training === 'locking';
-  element('reset-dummies').hidden=!locking;
-  element('training-label').textContent = obstacles ? '障碍物训练场' : locking ? '锁定训练场' : '移动试验场';
+  const obstacles = training === 'obstacles', locking = training === 'locking', monsters = training === 'monsters';
+  element('switch-monster-training').textContent = monsters ? '返回普通训练场' : '怪物训练场';
+  element('switch-monster-training').setAttribute('aria-pressed', String(monsters));
+  element('reset-dummies').hidden=!(locking||monsters);
+  element('training-label').textContent = obstacles ? '障碍物训练场' : monsters ? '怪物训练场' : locking ? '锁定训练场' : '移动试验场';
   element('switch-training').textContent = obstacles ? '返回普通训练场' : '障碍物训练场';
   element('switch-locking-training').textContent = locking ? '返回普通训练场' : '锁定训练场';
   element('switch-training').setAttribute('aria-pressed', String(obstacles));
   element('switch-locking-training').setAttribute('aria-pressed', String(locking));
   element('game-hint').textContent = obstacles ? '沿曲线依次经过白圈 · 通过后变绿'
-    : locking ? '原地跑步朝目标 · 松手射箭 · 拖动移动' : '按住任意位置，拖动开始移动';
+    : (locking||monsters) ? '原地跑步朝目标 · 松手射箭 · 拖动移动' : '按住任意位置，拖动开始移动';
   game.sync(0); drawJoystick(); updateTelemetry();
 }
+element('switch-monster-training').addEventListener('click',()=>switchTraining(controller.training === 'monsters' ? 'free' : 'monsters'));
 element('reset-dummies').addEventListener('click',()=>{if(ready){game.resetDummies();updateTelemetry();}});
 element('switch-training').addEventListener('click', () => {
   switchTraining(controller.training === 'obstacles' ? 'free' : 'obstacles');
@@ -449,7 +453,7 @@ function updateTelemetry() {
   element('anchor-label').textContent = `${controller.offset.x.toFixed(3)} / ${controller.offset.z.toFixed(3)}`;
   element('position-label').textContent = `${controller.position.x.toFixed(2)} / ${controller.position.z.toFixed(2)}`;
   element('turn-model-label').textContent = ({ 0: '匀速', 2: '自定义曲线', 5: 'Slerp', 6: 'SmoothDampAngle', 7: '自定义曲线－二阶平滑' } as Record<number, string>)[controller.activeTurnModel];
-  const targeting = controller.targeting, inLocking = controller.training === 'locking';
+  const targeting = controller.targeting, inLocking = controller.combatTraining;
   element('targeting-state-label').textContent = !inLocking ? '当前场地无目标' : targeting.active ? '已启用' : '等待首次按下';
   element('targeting-model-label').textContent = ['A · 最近', 'B · 方向', 'C · 保留'][controller.settings.targetModel];
   element('target-label').textContent = targeting.target?.label ?? '无';
@@ -542,6 +546,7 @@ async function start() {
     await game.init();
     ready = true;
     element<HTMLButtonElement>('switch-training').disabled = false;
+    element<HTMLButtonElement>('switch-monster-training').disabled = false;
     element<HTMLButtonElement>('switch-locking-training').disabled = false;
     element('loading').remove(); updateTelemetry();
     game.renderer.setAnimationLoop(frame);

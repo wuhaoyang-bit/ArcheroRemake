@@ -24,6 +24,7 @@
     "hitParticleMaxSpeed": 17.5,
     "hitParticleDrag": 5,
     "hitParticleSize": 1,
+    "monsterSpeed": 3,
     "joystickRadius": 64,
     "unlockDistance": 20,
     "showThreshold": 0,

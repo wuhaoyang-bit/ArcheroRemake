@@ -208,7 +208,7 @@ export class GameScene {
     const [character, arrows] = await Promise.all([loadCharacter(), ArrowProjectiles.load(this.scene)]);
     this.arrows = arrows;
     this.arrows.setTargets(this.feedback?.proxies ?? []);
-    this.arrows.onHit=hit=>{if(this.controller.training!=='locking')return;if(this.feedback?.hit(hit.id,hit.direction,this.controller.settings))this.particles?.emit(hit.point,hit.direction,this.controller.settings);};
+    this.arrows.onHit=hit=>{if(!this.controller.combatTraining)return;if(this.feedback?.hit(hit.id,hit.direction,this.controller.settings))this.particles?.emit(hit.point,hit.direction,this.controller.settings);};
     this.bowGrip = character.model.getObjectByName('RedBowGrip')!;
     this.body.add(character.model);
     this.mixer = character.mixer;
@@ -232,9 +232,9 @@ export class GameScene {
     this.trainingMode = this.controller.training;
     this.room = buildRoom(this.roomSize, this.roomLength);
     this.trainingVisual = this.trainingMode === 'obstacles' ? buildTraining(this.roomSize, this.roomLength)
-      : this.trainingMode === 'locking' ? buildLockingTraining(this.roomSize, this.roomLength) : undefined;
+      : this.controller.combatTraining ? buildLockingTraining(this.roomSize, this.roomLength,this.controller.getPracticeTargets()) : undefined;
     if (this.trainingVisual) this.room.add(this.trainingVisual);
-    if(this.trainingMode==='locking'&&this.trainingVisual)this.feedback=new TrainingFeedback(this.trainingVisual,this.controller.getPracticeTargets(),this.roomSize,this.roomLength);
+    if(this.controller.combatTraining&&this.trainingVisual)this.feedback=new TrainingFeedback(this.trainingVisual,this.controller.getPracticeTargets(),this.roomSize,this.roomLength);
     this.scene.add(this.room);
     this.arrows?.setTargets(this.feedback?.proxies ?? []);
   }
@@ -243,7 +243,9 @@ export class GameScene {
 
   advanceFeedback(dt:number){
     if(this.trainingMode!==this.controller.training || this.practiceRevision!==this.controller.practiceRevision || this.roomSize!==this.controller.settings.roomSize || this.roomLength!==this.controller.settings.roomLength)this.setRoom();
-    this.feedback?.update(dt,this.controller.settings);this.particles?.update(dt,this.controller.settings);
+    this.feedback?.update(dt,this.controller.settings);
+    if(this.controller.training==='monsters'){this.feedback?.pursue(dt,this.controller.position,this.controller.settings.monsterSpeed,this.controller.settings);this.controller.resolveMonsterContacts();this.feedback?.refresh(this.controller.settings);}
+    this.particles?.update(dt,this.controller.settings);
   }
 
   /** Read-only visual diagnostics for the development browser checks. */
@@ -284,13 +286,14 @@ export class GameScene {
     this.anchorOutline.visible = this.showAnchorOutline;
     this.headingGuide.visible = this.showHeading;
     this.headingGuide.rotation.y = ctl.heading;
-    this.lockRangeGuide.visible = ctl.training === 'locking' && !!ctl.settings.showLockRange && ctl.settings.lockRange > 0;
+    this.lockRangeGuide.visible = ctl.combatTraining && !!ctl.settings.showLockRange && ctl.settings.lockRange > 0;
     this.lockRangeGuide.position.set(ctl.position.x, .045, ctl.position.z);
     this.lockRangeGuide.scale.setScalar(ctl.settings.lockRange);
     for (const [marker, target] of [[this.candidateMarker, ctl.targeting.candidate]] as const) {
-      marker.visible = ctl.training === 'locking' && target !== null;
+      marker.visible = ctl.combatTraining && target !== null;
       if (target) marker.position.set(target.x, .08, target.z);
     }
+    this.feedback?.refresh(ctl.settings);
     this.trainingVisual?.updateWorldMatrix(true, true);
     this.bowGrip.scale.setScalar(ctl.settings.bowScale);
     this.arrows?.setScale(ctl.settings.arrowScale);
@@ -298,7 +301,7 @@ export class GameScene {
     this.arrows?.update(dt);
     this.animation.update(dt, ctl.mode, ctl.activeAttackRequest, ctl.settings.blendDuration, ctl.settings.runSpeed, remaining => {
       const enemy = ctl.targeting.target;
-      if (!enemy || ctl.training !== 'locking') return;
+      if (!enemy || !ctl.combatTraining) return;
       this.bowGrip.getWorldPosition(this.shotOrigin);
       this.shotAim.set(enemy.x, 1.65, enemy.z);
       this.arrows?.fire(this.shotOrigin, this.shotAim, Math.max(32, ctl.settings.lockRange + 4), remaining);
@@ -307,7 +310,7 @@ export class GameScene {
     this.camera.position.set(0, 24, this.cameraZ + 24 / Math.tan(this.tilt));
     this.camera.lookAt(0, 0, this.cameraZ);
     this.camera.updateMatrixWorld();
-    this.rings.update(dt, ctl.settings, this.camera, ctl.position, ctl.training === 'locking' ? ctl.targeting.target : null, this.animation.snapshot());
+    this.rings.update(dt, ctl.settings, this.camera, ctl.position, ctl.combatTraining ? ctl.targeting.target : null, this.animation.snapshot());
   }
 
   render() { this.particles?.prepare(this.camera,this.controller.settings);this.particles?.renderDepth(this.renderer,this.camera);this.renderer.render(this.scene, this.camera); }
