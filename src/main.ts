@@ -29,6 +29,7 @@ const settings: { title: string; items: [SettingKey, string, string, string][] }
     ['runSpeed', 'Run 动画速度', '倍', '独立控制原地跑步与移动时的 Run 播放速度，不改变位移速度、Idle 或融合时长。'],
   ] },
   { title: '弓与箭', items: [
+    ['attackSpeed', '攻击动画倍率（攻击速度）', '倍', '默认 1 倍；同时调整射箭动画与连续射箭频率，立即生效，不改变箭的飞行速度。'],
     ['bowScale', '弓缩放', '倍', '以握把为中心调整弓的大小，保留拉弓与回弹动作。'],
     ['arrowSpeed', '箭飞行速度', '单位/s', '调整箭的匀速飞行速度，立即作用于飞行中的箭；不改变射箭动作频率。'],
     ['arrowScale', '箭缩放', '倍', '调整箭的大小，立即生效，飞行速度保持不变。'],

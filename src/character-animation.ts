@@ -42,7 +42,8 @@ export class CharacterAnimation {
     attack.setEffectiveWeight(0);
   }
 
-  update(dt: number, mode: Mode, request: number | null, blendDuration: number, runSpeed: number, onRelease?: (remaining: number) => void) {
+  update(dt: number, mode: Mode, request: number | null, blendDuration: number, runSpeed: number, onRelease?: (remaining: number) => void, attackSpeed = 1) {
+    const speed = Number.isFinite(attackSpeed) ? Math.max(.25, Math.min(6, attackSpeed)) : 1;
     if (request === null && this.playing) {
       // Pressing interrupts immediately; losing the target returns to Idle.
       this.attack.stop(); this.attack.setEffectiveWeight(0);
@@ -52,7 +53,7 @@ export class CharacterAnimation {
     }
     if (request !== null && request !== this.handledRequest) {
       this.handledRequest = request;
-      this.attack.reset().setEffectiveTimeScale(1).play();
+      this.attack.reset().play();
       this.playing = true;
       this.attackBlend.setTarget(1, blendDuration);
     }
@@ -61,7 +62,7 @@ export class CharacterAnimation {
     const runWeight = this.blend.update(dt), attackWeight = this.attackBlend.update(dt);
     this.idle.setEffectiveWeight((1 - runWeight) * (1 - attackWeight));
     this.run.setEffectiveWeight(runWeight * (1 - attackWeight)).setEffectiveTimeScale(runSpeed);
-    this.attack.setEffectiveWeight(attackWeight);
+    this.attack.setEffectiveWeight(attackWeight).setEffectiveTimeScale(speed);
     // Sample the hand at the release pose, even when an update crosses the event.
     // The callback receives only the post-release flight time left in this update.
     let remaining = dt;
@@ -69,12 +70,13 @@ export class CharacterAnimation {
       const duration = this.attack.getClip().duration;
       let untilRelease = this.releaseTime - this.attack.time;
       if (untilRelease <= 1e-9) untilRelease += duration;
+      untilRelease /= speed;
       while (untilRelease <= remaining + 1e-9) {
         const step = Math.min(untilRelease, remaining);
         this.mixer.update(step);
         remaining = Math.max(0, remaining - step);
         onRelease(remaining);
-        untilRelease = duration;
+        untilRelease = duration / speed;
       }
     }
     this.mixer.update(remaining);
@@ -82,7 +84,7 @@ export class CharacterAnimation {
   }
 
   snapshot() {
-    return { releaseTime:this.releaseTime, playing: this.playing, time: this.attack.time,
+    return { speed:this.attack.getEffectiveTimeScale(), releaseTime:this.releaseTime, playing: this.playing, time: this.attack.time,
       duration: this.attack.getClip().duration, weight: this.attack.getEffectiveWeight(),
       idleWeight: this.idle.getEffectiveWeight(), runWeight: this.run.getEffectiveWeight() };
   }

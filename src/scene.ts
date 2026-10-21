@@ -307,7 +307,7 @@ export class GameScene {
       this.bowGrip.getWorldPosition(this.shotOrigin);
       this.shotAim.set(enemy.x, 1.65, enemy.z);
       this.arrows?.fire(this.shotOrigin, this.shotAim, Math.max(32, ctl.settings.lockRange + 4), remaining);
-    });
+    }, ctl.settings.attackSpeed);
     this.cameraZ = follow(this.cameraZ, ctl.position.z, ctl.settings.cameraResponse, dt);
     this.camera.position.set(0, 24, this.cameraZ + 24 / Math.tan(this.tilt));
     this.camera.lookAt(0, 0, this.cameraZ);

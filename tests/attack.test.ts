@@ -136,3 +136,25 @@ test('interrupting before release emits nothing; restart waits for a full draw',
   animation.update(.4, 'idle', 2, 0, 1, emit); assert.equal(count, 0);
   animation.update(.2, 'idle', 2, 0, 1, emit); assert.equal(count, 1);
 });
+
+
+test('attack speed scales release events and passes real flight remainder at every frame rate',()=>{
+ for(const speed of [.25,1,2,6])for(const hz of [30,60,120]){
+  const {animation,attack}=animator();let elapsed=0;const times:number[]=[];
+  for(let i=0;i<hz*4;i++){elapsed+=1/hz;animation.update(1/hz,'idle',1,0,1.5,r=>{times.push(elapsed-r);near(attack.time,.55);},speed);}
+  const expected:number[]=[];for(let t=.55/speed;t<=4+1e-8;t+=1/speed)expected.push(t);
+  assert.equal(times.length,expected.length);times.forEach((t,i)=>near(t,expected[i]));
+ }
+ const {animation}=animator(),remainders:number[]=[];
+ animation.update(1,'idle',1,0,1,r=>remainders.push(r),6);
+ assert.equal(remainders.length,6);remainders.forEach((r,i)=>near(r,1-(.55+i)/6));
+});
+test('changing attack speed preserves phase and does not scale Run or Idle',()=>{
+ const {animation,attack,run,idle}=animator();let count=0;
+ animation.update(.2,'idle',1,0,1.5,()=>count++,1);near(attack.time,.2);
+ animation.update(0,'idle',1,0,1.5,()=>count++,2);near(attack.time,.2);
+ animation.update(.2,'idle',1,0,1.5,r=>{count++;near(r,.025);},2);
+ near(attack.time,.6);assert.equal(count,1);near(run.getEffectiveTimeScale(),1.5);near(idle.getEffectiveTimeScale(),1);
+ animation.update(.5,'moving',null,0,1.5,()=>assert.fail('interrupted'),6);
+ animation.update(.05,'idle',2,0,1.5,()=>assert.fail('before release'),6);near(attack.time,.3);
+});
