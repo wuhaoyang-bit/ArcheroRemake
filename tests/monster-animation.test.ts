@@ -25,3 +25,15 @@ test('hit animation speed changes clip playback and wall-clock recovery, with re
   a.dispose();
  }
 });
+
+
+test('preview samples all clips deterministically and holds their last frame',()=>{
+ const model=new T.Group(),a=new MonsterAnimation(model,clips);
+ for(const [index,name] of ['Idle','Run','Hitted','Dead'].entries()){
+  a.preview(name,.2);assert.ok(Math.abs(model.position.y-(index+1)*.5)<1e-6);
+  a.preview(name,.4);assert.ok(Math.abs(model.position.y-(index+1))<1e-6);
+  a.preview(name,.2);assert.ok(Math.abs(model.position.y-(index+1)*.5)<1e-6);
+  a.preview(name,10);assert.ok(Math.abs(model.position.y)<1e-6);
+ }
+ a.dispose();
+});

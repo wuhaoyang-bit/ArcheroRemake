@@ -9,7 +9,7 @@ export class MonsterAnimation {
   private actions:Record<State,T.AnimationAction>;
   private state:State='Idle';
   private hitRemaining=0;
-  constructor(model:T.Object3D,clips:T.AnimationClip[]){
+  constructor(model:T.Object3D,private clips:T.AnimationClip[]){
     this.mixer=new T.AnimationMixer(model);
     const action=(name:State)=>{
       const clip=T.AnimationClip.findByName(clips,name);if(!clip)throw new Error(`蜘蛛缺少 ${name} 动画`);
@@ -38,6 +38,14 @@ export class MonsterAnimation {
     if(this.hitRemaining===0){this.switchTo(moving?'Run':'Idle');this.mixer.update(dt-held);}
   }
   reset(){this.mixer.stopAllAction();this.state='Idle';this.hitRemaining=0;this.actions.Idle.reset().setEffectiveWeight(1).play();this.mixer.update(0);}
+  /** Preview-only deterministic sampling; hold the final pose instead of looping. */
+  preview(name:string,time:number){
+    const clip=T.AnimationClip.findByName(this.clips,name);if(!clip)throw new Error(`缺少动画 ${name}`);
+    this.mixer.stopAllAction();const action=this.mixer.clipAction(clip);
+    action.reset().setLoop(T.LoopOnce,1).setEffectiveTimeScale(1).setEffectiveWeight(1).play();action.clampWhenFinished=true;
+    this.mixer.setTime(Math.max(0,Math.min(time,clip.duration)));
+  }
+  durations(){return Object.fromEntries(this.clips.map(c=>[c.name,c.duration]));}
   dispose(){this.mixer.stopAllAction();this.mixer.uncacheRoot(this.mixer.getRoot());}
   snapshot(){return {state:this.state,time:this.actions[this.state].time,hitRemaining:this.hitRemaining};}
 }
