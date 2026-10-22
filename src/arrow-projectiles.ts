@@ -26,6 +26,7 @@ export type ArrowHit = { id: string; point: THREE.Vector3; direction: THREE.Vect
 export class ArrowProjectiles {
   debug?:HitDebug;
   onHit?: (hit: ArrowHit) => void;
+  onFire?: (position: THREE.Vector3, direction: THREE.Vector3, elapsed: number) => void;
   private pool: Arrow[] = [];
   private targets: THREE.Object3D[] = [];
   private ray = new THREE.Raycaster();
@@ -138,6 +139,7 @@ export class ArrowProjectiles {
     arrow.active = true;
     arrow.object.visible = true;
     this.fired++;
+    this.onFire?.(position, arrow.direction, elapsed);
 
     // Point-blank: shaft already overlapping an enemy at spawn.
     this.origin.copy(position).addScaledVector(arrow.direction, this.tail * this.scale);

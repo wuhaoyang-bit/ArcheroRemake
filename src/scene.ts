@@ -1,3 +1,4 @@
+import { BowReleaseEffects } from './bow-release-effects.ts';
 import { HitDebug } from './hit-debug.ts';
 import type { ArrowHit } from './arrow-projectiles.ts';
 import { TrainingMonsterFactory } from './training-monster.ts';
@@ -127,6 +128,7 @@ export class GameScene {
   cameraZ: number;
   animation!: CharacterAnimation;
   arrows?: ArrowProjectiles;
+  bowRelease?: BowReleaseEffects;
   private bowGrip!: THREE.Object3D;
   private shotOrigin = new THREE.Vector3();
   private shotAim = new THREE.Vector3();
@@ -222,9 +224,11 @@ export class GameScene {
     }
     this.candidateMarker.renderOrder = 102;
 
-    const [character, arrows, monsters] = await Promise.all([loadCharacter(), ArrowProjectiles.load(this.scene), TrainingMonsterFactory.load()]);
+    const [character, arrows, monsters, bowRelease] = await Promise.all([loadCharacter(), ArrowProjectiles.load(this.scene), TrainingMonsterFactory.load(), BowReleaseEffects.load(this.scene)]);
+    this.bowRelease=bowRelease;
     this.monsterFactory=monsters;
     this.arrows = arrows;
+    this.arrows.onFire=(origin,direction,elapsed)=>this.bowRelease?.emit(origin,direction,elapsed);
     this.arrows.debug=this.hitDebug;
     this.arrows.setTargets(this.feedback?.proxies ?? []);
     this.applyArrowHit=hit=>{
@@ -287,6 +291,7 @@ export class GameScene {
     this.hitDebug.clear();this.deferredDebugHits=[];
     this.particles?.clear();
     this.juice?.clear();
+    this.bowRelease?.clear();
     this.pendingShots.length=0;
     this.practiceRevision=this.controller.practiceRevision;
     this.monsterRosterSignature=this.rosterSignature();
@@ -314,6 +319,7 @@ export class GameScene {
     this.arrows?.clear();
     this.particles?.clear();
     this.juice?.clear();
+    this.bowRelease?.clear();
     if(this.controller.training==='monsters'){
       this.controller.regenerateMonsterRoster();
       this.setRoom();
@@ -419,6 +425,7 @@ export class GameScene {
     if (!ctl.combatTraining || ctl.activeAttackRequest === null) this.pendingShots.length = 0;
     this.queuePendingShots(dt);
     this.arrows?.update(dt);
+    this.bowRelease?.update(dt);
     if(this.hitDebug.enabled&&this.hitDebug.paused)return;
     this.animation.update(dt, ctl.mode, ctl.activeAttackRequest, ctl.settings.blendDuration, ctl.settings.runSpeed, remaining => {
       this.fireAttackVolley(remaining);
