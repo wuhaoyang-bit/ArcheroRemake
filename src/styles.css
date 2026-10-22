@@ -169,3 +169,7 @@ input[type=range]::-moz-range-thumb { width: 9px; height: 9px; border-radius: 50
 .ring-preview output { color:#f7a1a5; font-variant-numeric:tabular-nums; }
 .ring-preview input { width:100%; accent-color:#f36c72; margin:16px 0; }
 .ring-preview button { padding:8px 12px; color:inherit; border:1px solid #63765b; border-radius:6px; background:#20392e; }
+#hit-debug-toolbar{position:absolute;z-index:15;bottom:38px;left:12px;right:12px;padding:8px 10px;border:1px solid #6b8862;border-radius:8px;background:#132017e8;color:#ebf6dd;font-size:11px;pointer-events:auto}
+#hit-debug-toolbar button{padding:6px 10px;margin-right:8px;background:#34492e;color:#f4e8b1;border:1px solid #82986d;border-radius:5px;cursor:pointer}
+#hit-debug-readout{display:block;white-space:pre-wrap;line-height:1.5;margin-top:4px;font-variant-numeric:tabular-nums}
+#hit-debug-toolbar[hidden]{display:none}

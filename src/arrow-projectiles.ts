@@ -1,3 +1,4 @@
+import type { HitDebug } from './hit-debug.ts';
 import * as THREE from 'three/webgpu';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
@@ -23,6 +24,7 @@ export type ArrowHit = { id: string; point: THREE.Vector3; direction: THREE.Vect
  * Object-pool recycle never runs for any other reason while the arrow is flying.
  */
 export class ArrowProjectiles {
+  debug?:HitDebug;
   onHit?: (hit: ArrowHit) => void;
   private pool: Arrow[] = [];
   private targets: THREE.Object3D[] = [];
@@ -103,6 +105,7 @@ export class ArrowProjectiles {
   /** Replace hit proxies. Does not touch the pool — flying arrows keep flying. */
   setTargets(targets: THREE.Object3D[]) {
     this.targets = targets;
+    this.debug?.setTargets(targets);
   }
 
   /** Explicit recycle of every pooled arrow (room rebuild / reset). */
@@ -138,7 +141,7 @@ export class ArrowProjectiles {
 
     // Point-blank: shaft already overlapping an enemy at spawn.
     this.origin.copy(position).addScaledVector(arrow.direction, this.tail * this.scale);
-    if (this.resolveTrigger(arrow, (this.tip - this.tail) * this.scale)) return;
+    if (this.resolveTrigger(arrow, (this.tip - this.tail) * this.scale,'出生时箭身重叠')) return;
     if (elapsed > 0) this.advance(arrow, elapsed);
   }
 
@@ -158,10 +161,11 @@ export class ArrowProjectiles {
 
   /**
    * Sweep the tip trigger forward by `travel`.
-   * @returns true if the arrow was despawned (non-pierce damage).
+   * @returns true when this advance must stop (recycled, or debug paused at contact).
    */
-  private resolveTrigger(arrow: Arrow, travel: number): boolean {
+  private resolveTrigger(arrow: Arrow, travel: number,kind='箭尖扫掠'): boolean {
     if (!arrow.active || travel <= 0 || !this.targets.length) return false;
+    if(this.debug?.enabled)this.debug.sweep(this.origin,this.origin.clone().addScaledVector(arrow.direction,travel));
     this.ray.set(this.origin, arrow.direction);
     this.ray.near = 0;
     this.ray.far = travel;
@@ -172,6 +176,7 @@ export class ArrowProjectiles {
     for (const intersection of this.hits) {
       const id = this.targetId(intersection.object);
       if (!id || arrow.hitIds.has(id)) continue;
+      this.debug?.capture(arrow.object,arrow.direction,this.tip*this.scale,this.origin,travel,intersection.point,id,kind);
       arrow.hitIds.add(id);
       this.lastHit = id;
       this.hitCount++;
@@ -187,6 +192,12 @@ export class ArrowProjectiles {
         return true;
       }
       this.onHit?.(hit);
+      // In diagnostic pause mode preserve a piercing arrow at the first contact.
+      if(this.debug?.enabled&&this.debug.paused){
+        arrow.object.position.copy(intersection.point).addScaledVector(arrow.direction,-this.tip*this.scale);
+        arrow.distance+=intersection.distance;
+        return true;
+      }
     }
     return false;
   }
@@ -207,7 +218,7 @@ export class ArrowProjectiles {
   }
 
   update(dt: number) {
-    for (const arrow of this.pool) this.advance(arrow, dt);
+    for (const arrow of this.pool){if(this.debug?.enabled&&this.debug.paused)break;this.advance(arrow, dt);}
   }
 
   snapshot() {
@@ -221,6 +232,7 @@ export class ArrowProjectiles {
       allocated: this.pool.length,
       active: this.pool.filter(a => a.active).map(a => ({
         position: a.object.position.toArray(),
+        tip:a.object.position.clone().addScaledVector(a.direction,this.tip*this.scale).toArray(),
         direction: a.direction.toArray(),
         distance: a.distance,
         pierce: a.pierce,

@@ -1,3 +1,5 @@
+import { HitDebug } from './hit-debug.ts';
+import type { ArrowHit } from './arrow-projectiles.ts';
 import { TrainingMonsterFactory } from './training-monster.ts';
 import { HitParticles } from './hit-particles.ts';
 import { JuiceParticles } from './juice-particles.ts';
@@ -137,6 +139,9 @@ export class GameScene {
   private trainingMode = 'free';
   feedback?: TrainingFeedback;
   private monsterFactory?:TrainingMonsterFactory;
+  hitDebug=new HitDebug(this.scene);
+  private deferredDebugHits:ArrowHit[]=[];
+  private applyArrowHit?:(hit:ArrowHit)=>void;
   particles?: HitParticles;
   juice?: JuiceParticles;
   private practiceRevision=-1;
@@ -220,8 +225,9 @@ export class GameScene {
     const [character, arrows, monsters] = await Promise.all([loadCharacter(), ArrowProjectiles.load(this.scene), TrainingMonsterFactory.load()]);
     this.monsterFactory=monsters;
     this.arrows = arrows;
+    this.arrows.debug=this.hitDebug;
     this.arrows.setTargets(this.feedback?.proxies ?? []);
-    this.arrows.onHit=hit=>{
+    this.applyArrowHit=hit=>{
       if(!this.controller.combatTraining||!this.feedback||!this.particles)return;
       if(!this.feedback.hit(hit.id,hit.direction,this.controller.settings))return;
       const settings=this.controller.settings;
@@ -238,6 +244,10 @@ export class GameScene {
       }
       // Independent delayed juice; sparks above remain unchanged.
       this.juice?.schedule(hit.id,settings,id=>this.juiceOriginFor(id));
+    };
+    this.arrows.onHit=hit=>{
+      if(this.hitDebug.enabled&&this.hitDebug.paused){this.deferredDebugHits.push(hit);return;}
+      this.applyArrowHit?.(hit);
     };
     this.bowGrip = character.model.getObjectByName('RedBowGrip')!;
     this.body.add(character.model);
@@ -274,6 +284,7 @@ export class GameScene {
   }
 
   private setRoom() {
+    this.hitDebug.clear();this.deferredDebugHits=[];
     this.particles?.clear();
     this.juice?.clear();
     this.pendingShots.length=0;
@@ -297,6 +308,7 @@ export class GameScene {
   }
 
   resetDummies(){
+    this.hitDebug.clear();this.deferredDebugHits=[];
     this.controller.cancel();
     this.pendingShots.length=0;
     this.arrows?.clear();
@@ -314,6 +326,7 @@ export class GameScene {
 
   advanceFeedback(dt:number){
     if(this.needsRoomRefresh())this.setRoom();
+    for(const hit of this.deferredDebugHits.splice(0))this.applyArrowHit?.(hit);
     this.feedback?.update(dt,this.controller.settings);
     if(this.controller.training==='monsters'){this.feedback?.pursue(dt,this.controller.position,this.controller.settings.monsterSpeed,this.controller.settings);this.controller.resolveMonsterContacts();this.feedback?.refresh(this.controller.settings);}
     this.particles?.update(dt,this.controller.settings,id=>this.feedback?.feetOrigin(id,this.feetScratch)??null);
@@ -406,6 +419,7 @@ export class GameScene {
     if (!ctl.combatTraining || ctl.activeAttackRequest === null) this.pendingShots.length = 0;
     this.queuePendingShots(dt);
     this.arrows?.update(dt);
+    if(this.hitDebug.enabled&&this.hitDebug.paused)return;
     this.animation.update(dt, ctl.mode, ctl.activeAttackRequest, ctl.settings.blendDuration, ctl.settings.runSpeed, remaining => {
       this.fireAttackVolley(remaining);
     }, ctl.settings.attackSpeed);
@@ -417,6 +431,9 @@ export class GameScene {
   }
 
   render() {
+    // Apply tuning even while hit-debug simulation is paused.
+    this.feedback?.refresh(this.controller.settings);
+    this.hitDebug.update(this.hitDebug.enabled?(this.arrows?.snapshot().active.map(a=>a.tip)??[]):[]);
     this.particles?.prepare(this.camera,this.controller.settings);
     this.particles?.renderDepth(this.renderer,this.camera);
     this.juice?.prepare(this.camera,this.controller.settings);

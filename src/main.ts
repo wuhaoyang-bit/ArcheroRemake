@@ -39,7 +39,7 @@ const settings: { title: string; items: [SettingKey, string, string, string][] }
     ['arrowFireInterval', '箭出发间隔', 's', '同一次攻击中相邻两支箭的间隔；最小 0.01 秒。'],
   ] },
   { title: '训练场 · 受击反馈', items: HIT_CONTROLS },
-  { title: '怪物训练场', items: [['monsterCount','怪物数量','只','1–10，默认 2；拖动即时增减。变多在现有附近散开，变少只删多余。'],['monsterHitSpeed','怪物受伤动画倍率','倍','默认 1 倍；只调整原作受伤动作，修改后下一次命中生效。击退、边缘光和缩放时长独立控制。'],['monsterScale','怪物模型缩放','倍','默认 1 倍；两个训练场即时生效，命中范围和瞄准高度同步缩放，移动碰撞半径保持不变。'],['monsterSpeed','怪物追赶速度','u/s','朝角色匀速移动，受击击退期间暂停追赶。']] },
+  { title: '怪物训练场', items: [['monsterCount','怪物数量','只','1–10，默认 2；拖动即时增减。变多在现有附近散开，变少只删多余。'],['monsterHitSpeed','怪物受伤动画倍率','倍','默认 1 倍；只调整原作受伤动作，修改后下一次命中生效。击退、边缘光和缩放时长独立控制。'],['monsterScale','怪物模型缩放','倍','默认 1 倍；两个训练场即时生效，命中范围和瞄准高度同步缩放，移动碰撞半径保持不变。'],['monsterHitRadius','怪物命中圆柱半径','u','模型 1 倍时的半径，默认 1.105 u，随怪物模型缩放。仅调整箭的命中圆柱，不改变移动碰撞；打开命中调试可实时查看。'],['monsterSpeed','怪物追赶速度','u/s','朝角色匀速移动，受击击退期间暂停追赶。']] },
   { title: '房间与镜头', items: [
     ['roomSize', '房间宽度', '单位', '调整横向可移动范围。'],
     ['roomLength', '房间纵向长度', '单位', '调整画面上下方向的可移动范围，独立于宽度。'],
@@ -92,13 +92,13 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         if(key==='juiceCurve')return `<div class="setting" title="${hint}"><label for="value-${key}">${name}</label><select id="value-${key}" data-setting="${key}">${['Linear','OutQuad','OutCubic · 截图方案','OutExpo','smoothstep','指数阻力','自定义曲线'].map((label,i)=>`<option value="${i}">${label}</option>`).join('')}</select><div id="juice-speed-curve-editor" hidden></div></div>`;
         if(key==='juiceColor')return `<div class="setting" title="${hint}"><label for="value-${key}">${name}</label><input id="value-${key}" data-setting="${key}" type="color" value="#55991e"></div>`;
         return `<div class="setting" title="${hint}"><div class="setting-label"><label for="slider-${key}">${name}</label><div class="numeric"><input id="value-${key}" data-setting="${key}" type="number" min="${min}" max="${max}" step="${step}" value="${DEFAULTS[key]}" aria-label="${name}数值"><span>${unit}</span></div></div><input id="slider-${key}" data-setting="${key}" type="range" min="${min}" max="${max}" step="${step}" value="${DEFAULTS[key]}" aria-label="${name}"></div>`;
-      }).join('')}${group.title === '锁定圆环 UI' ? '<p class="threshold-help">以下曲线及本组全部参数在下一次锁定入场生效。换目标沿用当前值；失去全部目标后重新锁定才应用新值。</p><div id="ring-curve-editor"></div><h3>冲击波扩散 / 时间进度</h3><div id="ring-wave-editor"></div><h3>换目标扩张 / 时间进度</h3><div id="ring-switch-editor"></div><h3>连线粗细 / 攻击动画进度</h3><div id="link-attack-editor"></div><h3>目标圆粗细 / 收缩完成度</h3><div id="ring-stroke-editor"></div><div id="ring-preview" class="ring-preview"><label for="ring-preview-progress">收缩预览 <output id="ring-preview-label">未锁定</output></label><input id="ring-preview-progress" type="range" min="0" max="100" step="0.1" value="0" disabled><button id="ring-preview-resume" disabled>恢复自动播放</button><p class="threshold-help">有锁定目标时可拖动。拖后停留在指定完成度，换目标保留预览；丢锁退出。仅改变圆环，不影响角色操作。参数修改仍在下一次入场生效。</p></div>' : ''}${group.title === '轮盘与锚点' ? '<label class="threshold-toggle"><input id="show-threshold" type="checkbox">显示移动阈值范围</label><p class="threshold-help">黄圈为首次解锁边界，越过后变青色；回圈内不会再次锁定。</p>' : ''}</section>`).join('')}<section class="setting-group"><h2>移动速度模型</h2><div class="turn-model-field"><label for="move-model">移动速度模型</label><select id="move-model" disabled><option value="0">恒定移动速度</option><option value="1">角度差曲线</option></select><p class="threshold-help">身体与实际锚点方向的最短角度差 → 基础移动速度百分比。100% 保持当前速度，80% 为当前速度的八成。默认全程 100%。</p></div><div id="move-curve-editor" hidden></div></section><section class="setting-group"><h2>锚点防抖</h2><label class="threshold-toggle"><input id="anchor-follow" type="checkbox">启用锚点跟随</label><div id="anchor-curve-editor"></div></section><section class="setting-group"><h2>朝向调试</h2><label class="threshold-toggle"><input id="show-heading" type="checkbox">显示角色朝向线</label><label class="threshold-toggle debug-toggle"><input id="show-idle-anchor" type="checkbox">待机时也显示移动锚点</label><label class="threshold-toggle debug-toggle"><input id="show-anchor-outline" type="checkbox">锚点遮挡轮廓</label><p class="threshold-help">粉红直线代表角色当前朝向；蓝点代表移动锚点；遮挡轮廓让浅蓝圆环透过角色显示。开关仅用于本次页面调试。</p></section></div>
+      }).join('')}${group.title === '锁定圆环 UI' ? '<p class="threshold-help">以下曲线及本组全部参数在下一次锁定入场生效。换目标沿用当前值；失去全部目标后重新锁定才应用新值。</p><div id="ring-curve-editor"></div><h3>冲击波扩散 / 时间进度</h3><div id="ring-wave-editor"></div><h3>换目标扩张 / 时间进度</h3><div id="ring-switch-editor"></div><h3>连线粗细 / 攻击动画进度</h3><div id="link-attack-editor"></div><h3>目标圆粗细 / 收缩完成度</h3><div id="ring-stroke-editor"></div><div id="ring-preview" class="ring-preview"><label for="ring-preview-progress">收缩预览 <output id="ring-preview-label">未锁定</output></label><input id="ring-preview-progress" type="range" min="0" max="100" step="0.1" value="0" disabled><button id="ring-preview-resume" disabled>恢复自动播放</button><p class="threshold-help">有锁定目标时可拖动。拖后停留在指定完成度，换目标保留预览；丢锁退出。仅改变圆环，不影响角色操作。参数修改仍在下一次入场生效。</p></div>' : ''}${group.title === '轮盘与锚点' ? '<label class="threshold-toggle"><input id="show-threshold" type="checkbox">显示移动阈值范围</label><p class="threshold-help">黄圈为首次解锁边界，越过后变青色；回圈内不会再次锁定。</p>' : ''}</section>`).join('')}<section class="setting-group"><h2>移动速度模型</h2><div class="turn-model-field"><label for="move-model">移动速度模型</label><select id="move-model" disabled><option value="0">恒定移动速度</option><option value="1">角度差曲线</option></select><p class="threshold-help">身体与实际锚点方向的最短角度差 → 基础移动速度百分比。100% 保持当前速度，80% 为当前速度的八成。默认全程 100%。</p></div><div id="move-curve-editor" hidden></div></section><section class="setting-group"><h2>锚点防抖</h2><label class="threshold-toggle"><input id="anchor-follow" type="checkbox">启用锚点跟随</label><div id="anchor-curve-editor"></div></section><section class="setting-group"><h2>箭矢命中调试</h2><label class="threshold-toggle"><input id="hit-debug-enabled" type="checkbox">显示命中范围与箭尖轨迹</label><label class="threshold-toggle"><input id="hit-debug-auto" type="checkbox" checked>命中时暂停（受击反馈之前）</label><label>模拟速度 <select id="hit-debug-speed"><option value="1">正常</option><option value="0.25">1/4 速</option><option value="0.1">1/10 速</option><option value="0.05">1/20 速</option></select></label><p class="threshold-help">青色：真实命中体；绿色：箭尖；黄色：扫掠路径。命中时蓝色箭表示检测前位置，金色箭表示真实接触位置，红点表示交点。仅本次调试，不保存到参数。</p></section><section class="setting-group"><h2>朝向调试</h2><label class="threshold-toggle"><input id="show-heading" type="checkbox">显示角色朝向线</label><label class="threshold-toggle debug-toggle"><input id="show-idle-anchor" type="checkbox">待机时也显示移动锚点</label><label class="threshold-toggle debug-toggle"><input id="show-anchor-outline" type="checkbox">锚点遮挡轮廓</label><p class="threshold-help">粉红直线代表角色当前朝向；蓝点代表移动锚点；遮挡轮廓让浅蓝圆环透过角色显示。开关仅用于本次页面调试。</p></section></div>
       <div class="panel-footer"><div class="store-actions"><button id="save-settings" class="text-button save-button" disabled>保存 JSON <span>↓</span></button><button id="undo-settings" class="text-button" disabled>撤回</button><button id="restore" class="text-button" disabled>撤回全部</button></div><p id="store-status" role="status" aria-live="polite">正在读取参数…</p><p>圆环参数下次入场生效 · 其余即时生效 · 390 宽基准</p></div>
     </aside>
     <section class="stage" aria-label="游戏测试区域">
       <div class="viewport" id="viewport">
         <div class="game-top"><div class="game-label"><i></i><span id="training-label">移动试验场</span></div><div class="training-actions"><div class="training-arena-buttons"><button id="reset-dummies" class="training-arena-button" data-ui hidden>重置怪物</button><button id="switch-training" class="training-arena-button" data-ui aria-pressed="false" disabled>障碍物训练场</button><button id="switch-monster-training" class="training-arena-button" data-ui aria-pressed="false" disabled>怪物训练场</button><button id="switch-locking-training" class="training-arena-button" data-ui aria-pressed="false" disabled>锁定训练场</button></div><button id="open-settings" class="mobile-only" data-ui aria-label="打开调试面板">调参 <span>☷</span></button></div></div><div id="targeting-hud" class="targeting-hud" hidden></div><div id="training-result" role="status" aria-live="polite" hidden></div>
-        <div class="state-pill"><i></i><span id="game-state">准备中</span></div>
+        <div id="hit-debug-toolbar" data-ui hidden><div><button id="hit-debug-pause">暂停</button><button id="hit-debug-step">下一帧 · 1/60s</button></div><output id="hit-debug-readout">等待命中</output></div><div class="state-pill"><i></i><span id="game-state">准备中</span></div>
         <div class="joystick" id="joystick" aria-hidden="true"><div class="joystick-ring"><span class="chevron top"></span><span class="chevron right"></span><span class="chevron bottom"></span><span class="chevron left"></span></div><div class="knob"></div><div class="threshold"></div></div>
         <div class="game-hint" id="game-hint">按住任意位置，拖动开始移动</div>
         <div class="loading" id="loading"><span class="loader"></span><strong>正在准备试验场</strong><p>加载角色与 WebGPU 渲染器</p></div>
@@ -177,6 +177,17 @@ element('move-model').addEventListener('change', () => {
 const modeNames = { idle: '待机', 'in-place': '原地跑步', moving: '移动中' };
 let ready = false, uiTime = 0, frameCount = 0, fpsTime = 0, lastFrame = 0, viewScale = 1;
 let history: SettingsHistory | undefined, saving = false;
+element('hit-debug-enabled').addEventListener('change',()=>{
+ game.hitDebug.enabled=element<HTMLInputElement>('hit-debug-enabled').checked;
+ game.hitDebug.paused=false;game.hitDebug.stepRequested=false;
+ element('hit-debug-toolbar').hidden=!game.hitDebug.enabled;
+ if(ready)game.render();
+});
+element('hit-debug-auto').addEventListener('change',()=>{game.hitDebug.pauseOnHit=element<HTMLInputElement>('hit-debug-auto').checked;});
+element('hit-debug-speed').addEventListener('change',()=>{game.hitDebug.speed=Number(element<HTMLSelectElement>('hit-debug-speed').value);});
+element('hit-debug-pause').addEventListener('click',()=>{game.hitDebug.paused=!game.hitDebug.paused;lastFrame=0;});
+element('hit-debug-step').addEventListener('click',()=>{game.hitDebug.stepRequested=true;});
+
 const saveButton = element<HTMLButtonElement>('save-settings');
 const storeStatus = element('store-status');
 document.querySelectorAll<HTMLInputElement>('[data-setting]').forEach(input => { input.disabled = true; });
@@ -497,6 +508,9 @@ function frame(time: number) {
   // Discard suspension gaps; normal motion uses bounded substeps, independent of display rate.
   let remaining = lastFrame ? Math.min((time - lastFrame) / 1000, 0.1) : 0;
   lastFrame = time;
+  const debug=game.hitDebug,single=debug.enabled&&debug.stepRequested;
+  debug.stepRequested=false;
+  if(debug.enabled){remaining=single?1/60:debug.paused?0:remaining*debug.speed;if(single)debug.paused=false;}
   const dt = remaining;
   while (remaining > 0) {
     const step = Math.min(remaining, 1 / 120);
@@ -513,7 +527,12 @@ function frame(time: number) {
       drawJoystick(); updateTelemetry();
     }
     game.sync(step); remaining -= step;
+    if(debug.enabled&&debug.paused)break;
   }
+  if(single)debug.paused=true;
+  element('hit-debug-pause').textContent=debug.paused?'继续':'暂停';
+  const contact=debug.last;
+  element('hit-debug-readout').textContent=contact?`${debug.paused?'已暂停':'最近命中'} · ${contact.id} · ${contact.kind}\n检测前箭尖距接触点 ${contact.gap.toFixed(3)}u · 本步扫掠 ${contact.travel.toFixed(3)}u\n接触点 (${contact.point.map(v=>v.toFixed(2)).join(', ')})`:`${debug.paused?'已暂停':'调试中'} · 等待命中（可慢放或单帧推进）`;
   linkAttackEditor.setPlayback(game.animation.snapshot());
   const rings=game.rings.state,active=rings.targetId!==null;
   previewSlider.disabled=!active;previewSlider.value=String(rings.completion*100);
@@ -564,7 +583,7 @@ async function start() {
     if (import.meta.env.DEV) {
       Object.assign(window, { __ARCHERO__: {
         pauseForInspection: (paused:boolean) => {game.renderer.setAnimationLoop(paused?null:frame);lastFrame=0;if(paused)game.render();},
-        snapshot: () => ({ ...controller.snapshot(), settings: { ...controller.settings }, center: { ...controller.center }, cameraZ: game.cameraZ, cameraX: game.camera.position.x, footNdc: game.player.position.clone().project(game.camera).toArray(), anchorNdc: game.anchor.position.clone().project(game.camera).toArray(), trainingTargets: game.trainingTargetsSnapshot(), feedback: game.feedback?.snapshot() ?? [], particles: game.particles?.snapshot(), juice:game.juice?.snapshot(), attack: game.animation.snapshot(), arrows: game.arrows?.snapshot(), runWeight: game.blend.weight, runTime: game.run.time, runTimeScale: game.run.getEffectiveTimeScale(), idleTimeScale: game.idle.getEffectiveTimeScale(), debug: { headingVisible: game.headingGuide.visible, heading: game.headingGuide.rotation.y, anchorVisible: game.anchor.visible, anchorOutlineVisible: game.anchor.visible && game.anchorOutline.visible, lockRangeVisible: game.lockRangeGuide.visible, lockRangeRadius: game.lockRangeGuide.scale.x, rings: game.rings.state.snapshot(), candidateMarkerVisible: game.candidateMarker.visible }, renderer: 'webgpu', ready }),
+        snapshot: () => ({ ...controller.snapshot(), settings: { ...controller.settings }, center: { ...controller.center }, cameraZ: game.cameraZ, cameraX: game.camera.position.x, footNdc: game.player.position.clone().project(game.camera).toArray(), anchorNdc: game.anchor.position.clone().project(game.camera).toArray(), trainingTargets: game.trainingTargetsSnapshot(), feedback: game.feedback?.snapshot() ?? [], particles: game.particles?.snapshot(), juice:game.juice?.snapshot(), attack: game.animation.snapshot(), arrows: game.arrows?.snapshot(), runWeight: game.blend.weight, runTime: game.run.time, runTimeScale: game.run.getEffectiveTimeScale(), idleTimeScale: game.idle.getEffectiveTimeScale(), debug: { hit:game.hitDebug.snapshot(), headingVisible: game.headingGuide.visible, heading: game.headingGuide.rotation.y, anchorVisible: game.anchor.visible, anchorOutlineVisible: game.anchor.visible && game.anchorOutline.visible, lockRangeVisible: game.lockRangeGuide.visible, lockRangeRadius: game.lockRangeGuide.scale.x, rings: game.rings.state.snapshot(), candidateMarkerVisible: game.candidateMarker.visible }, renderer: 'webgpu', ready }),
       } });
     }
   } catch (error) {

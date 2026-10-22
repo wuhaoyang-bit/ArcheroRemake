@@ -1,7 +1,7 @@
 import * as T from 'three/webgpu';
 import { GLTFLoader, type GLTF } from 'three/addons/loaders/GLTFLoader.js';
 import { clone } from 'three/addons/utils/SkeletonUtils.js';
-import { DUMMY_RADIUS } from './monster-training.ts';
+import { DEFAULTS } from './config.ts';
 
 /** Unscaled hit volume tall enough for horizontal bow-height arrows (~1.5). */
 const MONSTER_HIT_HEIGHT = 2.4;
@@ -53,7 +53,7 @@ export class MonsterAnimation {
   dispose(){this.mixer.stopAllAction();this.mixer.uncacheRoot(this.mixer.getRoot());}
   snapshot(){return {state:this.state,time:this.actions[this.state].time,hitRemaining:this.hitRemaining};}
 }
-export type MonsterInstance={animation:MonsterAnimation;proxy:T.Group;aimHeight:number};
+export type MonsterInstance={animation:MonsterAnimation;proxy:T.Group;hitBody:T.Mesh;aimHeight:number};
 const instances=new WeakMap<T.Object3D,MonsterInstance>();
 export const monsterInstance=(root:T.Object3D)=>instances.get(root);
 
@@ -82,13 +82,15 @@ export class TrainingMonsterFactory {
     // Add a tall cylinder so the trigger covers from the ground up past bow height.
     const hitTop=Math.max(height, MONSTER_HIT_HEIGHT);
     const hitBody=new T.Mesh(
-      new T.CylinderGeometry(DUMMY_RADIUS * .85, DUMMY_RADIUS * .85, hitTop, 16),
+      new T.CylinderGeometry(1, 1, hitTop, 16),
       new T.MeshBasicMaterial({side:T.DoubleSide}),
     );
+    hitBody.name = 'MonsterHitCylinder';
+    hitBody.scale.set(DEFAULTS.monsterHitRadius,1,DEFAULTS.monsterHitRadius);
     hitBody.position.y = hitTop * .5;
     proxy.add(hitBody);
     // aimHeight follows the visible mesh (for FX / lock rings), not the tall hit cylinder.
-    instances.set(root,{animation,proxy,aimHeight:height*.55});root.userData.monsterModel='3043_01';
+    instances.set(root,{animation,proxy,hitBody,aimHeight:height*.55});root.userData.monsterModel='3043_01';
     return root;
   }
 }

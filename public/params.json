@@ -67,7 +67,7 @@
       }
     ],
     "juiceEnabled": 1,
-    "juiceDelay": 0.06,
+    "juiceDelay": 0,
     "juiceCount": 14,
     "juiceSpeed": 9,
     "juiceSpeedJitter": 4,
@@ -82,6 +82,7 @@
     "juiceHeight": 0.4,
     "monsterSpeed": 3,
     "monsterScale": 1.7,
+    "monsterHitRadius": 0.47,
     "monsterHitSpeed": 2,
     "monsterCount": 1,
     "joystickRadius": 64,
