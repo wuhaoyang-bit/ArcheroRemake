@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 const out='analysis/arrow-checks'; await mkdir(out,{recursive:true});
 const original=await readFile('public/params.json','utf8');
-const settings={...JSON.parse(original).settings,bowScale:1.5,arrowScale:1.5,arrowSpeed:50,roomSize:16,roomLength:38,targetModel:1,targetCone:45,lockRange:30,anchorFollow:0};
+const settings={...JSON.parse(original).settings,bowScale:1.5,arrowScale:1.5,arrowSpeed:50,arrowPierce:0,arrowsPerAttack:1,roomSize:16,roomLength:38,targetModel:1,targetCone:45,lockRange:30,anchorFollow:0};
 const browser=await chromium.launch({executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',args:['--enable-unsafe-webgpu']});
 const errors=[];
 try {

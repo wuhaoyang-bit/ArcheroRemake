@@ -2,17 +2,34 @@ import * as THREE from 'three/webgpu';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 export const ARROW_SPEED = 50; // World units/second; independent of attack and Run speed.
-type Arrow = { object: THREE.Object3D; direction: THREE.Vector3; distance: number; range: number; active: boolean };
 
-/** Straight flight, shared immutable geometry/materials, and swept arrow-tip collision. */
-export type ArrowHit = {id:string;point:THREE.Vector3;direction:THREE.Vector3};
+type Arrow = {
+  object: THREE.Object3D;
+  direction: THREE.Vector3;
+  distance: number;
+  active: boolean;
+  pierce: boolean;
+  /** Enemy ids already damaged by this arrow (pierce: once each; non-pierce: at most one). */
+  hitIds: Set<string>;
+};
+
+export type ArrowHit = { id: string; point: THREE.Vector3; direction: THREE.Vector3 };
+
+/**
+ * Straight-line arrows with a tip trigger.
+ * Despawn rules (only these two):
+ * 1. Hit an enemy while pierce is off
+ * 2. Tip leaves the room boundary wall AABB
+ * Object-pool recycle never runs for any other reason while the arrow is flying.
+ */
 export class ArrowProjectiles {
-  onHit?: (hit:ArrowHit)=>void;
+  onHit?: (hit: ArrowHit) => void;
   private pool: Arrow[] = [];
   private targets: THREE.Object3D[] = [];
   private ray = new THREE.Raycaster();
   private hits: THREE.Intersection[] = [];
   private origin = new THREE.Vector3();
+  private tipPoint = new THREE.Vector3();
   private forward = new THREE.Vector3(0, 0, 1);
   private fired = 0;
   private hitCount = 0;
@@ -21,6 +38,10 @@ export class ArrowProjectiles {
   private tail: number;
   private scale = 1;
   private speed = ARROW_SPEED;
+  private pierce = false;
+  /** Room boundary half-extents; tip outside this AABB despawns. */
+  private wallX = Infinity;
+  private wallZ = Infinity;
 
   static async load(scene: THREE.Scene) {
     const gltf = await new GLTFLoader().loadAsync(`${import.meta.env.BASE_URL}models/archero-arrow.glb`);
@@ -28,20 +49,29 @@ export class ArrowProjectiles {
   }
 
   constructor(private scene: THREE.Scene, private template: THREE.Object3D) {
-    // The source prefab already points its white arrowhead along +Z.
     const box = new THREE.Box3().setFromObject(template);
-    this.tip = box.max.z; this.tail = box.min.z;
+    this.tip = box.max.z;
+    this.tail = box.min.z;
     if (box.isEmpty() || !Number.isFinite(this.tip)) throw new Error('箭矢模型没有可用网格。');
     for (let i = 0; i < 4; i++) this.allocate();
   }
 
   private allocate() {
     const object = this.template.clone(true);
-    object.name = 'ArcheroArrow'; object.visible = false;
+    object.name = 'ArcheroArrow';
+    object.visible = false;
     object.scale.setScalar(this.scale);
     this.scene.add(object);
-    const arrow: Arrow = { object, direction: new THREE.Vector3(), distance: 0, range: 0, active: false };
-    this.pool.push(arrow); return arrow;
+    const arrow: Arrow = {
+      object,
+      direction: new THREE.Vector3(),
+      distance: 0,
+      active: false,
+      pierce: false,
+      hitIds: new Set(),
+    };
+    this.pool.push(arrow);
+    return arrow;
   }
 
   setSpeed(speed: number) {
@@ -49,67 +79,153 @@ export class ArrowProjectiles {
     this.speed = speed;
   }
 
+  setPierce(enabled: boolean) {
+    this.pierce = !!enabled;
+  }
+
+  /**
+   * Boundary wall = walkable room half-size, plus a small band so a bow near the
+   * edge does not despawn on the first frame before the tip reaches the wall mesh.
+   */
+  setRoomBounds(width: number, length: number) {
+    const margin = 1.25;
+    this.wallX = Math.max(0, width / 2) + margin;
+    this.wallZ = Math.max(0, length / 2) + margin;
+  }
+
   setScale(scale: number) {
     if (scale === this.scale) return;
     if (!Number.isFinite(scale) || scale <= 0) throw new Error('箭缩放必须为正数。');
     this.scale = scale;
-    for (const arrow of this.pool) {
-      arrow.object.scale.setScalar(scale);
-      if (arrow.active) {
-        this.origin.copy(arrow.object.position).addScaledVector(arrow.direction, this.tail * scale);
-        this.collides(arrow, (this.tip - this.tail) * scale);
-      }
-    }
+    for (const arrow of this.pool) arrow.object.scale.setScalar(scale);
   }
 
-  setTargets(targets: THREE.Object3D[]) { this.clear(); this.targets = targets; }
-  clear() { for (const arrow of this.pool) this.recycle(arrow); }
-  private recycle(arrow: Arrow) { arrow.active = false; arrow.object.visible = false; }
+  /** Replace hit proxies. Does not touch the pool — flying arrows keep flying. */
+  setTargets(targets: THREE.Object3D[]) {
+    this.targets = targets;
+  }
 
-  fire(position: THREE.Vector3, aim: THREE.Vector3, range: number, elapsed = 0) {
-    if (position.distanceToSquared(aim) < 1e-12) return;
+  /** Explicit recycle of every pooled arrow (room rebuild / reset). */
+  clear() {
+    for (const arrow of this.pool) this.recycle(arrow);
+  }
+
+  private recycle(arrow: Arrow) {
+    arrow.active = false;
+    arrow.object.visible = false;
+    arrow.hitIds.clear();
+  }
+
+  /**
+   * Spawn along aim-origin at fire time. `range` is ignored for lifetime —
+   * kept only so existing call sites compile.
+   */
+  fire(position: THREE.Vector3, aim: THREE.Vector3, _range = Infinity, elapsed = 0) {
+    // Horizontal flight only: keep the bow height, aim on the XZ plane.
+    const dx = aim.x - position.x;
+    const dz = aim.z - position.z;
+    if (dx * dx + dz * dz < 1e-12) return;
     const arrow = this.pool.find(a => !a.active) ?? this.allocate();
-    arrow.direction.subVectors(aim, position).normalize();
+    arrow.direction.set(dx, 0, dz).normalize();
     arrow.object.position.copy(position);
     arrow.object.quaternion.setFromUnitVectors(this.forward, arrow.direction);
-    arrow.distance = 0; arrow.range = Math.max(0, range);
-    arrow.active = arrow.object.visible = true; this.fired++;
-    // Also detect a point-blank target already overlapping the newly spawned shaft.
+    arrow.distance = 0;
+    arrow.pierce = this.pierce;
+    arrow.hitIds.clear();
+    arrow.active = true;
+    arrow.object.visible = true;
+    this.fired++;
+
+    // Point-blank: shaft already overlapping an enemy at spawn.
     this.origin.copy(position).addScaledVector(arrow.direction, this.tail * this.scale);
-    if (this.collides(arrow, (this.tip - this.tail) * this.scale)) return;
-    this.advance(arrow, elapsed);
+    if (this.resolveTrigger(arrow, (this.tip - this.tail) * this.scale)) return;
+    if (elapsed > 0) this.advance(arrow, elapsed);
   }
 
-  private collides(arrow: Arrow, distance: number) {
-    this.ray.set(this.origin, arrow.direction); this.ray.near = 0; this.ray.far = distance;
+  private targetId(start: THREE.Object3D): string | null {
+    let object: THREE.Object3D | null = start;
+    while (object) {
+      const id = object.userData.practiceTarget;
+      if (typeof id === 'string' && id.length) return id;
+      object = object.parent;
+    }
+    return null;
+  }
+
+  private outsideWalls(point: THREE.Vector3) {
+    return Math.abs(point.x) > this.wallX + 1e-6 || Math.abs(point.z) > this.wallZ + 1e-6;
+  }
+
+  /**
+   * Sweep the tip trigger forward by `travel`.
+   * @returns true if the arrow was despawned (non-pierce damage).
+   */
+  private resolveTrigger(arrow: Arrow, travel: number): boolean {
+    if (!arrow.active || travel <= 0 || !this.targets.length) return false;
+    this.ray.set(this.origin, arrow.direction);
+    this.ray.near = 0;
+    this.ray.far = travel;
     this.hits.length = 0;
     this.ray.intersectObjects(this.targets, true, this.hits);
     if (!this.hits.length) return false;
-    let object: THREE.Object3D | null = this.hits[0].object;
-    while (object && !object.userData.practiceTarget) object = object.parent;
-    this.lastHit = object?.userData.practiceTarget ?? null;
-    const hit = this.lastHit ? {id:this.lastHit,point:this.hits[0].point.clone(),direction:arrow.direction.clone()} : null;
-    this.hitCount++; this.recycle(arrow);
-    if(hit)this.onHit?.(hit);
-    return true;
+
+    for (const intersection of this.hits) {
+      const id = this.targetId(intersection.object);
+      if (!id || arrow.hitIds.has(id)) continue;
+      arrow.hitIds.add(id);
+      this.lastHit = id;
+      this.hitCount++;
+      const hit: ArrowHit = {
+        id,
+        point: intersection.point.clone(),
+        direction: arrow.direction.clone(),
+      };
+      // Non-pierce: recycle before onHit so callers see an inactive arrow at contact.
+      if (!arrow.pierce) {
+        this.recycle(arrow);
+        this.onHit?.(hit);
+        return true;
+      }
+      this.onHit?.(hit);
+    }
+    return false;
   }
 
   private advance(arrow: Arrow, dt: number) {
     if (!arrow.active || dt <= 0) return;
-    const distance = Math.min(this.speed * dt, arrow.range - arrow.distance);
+    const travel = this.speed * dt;
+
+    // Trigger starts at the current tip and sweeps along the flight direction.
     this.origin.copy(arrow.object.position).addScaledVector(arrow.direction, this.tip * this.scale);
-    if (this.collides(arrow, distance)) return;
-    arrow.object.position.addScaledVector(arrow.direction, distance);
-    arrow.distance += distance;
-    if (arrow.distance >= arrow.range) this.recycle(arrow);
+    if (this.resolveTrigger(arrow, travel)) return;
+
+    arrow.object.position.addScaledVector(arrow.direction, travel);
+    arrow.distance += travel;
+
+    this.tipPoint.copy(arrow.object.position).addScaledVector(arrow.direction, this.tip * this.scale);
+    if (this.outsideWalls(this.tipPoint)) this.recycle(arrow);
   }
 
-  update(dt: number) { for (const arrow of this.pool) this.advance(arrow, dt); }
+  update(dt: number) {
+    for (const arrow of this.pool) this.advance(arrow, dt);
+  }
 
   snapshot() {
-    return { scale: this.scale, speed: this.speed, fired: this.fired, hits: this.hitCount, lastHit: this.lastHit,
-      allocated: this.pool.length, active: this.pool.filter(a => a.active).map(a => ({
-        position: a.object.position.toArray(), direction: a.direction.toArray(), distance: a.distance,
-      })) };
+    return {
+      scale: this.scale,
+      speed: this.speed,
+      pierce: this.pierce,
+      fired: this.fired,
+      hits: this.hitCount,
+      lastHit: this.lastHit,
+      allocated: this.pool.length,
+      active: this.pool.filter(a => a.active).map(a => ({
+        position: a.object.position.toArray(),
+        direction: a.direction.toArray(),
+        distance: a.distance,
+        pierce: a.pierce,
+        hitIds: [...a.hitIds],
+      })),
+    };
   }
 }

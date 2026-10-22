@@ -11,6 +11,7 @@ export const DEFAULTS = {
   monsterSpeed: 3,
   monsterScale: 1,
   monsterHitSpeed: 1,
+  monsterCount: 2,
   joystickRadius: 64,
   unlockDistance: 12,
   showThreshold: 0,
@@ -54,6 +55,9 @@ export const DEFAULTS = {
   runSpeed: 1.6,
   attackSpeed: 1,
   bowScale: 1.5, arrowScale: 1.5, arrowSpeed: 50,
+  arrowPierce: 0,
+  arrowsPerAttack: 1,
+  arrowFireInterval: 0.05,
   roomSize: 16,
   roomLength: 38,
   cameraResponse: 9,
@@ -73,6 +77,7 @@ export const LIMITS: Record<SettingKey, [number, number, number]> = {
   monsterSpeed: [0,10,.1],
   monsterScale: [0.1,6,0.1],
   monsterHitSpeed: [0.25,6,0.05],
+  monsterCount: [1,10,1],
   joystickRadius: [32, 100, 1], unlockDistance: [1, 40, 1],
   showThreshold: [0, 1, 1],
   anchorFollow: [0, 1, 1], moveModel: [0, 1, 1],
@@ -95,6 +100,9 @@ export const LIMITS: Record<SettingKey, [number, number, number]> = {
   runSpeed: [0.25, 4, 0.05],
   attackSpeed: [0.25, 6, 0.05],
   bowScale: [0.1, 6, 0.1], arrowScale: [0.1, 6, 0.1], arrowSpeed: [1, 200, 1],
+  arrowPierce: [0, 1, 1],
+  arrowsPerAttack: [1, 5, 1],
+  arrowFireInterval: [0.01, 0.5, 0.01],
   roomSize: [8, 24, 1], roomLength: [8, 80, 1], cameraResponse: [2, 24, 0.5],
   cameraOffset: [-25, 25, 1], viewWidth: [12, 28, 0.5],
 };
@@ -102,7 +110,8 @@ export const LIMITS: Record<SettingKey, [number, number, number]> = {
 export function sanitize(key: SettingKey, value: number): number {
   if (!Number.isFinite(value)) return DEFAULTS[key];
   if (key.startsWith('hit') && key.endsWith('Enabled')) return value >= .5 ? 1 : 0;
-  if (key === 'hitParticleCount') value = Math.round(value);
+  if (key === 'arrowPierce') return value >= .5 ? 1 : 0;
+  if (key === 'hitParticleCount' || key === 'monsterCount' || key === 'arrowsPerAttack') value = Math.round(value);
   if (key === 'moveModel') return value === 1 ? 1 : 0;
   if (key === 'turnModel' || key === 'lockTurnModel') return [0, 2, 5, 6, 7].includes(value) ? value : 0;
   if (key === 'targetModel') return [0, 1, 2].includes(value) ? value : 0;

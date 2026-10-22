@@ -127,6 +127,7 @@ export class GameScene {
   private bowGrip!: THREE.Object3D;
   private shotOrigin = new THREE.Vector3();
   private shotAim = new THREE.Vector3();
+  private feetScratch = new THREE.Vector3();
   blend = new AnimationBlend();
   mixer!: THREE.AnimationMixer;
   idle!: THREE.AnimationAction;
@@ -137,9 +138,11 @@ export class GameScene {
   private monsterFactory?:TrainingMonsterFactory;
   particles?: HitParticles;
   private practiceRevision=-1;
+  private monsterRosterSignature='';
   private trainingVisual?: THREE.Group;
   private roomSize = 0;
   private roomLength = 0;
+  private pendingShots: {delay:number;origin:THREE.Vector3;aim:THREE.Vector3;range:number}[]=[];
   private viewWidth = 0;
   private offset = Infinity;
   private aspect = ASPECT;
@@ -178,7 +181,8 @@ export class GameScene {
     sun.shadow.normalBias = 0.045; sun.shadow.bias = -0.0001;
     this.scene.add(sun);
     const outside = new THREE.Mesh(new THREE.PlaneGeometry(120, 160), mat(0xa0c74b));
-    outside.rotation.x = -Math.PI / 2; outside.position.y = -0.22; outside.receiveShadow = true; this.scene.add(outside);
+    outside.rotation.x = -Math.PI / 2; outside.position.y = -0.22; outside.receiveShadow = true;
+    outside.userData.hitParticleGround = true; this.scene.add(outside);
     this.particles=new HitParticles(this.scene);
     this.setRoom();
     const halo = groundCircle(1.05, 0x63e5d6, 0.15); halo.position.y = 0.025; this.player.add(halo);
@@ -213,7 +217,21 @@ export class GameScene {
     this.monsterFactory=monsters;
     this.arrows = arrows;
     this.arrows.setTargets(this.feedback?.proxies ?? []);
-    this.arrows.onHit=hit=>{if(!this.controller.combatTraining)return;if(this.feedback?.hit(hit.id,hit.direction,this.controller.settings))this.particles?.emit(hit.point,hit.direction,this.controller.settings);};
+    this.arrows.onHit=hit=>{
+      if(!this.controller.combatTraining||!this.feedback||!this.particles)return;
+      if(!this.feedback.hit(hit.id,hit.direction,this.controller.settings))return;
+      const atFeet=!!this.controller.settings.hitParticleFeetEnabled;
+      if(atFeet){
+        const feet=this.feedback.feetOrigin(hit.id,this.feetScratch);
+        if(!feet)return;
+        this.particles.emit(feet,hit.direction,this.controller.settings,hit.id);
+        return;
+      }
+      // Default: ray XZ, body aim height (avoids tall hit-cylinder contact height).
+      const origin=hit.point.clone();
+      origin.y=this.feedback.aimHeight(hit.id);
+      this.particles.emit(origin,hit.direction,this.controller.settings,null);
+    };
     this.bowGrip = character.model.getObjectByName('RedBowGrip')!;
     this.body.add(character.model);
     this.mixer = character.mixer;
@@ -227,9 +245,25 @@ export class GameScene {
     this.renderer.render(this.scene, this.camera);
   }
 
+  private rosterSignature(){
+    return this.controller.training==='monsters'
+      ? this.controller.getPracticeTargets().map(t=>t.id).join(',')
+      : '';
+  }
+
+  private needsRoomRefresh(){
+    return this.trainingMode!==this.controller.training
+      || this.practiceRevision!==this.controller.practiceRevision
+      || this.roomSize!==this.controller.settings.roomSize
+      || this.roomLength!==this.controller.settings.roomLength
+      || this.monsterRosterSignature!==this.rosterSignature();
+  }
+
   private setRoom() {
     this.particles?.clear();
+    this.pendingShots.length=0;
     this.practiceRevision=this.controller.practiceRevision;
+    this.monsterRosterSignature=this.rosterSignature();
     this.feedback?.dispose();
     this.feedback=undefined;
     if (this.room) { this.scene.remove(this.room); disposeGroup(this.room); }
@@ -242,16 +276,62 @@ export class GameScene {
     if (this.trainingVisual) this.room.add(this.trainingVisual);
     if(this.controller.combatTraining&&this.trainingVisual)this.feedback=new TrainingFeedback(this.trainingVisual,this.controller.getPracticeTargets(),this.roomSize,this.roomLength);
     this.scene.add(this.room);
+    this.arrows?.clear();
+    this.arrows?.setRoomBounds(this.roomSize, this.roomLength);
     this.arrows?.setTargets(this.feedback?.proxies ?? []);
   }
 
-  resetDummies(){this.controller.cancel();this.arrows?.clear();this.particles?.clear();this.feedback?.reset();this.controller.refreshTargetPositions();this.sync(0);}
+  resetDummies(){
+    this.controller.cancel();
+    this.pendingShots.length=0;
+    this.arrows?.clear();
+    this.particles?.clear();
+    if(this.controller.training==='monsters'){
+      this.controller.regenerateMonsterRoster();
+      this.setRoom();
+    }else{
+      this.feedback?.reset();
+      this.controller.refreshTargetPositions();
+    }
+    this.sync(0);
+  }
 
   advanceFeedback(dt:number){
-    if(this.trainingMode!==this.controller.training || this.practiceRevision!==this.controller.practiceRevision || this.roomSize!==this.controller.settings.roomSize || this.roomLength!==this.controller.settings.roomLength)this.setRoom();
+    if(this.needsRoomRefresh())this.setRoom();
     this.feedback?.update(dt,this.controller.settings);
     if(this.controller.training==='monsters'){this.feedback?.pursue(dt,this.controller.position,this.controller.settings.monsterSpeed,this.controller.settings);this.controller.resolveMonsterContacts();this.feedback?.refresh(this.controller.settings);}
-    this.particles?.update(dt,this.controller.settings);
+    this.particles?.update(dt,this.controller.settings,id=>this.feedback?.feetOrigin(id,this.feetScratch)??null);
+  }
+
+  private queuePendingShots(dt:number){
+    if(!this.pendingShots.length||dt<=0)return;
+    for(const shot of this.pendingShots)shot.delay-=dt;
+    const ready=this.pendingShots.filter(s=>s.delay<=1e-9);
+    this.pendingShots=this.pendingShots.filter(s=>s.delay>1e-9);
+    for(const shot of ready)this.arrows?.fire(shot.origin,shot.aim,shot.range,0);
+  }
+
+  private fireAttackVolley(remaining:number){
+    const ctl=this.controller;
+    const enemy=ctl.targeting.target;
+    if(!enemy||!ctl.combatTraining||!this.arrows)return;
+    this.bowGrip.getWorldPosition(this.shotOrigin);
+    this.shotAim.set(enemy.x,this.feedback?.aimHeight(enemy.id)??1.65,enemy.z);
+    const pierce=!!ctl.settings.arrowPierce;
+    const count=Math.max(1,Math.round(ctl.settings.arrowsPerAttack));
+    const interval=Math.max(0.01,ctl.settings.arrowFireInterval);
+    this.arrows.setPierce(pierce);
+    // Lifetime is tip-vs-wall / hit-vs-pierce only; range arg is unused.
+    this.arrows.fire(this.shotOrigin,this.shotAim,Infinity,remaining);
+    this.pendingShots.length=0;
+    for(let i=1;i<count;i++){
+      this.pendingShots.push({
+        delay:interval*i,
+        origin:this.shotOrigin.clone(),
+        aim:this.shotAim.clone(),
+        range:Infinity,
+      });
+    }
   }
 
   /** Read-only visual diagnostics for the development browser checks. */
@@ -282,7 +362,7 @@ export class GameScene {
 
   sync(dt: number) {
     const ctl = this.controller;
-    if (this.practiceRevision!==ctl.practiceRevision || this.trainingMode !== ctl.training || this.roomSize !== ctl.settings.roomSize || this.roomLength !== ctl.settings.roomLength) this.setRoom();
+    if (this.needsRoomRefresh()) this.setRoom();
     if (this.viewWidth !== ctl.settings.viewWidth || this.offset !== ctl.settings.cameraOffset) this.projection();
     this.trainingVisual?.userData.setProgress?.(ctl.passedCheckpoints, dt);
     this.player.position.set(ctl.position.x, 0, ctl.position.z);
@@ -304,13 +384,13 @@ export class GameScene {
     this.bowGrip.scale.setScalar(ctl.settings.bowScale);
     this.arrows?.setScale(ctl.settings.arrowScale);
     this.arrows?.setSpeed(ctl.settings.arrowSpeed);
+    this.arrows?.setPierce(!!ctl.settings.arrowPierce);
+    this.arrows?.setRoomBounds(ctl.settings.roomSize, ctl.settings.roomLength);
+    if (!ctl.combatTraining || ctl.activeAttackRequest === null) this.pendingShots.length = 0;
+    this.queuePendingShots(dt);
     this.arrows?.update(dt);
     this.animation.update(dt, ctl.mode, ctl.activeAttackRequest, ctl.settings.blendDuration, ctl.settings.runSpeed, remaining => {
-      const enemy = ctl.targeting.target;
-      if (!enemy || !ctl.combatTraining) return;
-      this.bowGrip.getWorldPosition(this.shotOrigin);
-      this.shotAim.set(enemy.x, this.feedback?.aimHeight(enemy.id) ?? 1.65, enemy.z);
-      this.arrows?.fire(this.shotOrigin, this.shotAim, Math.max(32, ctl.settings.lockRange + 4), remaining);
+      this.fireAttackVolley(remaining);
     }, ctl.settings.attackSpeed);
     this.cameraZ = follow(this.cameraZ, ctl.position.z, ctl.settings.cameraResponse, dt);
     this.camera.position.set(0, 24, this.cameraZ + 24 / Math.tan(this.tilt));

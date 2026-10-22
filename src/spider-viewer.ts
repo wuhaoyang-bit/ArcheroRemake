@@ -24,7 +24,7 @@ async function main(){
  let seed=1;const particles=new HitParticles(scene,()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;});
  let time=0,playing=true,duration=2;
  const clip=()=>el<HTMLSelectElement>('clip').value;
- const flags=['hitBaseEnabled','hitDirectionEnabled','hitKnockEnabled','hitRimEnabled','hitSquashEnabled'] as const;
+ const flags=['hitBaseEnabled','hitDirectionEnabled','hitParticleFeetEnabled','hitKnockEnabled','hitRimEnabled','hitSquashEnabled'] as const;
  const rows:[SettingKey,string,string,string][]=[['monsterScale','模型大小','倍','基础模型大小'],['monsterHitSpeed','受伤动画倍率','倍','仅调整原作受伤动作；与预览播放速度独立'],...HIT_CONTROLS];
  function buildControls(){el('params').innerHTML=rows.map(([key,label,unit,hint])=>{const [min,max,step]=LIMITS[key];return `<label class="param" title="${hint}"><span>${label} <small>${unit}</small></span><input data-key="${key}" type="${key.endsWith('Enabled')?'checkbox':'number'}" min="${min}" max="${max}" step="${step}" value="${settings[key]}" ${settings[key]?'checked':''}></label>`;}).join('');}
  function length(){const native=durations[clip()]/(clip()==='Hitted'?settings.monsterHitSpeed:1);return clip()==='Hitted'?Math.max(native,settings.hitKnockEnabled?settings.hitKnockTime:0,settings.hitRimEnabled?settings.hitRimTime:0,settings.hitSquashEnabled?settings.hitSquashTime:0,settings.hitBaseEnabled||settings.hitDirectionEnabled?settings.hitParticleDuration:0):native;}
@@ -33,9 +33,12 @@ async function main(){
   const angle=Number(el<HTMLInputElement>('direction').value)*Math.PI/180,dir=new T.Vector3(Math.sin(angle),0,Math.cos(angle));
   if(clip()==='Hitted'){
    feedback.hit('spider',{x:dir.x,z:dir.z},settings);
-   particles.emit(new T.Vector3(0,instance.aimHeight*settings.monsterScale,0),dir,settings);
+   const atFeet=!!settings.hitParticleFeetEnabled;
+   const origin=atFeet?new T.Vector3(0,.05,0):new T.Vector3(0,instance.aimHeight*settings.monsterScale,0);
+   particles.emit(origin,dir,settings,atFeet?'spider':null);
   }
-  feedback.update(time,settings);instance.animation.preview(clip(),time*(clip()==='Hitted'?settings.monsterHitSpeed:1));root.updateMatrixWorld(true);particles.update(time,settings);
+  feedback.update(time,settings);instance.animation.preview(clip(),time*(clip()==='Hitted'?settings.monsterHitSpeed:1));root.updateMatrixWorld(true);
+  particles.update(time,settings,id=>id==='spider'?new T.Vector3(root.position.x,.05,root.position.z):null);
   const timeline=el<HTMLInputElement>('timeline');timeline.max=String(duration);timeline.value=String(time);
   const fps=Number(el<HTMLSelectElement>('fps').value);el('time').textContent=`${time.toFixed(4)} s / ${duration.toFixed(3)} s · 第 ${Math.floor(time*fps+1e-6)} 帧`;
   el('timing').textContent=`原作动画 ${durations[clip()].toFixed(3)} 秒${clip()==='Hitted'?` → 当前倍率下 ${(durations.Hitted/settings.monsterHitSpeed).toFixed(3)} 秒；完整受击预览 ${duration.toFixed(3)} 秒`:''}`;

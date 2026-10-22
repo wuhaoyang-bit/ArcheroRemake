@@ -1,6 +1,7 @@
 /** Confirmed training feedback defaults. Existing settings files inherit these fields. */
 export const HIT_DEFAULTS = {
   hitBaseEnabled: 1, hitDirectionEnabled: 1, hitKnockEnabled: 1, hitRimEnabled: 1, hitSquashEnabled: 1,
+  hitParticleFeetEnabled: 0,
   hitKnockTime: .2, hitKnockDistance: 1.05,
   hitRimTime: .3, hitRimFadeStart: .2, hitRimStrength: 1, hitRimBrightness: 2, hitRimWidth: .6,
   hitSquashTime: 2, hitSquashAmount: .15, hitCompressTime: .06, hitReleaseTime: .2, hitSpringFrequency: 4, hitSpringDamping: .15,
@@ -9,6 +10,7 @@ export const HIT_DEFAULTS = {
 };
 export const HIT_LIMITS = {
   hitBaseEnabled:[0,1,1],hitDirectionEnabled:[0,1,1],hitKnockEnabled:[0,1,1],hitRimEnabled:[0,1,1],hitSquashEnabled:[0,1,1],
+  hitParticleFeetEnabled:[0,1,1],
   hitKnockTime:[.05,1,.01],hitKnockDistance:[0,3,.05],
   hitRimTime:[.04,5,.01],hitRimFadeStart:[0,5,.01],hitRimStrength:[0,1,.05],hitRimBrightness:[0,5,.1],hitRimWidth:[.1,1,.05],
   hitSquashTime:[.05,5,.01],hitSquashAmount:[.02,.65,.01],hitCompressTime:[.01,.5,.01],hitReleaseTime:[0,2,.01],hitSpringFrequency:[.5,12,.1],hitSpringDamping:[.05,2,.05],
@@ -18,6 +20,7 @@ export type HitSettings = typeof HIT_DEFAULTS;
 export const HIT_CONTROLS: [keyof HitSettings,string,string,string][] = [
  ['hitBaseEnabled','基础命中火花','0/1','0 关闭，1 开启；包含闪点、柔光、光圈、全向火花、余烬和短暂点光源。'],
  ['hitDirectionEnabled','方向火花','0/1','沿箭方向飞溅的 REEBOO 火花；0 关闭，1 开启。'],
+ ['hitParticleFeetEnabled','火花在脚底并跟随','0/1','0 关闭：火花仍在命中点（高度用身体瞄准高）。1 开启：火花在敌人脚底生成，并跟随脚底移动。'],
  ['hitKnockEnabled','受击击退','0/1','0 关闭，1 开启；只阻挡场地边界。'],
  ['hitRimEnabled','白色边缘亮光','0/1','整座假人同步发亮；0 关闭，1 开启。'],
  ['hitSquashEnabled','整体缩放回弹','0/1','包括底座，围绕脚底整体缩放；0 关闭，1 开启。'],

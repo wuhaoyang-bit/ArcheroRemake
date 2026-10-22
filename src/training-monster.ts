@@ -1,6 +1,10 @@
 import * as T from 'three/webgpu';
 import { GLTFLoader, type GLTF } from 'three/addons/loaders/GLTFLoader.js';
 import { clone } from 'three/addons/utils/SkeletonUtils.js';
+import { DUMMY_RADIUS } from './monster-training.ts';
+
+/** Unscaled hit volume tall enough for horizontal bow-height arrows (~1.5). */
+const MONSTER_HIT_HEIGHT = 2.4;
 
 type State = 'Idle' | 'Run' | 'Hitted';
 /** Independent source animation playback for each monster. Dead is retained, but no death rules are invented. */
@@ -74,6 +78,16 @@ export class TrainingMonsterFactory {
       proxy.add(new T.Mesh(geometry,new T.MeshBasicMaterial({side:T.DoubleSide})));
     });
     const height=new T.Box3().setFromObject(root).max.y;
+    // Spider mesh is short; horizontal arrows fly at bow height (~1.5) and would miss.
+    // Add a tall cylinder so the trigger covers from the ground up past bow height.
+    const hitTop=Math.max(height, MONSTER_HIT_HEIGHT);
+    const hitBody=new T.Mesh(
+      new T.CylinderGeometry(DUMMY_RADIUS * .85, DUMMY_RADIUS * .85, hitTop, 16),
+      new T.MeshBasicMaterial({side:T.DoubleSide}),
+    );
+    hitBody.position.y = hitTop * .5;
+    proxy.add(hitBody);
+    // aimHeight follows the visible mesh (for FX / lock rings), not the tall hit cylinder.
     instances.set(root,{animation,proxy,aimHeight:height*.55});root.userData.monsterModel='3043_01';
     return root;
   }

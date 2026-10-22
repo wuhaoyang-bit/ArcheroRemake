@@ -1,4 +1,4 @@
-import { monsterTargets, separateMonsters, DUMMY_RADIUS } from './monster-training.ts';
+import { monsterTargets, spawnNearMonsters, separateMonsters, DUMMY_RADIUS, type MonsterTarget } from './monster-training.ts';
 import { validateProgressCurve, validateSwitchCurve, validateStrokeCurve, type StrokePoint, type ProgressPoint } from './lock-rings.ts';
 import { movementMultiplier, validateMoveCurve } from './move-speed.ts';
 import { remainingAnchorDistance, validateAnchorCurve, type AnchorCurvePoint } from './anchor-follow.ts';
@@ -22,13 +22,41 @@ export class MovementController {
   targeting = new TargetSelection();
   private targetCache: ReturnType<typeof lockingTargets> = [];
   private targetCacheKey = '';
+  private monsterRoster: MonsterTarget[] = [];
   practiceRevision = 0;
   private deadTargetIds = new Set<string>();
   get combatTraining(){return this.training === 'locking' || this.training === 'monsters';}
   resolveMonsterContacts(){if(this.training==='monsters')separateMonsters(this.getPracticeTargets(),this.position,PLAYER_RADIUS,this.settings.roomSize,this.settings.roomLength);}
+  /** Grow/shrink live roster without resetting kept monsters' positions. */
+  syncMonsterRoster(rebuild = false) {
+    const width = this.settings.roomSize, length = this.settings.roomLength;
+    const count = Math.round(this.settings.monsterCount);
+    if (rebuild || !this.monsterRoster.length) {
+      this.monsterRoster = monsterTargets(width, length, count, this.position, PLAYER_RADIUS);
+      return;
+    }
+    if (count > this.monsterRoster.length) {
+      while (this.monsterRoster.length < count) {
+        this.monsterRoster.push(spawnNearMonsters(this.monsterRoster, this.position, PLAYER_RADIUS, width, length, this.monsterRoster.length));
+      }
+      separateMonsters(this.monsterRoster, this.position, PLAYER_RADIUS, width, length);
+    } else if (count < this.monsterRoster.length) {
+      this.monsterRoster.length = count;
+    }
+  }
+  regenerateMonsterRoster() {
+    this.syncMonsterRoster(true);
+    this.practiceRevision++;
+    this.targetCacheKey = '';
+    this.deadTargetIds.clear();
+  }
   getPracticeTargets() {
+    if (this.training === 'monsters') {
+      this.syncMonsterRoster();
+      return this.monsterRoster;
+    }
     const key = `${this.settings.roomSize}/${this.settings.roomLength}/${this.practiceRevision}`;
-    if(key !== this.targetCacheKey){this.targetCacheKey=key;this.targetCache=(this.training==='monsters'?monsterTargets:lockingTargets)(this.settings.roomSize,this.settings.roomLength);}
+    if(key !== this.targetCacheKey){this.targetCacheKey=key;this.targetCache=lockingTargets(this.settings.roomSize,this.settings.roomLength);}
     return this.targetCache;
   }
   refreshTargetPositions(){this.updateTargeting(0);}
@@ -67,6 +95,11 @@ export class MovementController {
     this.lastTurnModel = null; this.targeting.reset();
     this.position = {x: 0, z: this.training === 'obstacles' ? this.course.startZ : this.combatTraining ? 0 : this.settings.roomSize * .27};
     this.constrain();
+    if (this.training === 'monsters') {
+      this.monsterRoster = [];
+      this.syncMonsterRoster(true);
+    } else this.monsterRoster = [];
+    this.targetCacheKey = '';
   }
   movementAngleError = 0;
   movementSpeedRatio = 1;
@@ -118,8 +151,7 @@ export class MovementController {
   }
   private updateTargeting(dt: number, acquireOnce = false) {
     if (!this.combatTraining) return;
-    this.getPracticeTargets();
-    const targets = this.targetCache.filter(t => !this.deadTargetIds.has(t.id));
+    const targets = this.getPracticeTargets().filter(t => !this.deadTargetIds.has(t.id));
     if (this.mode !== 'moving' && !acquireOnce) {
       // Freeze identity, not coordinates. Do not poll for a replacement while stopped.
       if (this.targeting.target) this.targeting.target = targets.find(t => t.id === this.targeting.target!.id) ?? null;
@@ -267,6 +299,17 @@ export class MovementController {
     if (this.unlocked && (key === 'joystickRadius' || key === 'anchorScale')) this.mapStick();
     if (key === 'roomSize' || key === 'roomLength') {
       if (this.training === 'obstacles') this.restartTraining(); else this.constrain();
+    }
+    if (key === 'monsterCount' && this.training === 'monsters') {
+      const before = this.monsterRoster.map(t => t.id).join(',');
+      this.syncMonsterRoster();
+      if (this.monsterRoster.map(t => t.id).join(',') !== before) {
+        this.practiceRevision++;
+        this.targetCacheKey = '';
+        this.deadTargetIds.clear();
+        this.targeting.reset();
+        this.updateTargeting(0, true);
+      }
     }
     if (['targetModel', 'lockRange', 'targetCone', 'targetAdvantage', 'targetDwell', 'roomSize', 'roomLength'].includes(key)) this.updateTargeting(0);
   }

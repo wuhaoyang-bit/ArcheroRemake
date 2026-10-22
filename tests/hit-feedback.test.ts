@@ -79,3 +79,18 @@ test('overall spark duration scales every layer, expires lights, and is captured
   for(const duration of [.05,3]){const c={...HIT_DEFAULTS,hitParticleDuration:duration,hitParticleLife:1};b.emit(new T.Vector3(),new T.Vector3(1,0,0),c);assert.ok(b.snapshot().particles.every(p=>p.life<=duration));b.update(duration,c);assert.equal(b.snapshot().active,0);assert.equal(b.snapshot().lights,0);}
  }finally{Math.random=originalRandom;}
 });
+
+test('feet-follow particles keep origin on moving feet while relative motion continues',()=>{
+  const particles=new HitParticles(new T.Scene());
+  const feet=new T.Vector3(0,.05,0);
+  particles.emit(feet.clone(),new T.Vector3(1,0,0),{...HIT_DEFAULTS,hitDirectionEnabled:0,hitBaseEnabled:1},'mob');
+  assert.ok(particles.snapshot().particles.every(p=>p.followId==='mob'));
+  particles.update(0,HIT_DEFAULTS,()=>feet);
+  const before=particles.snapshot().particles.find(p=>p.kind==='flash')!;
+  close(before.origin[0],0);close(before.origin[2],0);
+  feet.set(3,.05,-2);
+  particles.update(.02,HIT_DEFAULTS,()=>feet);
+  const after=particles.snapshot().particles.find(p=>p.kind==='flash')!;
+  close(after.origin[0],3);close(after.origin[2],-2);
+  close(after.position[0],3);close(after.position[2],-2);
+});

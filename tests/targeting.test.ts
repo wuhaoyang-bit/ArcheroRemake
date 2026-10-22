@@ -232,7 +232,11 @@ test('death selects once, ignores repeated or other deaths, and empty selection 
  c.notifyTargetDeath(old.id);assert.equal(c.targeting.target?.id,other.id);
  c.notifyTargetDeath(old.id);assert.equal(c.targeting.target?.id,other.id);
  c.notifyTargetDeath(other.id);assert.equal(c.targeting.target,null);
- c.getPracticeTargets().push({id:'new',label:'new',x:0,z:1});c.update(1);c.press(2,0,0);c.update(.1);assert.equal(c.targeting.target,null);
+ // Inject one living target in-place; roster sync keeps length == monsterCount.
+ c.settings.monsterCount = 1;
+ const injected = c.getPracticeTargets()[0];
+ Object.assign(injected, {id:'new', label:'new', x:0, z:1});
+ c.update(1);c.press(2,0,0);c.update(.1);assert.equal(c.targeting.target,null);
  c.move(2,40,0);c.update(.01);assert.equal(c.targeting.snapshot().target?.id,'new');
  c.restartTraining();c.press(3,0,0);assert.ok(c.targeting.target);assert.notEqual(c.targeting.snapshot().target?.id,'new');
 });
