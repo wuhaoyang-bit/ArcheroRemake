@@ -14,5 +14,5 @@ export default defineConfig(({ mode }) => ({
     watch: { ignored: ['**/public/params.json', '**/public/.params-*.tmp'] },
   },
   preview: { port: 4173 },
-  build: { target: 'es2022', rolldownOptions: { input: { main: fileURLToPath(new URL('./index.html', import.meta.url)), spider: fileURLToPath(new URL('./spider-viewer.html', import.meta.url)) } } },
+  build: { target: 'es2022', rolldownOptions: { input: { main: fileURLToPath(new URL('./index.html', import.meta.url)), spider: fileURLToPath(new URL('./spider-viewer.html', import.meta.url)), juice: fileURLToPath(new URL('./juice-lab.html', import.meta.url)) } } },
 }));

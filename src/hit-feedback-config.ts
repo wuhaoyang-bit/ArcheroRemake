@@ -1,3 +1,4 @@
+import { DEFAULT_JUICE_SPEED_CURVE } from './juice-speed-curve.ts';
 /** Confirmed training feedback defaults. Existing settings files inherit these fields. */
 export const HIT_DEFAULTS = {
   hitBaseEnabled: 1, hitDirectionEnabled: 1, hitKnockEnabled: 1, hitRimEnabled: 1, hitSquashEnabled: 1,
@@ -7,6 +8,11 @@ export const HIT_DEFAULTS = {
   hitSquashTime: 2, hitSquashAmount: .15, hitCompressTime: .06, hitReleaseTime: .2, hitSpringFrequency: 4, hitSpringDamping: .15,
   hitParticleDuration: .8, hitParticleLife: .6, hitParticleCount: 14, hitParticleAngle: 26,
   hitParticleMinSpeed: 10, hitParticleMaxSpeed: 17.5, hitParticleDrag: 5, hitParticleSize: 1,
+  // Screenshot defaults, world units; independent delayed burst, additional to sparks.
+  juiceSpeedCurve: DEFAULT_JUICE_SPEED_CURVE,
+  juiceEnabled:1,juiceDelay:.13,juiceCount:16,juiceSpeed:4,juiceSpeedJitter:1,
+  juiceRadius:.34,juiceLife:1.8,juiceSize:.6,juiceSizeJitter:.08,
+  juiceColor:0x55991e,juiceCurve:2,juiceDragRel:.55,juiceDepthTest:1,juiceHeight:.1,
 };
 export const HIT_LIMITS = {
   hitBaseEnabled:[0,1,1],hitDirectionEnabled:[0,1,1],hitKnockEnabled:[0,1,1],hitRimEnabled:[0,1,1],hitSquashEnabled:[0,1,1],
@@ -15,9 +21,12 @@ export const HIT_LIMITS = {
   hitRimTime:[.04,5,.01],hitRimFadeStart:[0,5,.01],hitRimStrength:[0,1,.05],hitRimBrightness:[0,5,.1],hitRimWidth:[.1,1,.05],
   hitSquashTime:[.05,5,.01],hitSquashAmount:[.02,.65,.01],hitCompressTime:[.01,.5,.01],hitReleaseTime:[0,2,.01],hitSpringFrequency:[.5,12,.1],hitSpringDamping:[.05,2,.05],
   hitParticleDuration:[.05,3,.01],hitParticleLife:[.1,1,.01],hitParticleCount:[1,64,1],hitParticleAngle:[0,75,1],hitParticleMinSpeed:[0,30,.5],hitParticleMaxSpeed:[0,30,.5],hitParticleDrag:[0,20,.5],hitParticleSize:[.25,3,.05],
-} satisfies Record<keyof typeof HIT_DEFAULTS,[number,number,number]>;
+  juiceEnabled:[0,1,1],juiceDelay:[0,3,.01],juiceCount:[1,64,1],juiceSpeed:[0,20,.1],juiceSpeedJitter:[0,10,.1],juiceRadius:[0,1.5,.01],
+  juiceLife:[.05,5,.05],juiceSize:[.01,2,.01],juiceSizeJitter:[0,1,.01],juiceColor:[0,0xffffff,1],
+  juiceCurve:[0,6,1],juiceDragRel:[.05,1,.05],juiceDepthTest:[0,1,1],juiceHeight:[-.5,1,.01],
+} satisfies Record<Exclude<keyof typeof HIT_DEFAULTS,'juiceSpeedCurve'>,[number,number,number]>;
 export type HitSettings = typeof HIT_DEFAULTS;
-export const HIT_CONTROLS: [keyof HitSettings,string,string,string][] = [
+export const HIT_CONTROLS: [Exclude<keyof HitSettings,'juiceSpeedCurve'>,string,string,string][] = [
  ['hitBaseEnabled','基础命中火花','0/1','0 关闭，1 开启；包含闪点、柔光、光圈、全向火花、余烬和短暂点光源。'],
  ['hitDirectionEnabled','方向火花','0/1','沿箭方向飞溅的 REEBOO 火花；0 关闭，1 开启。'],
  ['hitParticleFeetEnabled','火花在脚底并跟随','0/1','0 关闭：火花仍在命中点（高度用身体瞄准高）。1 开启：火花在敌人脚底生成，并跟随脚底移动。'],
@@ -34,7 +43,7 @@ export const HIT_CONTROLS: [keyof HitSettings,string,string,string][] = [
  ['hitSquashAmount','整体压缩量','比例','默认 0.15，三个轴缩至 85%。'],
  ['hitSquashTime','缩放总持续时间','s','从最近一次命中计算，包含压缩、保持与回弹，默认 2 秒。末尾平滑恢复原大小；总时长优先于开始回弹时间。修改后下次命中生效。'],
  ['hitCompressTime','压缩用时','s','到达压缩目标后保持，直到释放。'],
- ['hitReleaseTime','开始回弹时间','s','从最近一次命中开始计时；默认 0.20 秒。独立于击退时长，碰墙不会提前释放；修改后下次命中生效。'],
+ ['hitReleaseTime','开始回弹时间','s','从最近一次命中开始计时；默认 0.20 秒。独立于击退时长，碰墙不会提前释放；修改后下次命中生效。绿汁发射时间独立设置。'],
  ['hitSpringFrequency','弹簧频率','Hz','越大回弹越快。'],
  ['hitSpringDamping','弹簧阻尼','比例','越小弹得越久；最晚在缩放总持续时间结束时恢复原大小。'],
  ['hitParticleDuration','火花整体持续时间','s','默认 0.80 秒；统一按比例调整全部命中火花与短暂灯光的寿命，包含方向火花。速度和方向不变；修改后下一次命中生效。'],
@@ -45,4 +54,18 @@ export const HIT_CONTROLS: [keyof HitSettings,string,string,string][] = [
  ['hitParticleMaxSpeed','方向初速上限','u/s','粒子生成后保持世界空间运动。'],
  ['hitParticleDrag','方向指数阻力','/s','速度指数衰减，不影响基础层的恒定阻尼。'],
  ['hitParticleSize','方向粒子尺寸','倍','以 REEBOO 细条尺寸为基准。'],
+ ['juiceEnabled','绿色汁液迸发','0/1','独立效果，不替换火花；每次命中单独产生一波。'],
+ ['juiceDelay','绿汁迸发时机','s','从命中计时，默认 0.13 秒；独立于缩放回弹。连击各自计时，出生后不跟随敌人。'],
+ ['juiceCurve','绿汁曲线','0–6','0 Linear，1 OutQuad，2 OutCubic（默认），3 OutExpo，4 smoothstep，5 指数阻力，6 自定义速度曲线（尺寸保持 OutCubic）。'],
+ ['juiceCount','绿汁粒子数','个','默认 16。'],
+ ['juiceRadius','绿汁圆盘半径','u','默认 0.34，圆盘内均匀出生，水平四周飞散。'],
+ ['juiceHeight','绿汁发射高度偏移','u','相对敌人 aimHeight，默认 +0.10；不是模型包围盒中心。'],
+ ['juiceSpeed','绿汁初速基准','u/s','默认 4.0。'],
+ ['juiceSpeedJitter','绿汁初速随机±','u/s','默认 ±1.0。'],
+ ['juiceSize','绿汁出生尺寸基准','u','默认 0.60，直接使用世界单位。'],
+ ['juiceSizeJitter','绿汁尺寸随机±','u','默认 ±0.08。'],
+ ['juiceLife','绿汁寿命','s','默认 1.80 秒，实际随机取 88%–112%，与 lab 相同。'],
+ ['juiceDragRel','绿汁指数阻力 Drel','比例','默认 0.55，仅指数阻力曲线生效，OutCubic 不使用此参数。'],
+ ['juiceColor','绿汁颜色','色值','沿用 lab 的 #55991e。'],
+ ['juiceDepthTest','绿汁深度遮挡','0/1','1：保留与地面、人物的遮挡，和 lab 相同。'],
 ];

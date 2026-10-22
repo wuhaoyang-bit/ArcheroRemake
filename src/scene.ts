@@ -1,5 +1,6 @@
 import { TrainingMonsterFactory } from './training-monster.ts';
 import { HitParticles } from './hit-particles.ts';
+import { JuiceParticles } from './juice-particles.ts';
 import { TrainingFeedback } from './training-feedback.ts';
 import { ArrowProjectiles } from './arrow-projectiles.ts';
 import { LockRingView } from './lock-ring-view.ts';
@@ -137,12 +138,14 @@ export class GameScene {
   feedback?: TrainingFeedback;
   private monsterFactory?:TrainingMonsterFactory;
   particles?: HitParticles;
+  juice?: JuiceParticles;
   private practiceRevision=-1;
   private monsterRosterSignature='';
   private trainingVisual?: THREE.Group;
   private roomSize = 0;
   private roomLength = 0;
   private pendingShots: {delay:number;origin:THREE.Vector3;aim:THREE.Vector3;range:number}[]=[];
+  private juiceScratch = new THREE.Vector3();
   private viewWidth = 0;
   private offset = Infinity;
   private aspect = ASPECT;
@@ -184,6 +187,7 @@ export class GameScene {
     outside.rotation.x = -Math.PI / 2; outside.position.y = -0.22; outside.receiveShadow = true;
     outside.userData.hitParticleGround = true; this.scene.add(outside);
     this.particles=new HitParticles(this.scene);
+    this.juice=await JuiceParticles.load(this.scene);
     this.setRoom();
     const halo = groundCircle(1.05, 0x63e5d6, 0.15); halo.position.y = 0.025; this.player.add(halo);
     const ring = new THREE.Mesh(new THREE.RingGeometry(1.01, 1.05, 48), new THREE.MeshBasicMaterial({ color: 0x8df3e3, transparent: true, opacity: 0.72, depthWrite: false }));
@@ -220,17 +224,20 @@ export class GameScene {
     this.arrows.onHit=hit=>{
       if(!this.controller.combatTraining||!this.feedback||!this.particles)return;
       if(!this.feedback.hit(hit.id,hit.direction,this.controller.settings))return;
-      const atFeet=!!this.controller.settings.hitParticleFeetEnabled;
+      const settings=this.controller.settings;
+      const atFeet=!!settings.hitParticleFeetEnabled;
       if(atFeet){
         const feet=this.feedback.feetOrigin(hit.id,this.feetScratch);
         if(!feet)return;
-        this.particles.emit(feet,hit.direction,this.controller.settings,hit.id);
-        return;
+        this.particles.emit(feet,hit.direction,settings,hit.id);
+      }else{
+        // Default: ray XZ, body aim height (avoids tall hit-cylinder contact height).
+        const origin=hit.point.clone();
+        origin.y=this.feedback.aimHeight(hit.id);
+        this.particles.emit(origin,hit.direction,settings,null);
       }
-      // Default: ray XZ, body aim height (avoids tall hit-cylinder contact height).
-      const origin=hit.point.clone();
-      origin.y=this.feedback.aimHeight(hit.id);
-      this.particles.emit(origin,hit.direction,this.controller.settings,null);
+      // Independent delayed juice; sparks above remain unchanged.
+      this.juice?.schedule(hit.id,settings,id=>this.juiceOriginFor(id));
     };
     this.bowGrip = character.model.getObjectByName('RedBowGrip')!;
     this.body.add(character.model);
@@ -259,8 +266,16 @@ export class GameScene {
       || this.monsterRosterSignature!==this.rosterSignature();
   }
 
+  private juiceOriginFor(id:string){
+    const feet=this.feedback?.feetOrigin(id,this.juiceScratch);
+    if(!feet)return null;
+    feet.y=this.feedback!.aimHeight(id);
+    return feet;
+  }
+
   private setRoom() {
     this.particles?.clear();
+    this.juice?.clear();
     this.pendingShots.length=0;
     this.practiceRevision=this.controller.practiceRevision;
     this.monsterRosterSignature=this.rosterSignature();
@@ -286,6 +301,7 @@ export class GameScene {
     this.pendingShots.length=0;
     this.arrows?.clear();
     this.particles?.clear();
+    this.juice?.clear();
     if(this.controller.training==='monsters'){
       this.controller.regenerateMonsterRoster();
       this.setRoom();
@@ -301,6 +317,7 @@ export class GameScene {
     this.feedback?.update(dt,this.controller.settings);
     if(this.controller.training==='monsters'){this.feedback?.pursue(dt,this.controller.position,this.controller.settings.monsterSpeed,this.controller.settings);this.controller.resolveMonsterContacts();this.feedback?.refresh(this.controller.settings);}
     this.particles?.update(dt,this.controller.settings,id=>this.feedback?.feetOrigin(id,this.feetScratch)??null);
+    this.juice?.update(dt,id=>this.juiceOriginFor(id));
   }
 
   private queuePendingShots(dt:number){
@@ -399,5 +416,10 @@ export class GameScene {
     this.rings.update(dt, ctl.settings, this.camera, ctl.position, ctl.combatTraining ? ctl.targeting.target : null, this.animation.snapshot());
   }
 
-  render() { this.particles?.prepare(this.camera,this.controller.settings);this.particles?.renderDepth(this.renderer,this.camera);this.renderer.render(this.scene, this.camera); }
+  render() {
+    this.particles?.prepare(this.camera,this.controller.settings);
+    this.particles?.renderDepth(this.renderer,this.camera);
+    this.juice?.prepare(this.camera,this.controller.settings);
+    this.renderer.render(this.scene, this.camera);
+  }
 }

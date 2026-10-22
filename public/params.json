@@ -28,10 +28,62 @@
     "hitParticleMaxSpeed": 17.5,
     "hitParticleDrag": 5,
     "hitParticleSize": 1,
+    "juiceSpeedCurve": [
+      {
+        "time": 0,
+        "progress": 100
+      },
+      {
+        "time": 25,
+        "progress": 100
+      },
+      {
+        "time": 30.74,
+        "progress": 83.32
+      },
+      {
+        "time": 34.24,
+        "progress": 61.19
+      },
+      {
+        "time": 37.44,
+        "progress": 40.95
+      },
+      {
+        "time": 40.59,
+        "progress": 22.32
+      },
+      {
+        "time": 44.52,
+        "progress": 11.07
+      },
+      {
+        "time": 60,
+        "progress": 8
+      },
+      {
+        "time": 100,
+        "progress": 4
+      }
+    ],
+    "juiceEnabled": 1,
+    "juiceDelay": 0.06,
+    "juiceCount": 14,
+    "juiceSpeed": 9,
+    "juiceSpeedJitter": 4,
+    "juiceRadius": 0.34,
+    "juiceLife": 0.7,
+    "juiceSize": 1.1,
+    "juiceSizeJitter": 0.7,
+    "juiceColor": 7062561,
+    "juiceCurve": 6,
+    "juiceDragRel": 0.6,
+    "juiceDepthTest": 1,
+    "juiceHeight": 0.4,
     "monsterSpeed": 3,
     "monsterScale": 1.7,
     "monsterHitSpeed": 2,
-    "monsterCount": 3,
+    "monsterCount": 1,
     "joystickRadius": 64,
     "unlockDistance": 20,
     "showThreshold": 0,
@@ -341,8 +393,8 @@
     "bowScale": 1.8,
     "arrowScale": 2,
     "arrowSpeed": 80,
-    "arrowPierce": 1,
-    "arrowsPerAttack": 2,
+    "arrowPierce": 0,
+    "arrowsPerAttack": 1,
     "arrowFireInterval": 0.1,
     "roomSize": 16,
     "roomLength": 38,

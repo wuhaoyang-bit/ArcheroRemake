@@ -1,3 +1,4 @@
+import { validateJuiceSpeedCurve } from './juice-speed-curve.ts';
 import { validateProgressCurve, validateSwitchCurve, validateStrokeCurve } from './lock-rings.ts';
 import { validateMoveCurve } from './move-speed.ts';
 import { validateAnchorCurve } from './anchor-follow.ts';
@@ -54,6 +55,7 @@ export function parseSettingsDocument(raw: unknown, strict = false): Settings {
   settings.ringWaveCurve = validateProgressCurve(source.ringWaveCurve === undefined ? DEFAULTS.ringWaveCurve : source.ringWaveCurve);
   settings.ringSwitchCurve = validateSwitchCurve(source.ringSwitchCurve === undefined ? DEFAULTS.ringSwitchCurve : source.ringSwitchCurve);
   settings.ringCurve = validateProgressCurve(source.ringCurve === undefined ? DEFAULTS.ringCurve : source.ringCurve);
+  settings.juiceSpeedCurve=validateJuiceSpeedCurve(source.juiceSpeedCurve ?? DEFAULTS.juiceSpeedCurve);
   return settings;
 }
 

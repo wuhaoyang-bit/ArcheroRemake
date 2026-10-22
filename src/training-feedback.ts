@@ -37,6 +37,13 @@ export class TrainingFeedback {
   aimHeight(id:string){const d=this.dummies.find(d=>d.root.userData.practiceTarget===id);return d?.monster ? d.monster.aimHeight*d.proxy.scale.y : 1.65;}
   /** Enemy foot anchor slightly above the ground plane for hit FX. */
   feetOrigin(id:string,out:T.Vector3){const d=this.dummies.find(d=>d.root.userData.practiceTarget===id);if(!d)return null;const p=d.response.position;return out.set(p.x,.05,p.z);}
+  /** World-space center of the visible model (for juice burst origin). */
+  modelCenter(id:string,out:T.Vector3){
+    const d=this.dummies.find(d=>d.root.userData.practiceTarget===id);if(!d)return null;
+    d.root.updateWorldMatrix(true,true);
+    new T.Box3().setFromObject(d.visual).getCenter(out);
+    return out;
+  }
   dispose(){for(const d of this.dummies){d.monster?.animation.dispose();d.visual.traverse(o=>{if(o instanceof T.SkinnedMesh)o.skeleton.dispose();});}}
   reset(){for(const d of this.dummies){Object.assign(d.response.position,d.initial);d.response.reset();d.monster?.animation.reset();Object.assign(d.lastPosition,d.initial);d.root.position.set(d.initial.x,0,d.initial.z);d.root.quaternion.copy(d.initialRotation);d.visual.scale.setScalar(d.proxy.scale.x);d.rim.value=0;d.root.updateWorldMatrix(true,true);}}
   snapshot(){return this.dummies.map(d=>({id:d.root.userData.practiceTarget as string,model:d.root.userData.monsterModel ?? 'dummy',animation:d.monster?.animation.snapshot(),aimHeight:d.monster ? d.monster.aimHeight*d.proxy.scale.y : undefined,modelScale:d.proxy.scale.x,position:{...d.response.position},age:Number.isFinite(d.response.age)?d.response.age:null,scale:d.visual.scale.x,rim:d.rim.value,compression:d.response.x,blocked:d.response.blocked,bounds:{...d.response.bounds},proxyScale:d.proxy.scale.toArray(),parts:d.visual.children.length}));}

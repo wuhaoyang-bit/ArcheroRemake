@@ -8,13 +8,14 @@ export class ProgressCurveEditor {
   private form=document.createElement('dialog');
   private surfaces:HTMLElement[];
   private drag:{id:number;time:number;x:number;y:number;moved:boolean}|null=null;
-  constructor(root:HTMLElement,private read:()=>ProgressPoint[],private change:(points:ProgressPoint[])=>void,private strokeMode=false,private attackMode=false,private switchMode=false,private waveMode=false){
+  constructor(root:HTMLElement,private read:()=>ProgressPoint[],private change:(points:ProgressPoint[])=>void,private strokeMode=false,private attackMode=false,private switchMode=false,private waveMode=false,private custom?:{title:string;x:string;y:string;help:string;defaults:ProgressPoint[];max:number;validate:(raw:unknown)=>ProgressPoint[]}){
     this.expanded.className='curve-dialog';this.form.className='curve-number-dialog';
     this.expanded.dataset.ui='';this.form.dataset.ui='';
     this.expanded.innerHTML='<button class="curve-close">关闭</button><h2>锁定圆环收缩进度</h2><div class="curve-large"></div>';
     if(this.strokeMode)this.expanded.querySelector('h2')!.textContent=this.attackMode?'连线粗细 / 攻击动画进度':'目标圆环粗细 / 收缩完成度';
     if(this.switchMode)this.expanded.querySelector('h2')!.textContent='换目标扩张 / 时间进度';
     if(this.waveMode)this.expanded.querySelector('h2')!.textContent='冲击波扩散 / 时间进度';
+    if(this.custom)this.expanded.querySelector('h2')!.textContent=this.custom.title;
     document.body.append(this.expanded,this.form);
     this.surfaces=[root,this.expanded.querySelector<HTMLElement>('.curve-large')!];
     for(const surface of this.surfaces){
@@ -27,7 +28,7 @@ export class ProgressCurveEditor {
         this.commit(this.read().filter(p=>p.time!==this.selected));this.selected=100;this.render();
       });
       surface.querySelector('[data-curve="expand"]')?.addEventListener('click',()=>this.expanded.showModal());
-      surface.querySelector('[data-curve="generate"]')!.addEventListener('click',()=>{this.selected=100;this.commit(this.switchMode?DEFAULT_SWITCH_CURVE:this.attackMode?DEFAULT_LINK_ATTACK_CURVE.map(p=>({time:p.completion,progress:p.width})):this.strokeMode?[{time:0,progress:100},{time:100,progress:100}]:DEFAULT_RING_CURVE)});
+      surface.querySelector('[data-curve="generate"]')!.addEventListener('click',()=>{this.selected=100;this.commit(this.custom?this.custom.defaults:this.switchMode?DEFAULT_SWITCH_CURVE:this.attackMode?DEFAULT_LINK_ATTACK_CURVE.map(p=>({time:p.completion,progress:p.width})):this.strokeMode?[{time:0,progress:100},{time:100,progress:100}]:DEFAULT_RING_CURVE)});
       if(this.strokeMode){surface.querySelector('.threshold-help')!.textContent='横轴是收缩完成度，纵轴是基础目标线宽的百分比。100% 保持原粗细。双击加点或输入数值；拖动点调整。端点可改粗细但不能删除。下一次入场生效。';surface.querySelector('svg')!.setAttribute('aria-label','目标圆环粗细与收缩完成度曲线');}
       if(this.attackMode){
         surface.querySelector('.threshold-help')!.textContent='横轴为攻击动画实际进度，纵轴为基础连线粗细倍率。默认蓄力变细、松弦附近快速变粗、随后恢复。松弦参考取前摇/收招分界，不是精确发射事件。端点可改粗细；首尾值相同可避免循环跳变。修改下一次锁定入场生效。';
@@ -36,6 +37,7 @@ export class ProgressCurveEditor {
       }
       if(this.switchMode){surface.querySelector('.threshold-help')!.textContent='横轴为换目标动画时间，纵轴为额外扩张量。100% 达到设置的放大幅度，0% 回到正常大小；上升段扩张，下降段收紧，越陡速度越快。首尾固定 0；支持拖点、双击加点和数值编辑。下一次锁定入场生效。';surface.querySelector('svg')!.setAttribute('aria-label','换目标扩张量与时间进度曲线');}
       if(this.waveMode){surface.querySelector('.threshold-help')!.textContent='横轴为时间，纵轴为扩散完成度；曲线越陡扩散越快。默认先快后慢。线宽随扩散完成度减至 0。支持拖点、双击加点和输入数值，首尾固定。下一次锁定入场生效。';surface.querySelector('svg')!.setAttribute('aria-label','冲击波扩散进度曲线');}
+      if(this.custom){surface.querySelector('.threshold-help')!.textContent=this.custom.help;surface.querySelector('svg')!.setAttribute('aria-label',this.custom.title);}
       const svg=surface.querySelector('svg')!;
       const coords=(event:MouseEvent)=>{const r=svg.getBoundingClientRect();return {x:(event.clientX-r.left)*720/r.width,y:(event.clientY-r.top)*400/r.height}};
       const nearest=(x:number,y:number)=>this.read().reduce<ProgressPoint|undefined>((best,p)=>{
@@ -73,12 +75,12 @@ export class ProgressCurveEditor {
   }
   private endpoint(time:number){return time===0||time===100}
   private x(time:number){return 70+time/100*620}
-  private maxY(){return this.strokeMode?1000:100}
+  private maxY(){return this.custom?.max ?? (this.strokeMode?1000:100)}
   private y(progress:number){return 345-progress/this.maxY()*300}
-  private commit(points:ProgressPoint[]){this.change(this.switchMode?validateSwitchCurve(points):this.strokeMode?validateStrokeCurve(points.map(p=>({completion:p.time,width:p.progress}))).map(p=>({time:p.completion,progress:p.width})):validateProgressCurve(points));this.render()}
+  private commit(points:ProgressPoint[]){this.change(this.custom?this.custom.validate(points):this.switchMode?validateSwitchCurve(points):this.strokeMode?validateStrokeCurve(points.map(p=>({completion:p.time,width:p.progress}))).map(p=>({time:p.completion,progress:p.width})):validateProgressCurve(points));this.render()}
   private edit(){
     const p=this.read().find(p=>p.time===this.selected);if(!p||(this.endpoint(p.time)&&!this.strokeMode))return;
-    this.form.innerHTML=`<form><h2>编辑收缩控制点</h2><label>${this.attackMode?'攻击动画进度':this.strokeMode?(this.waveMode?'扩散完成度':'收缩完成度'):'时间进度'}（%）<input name="time" type="number" ${this.endpoint(p.time)?'readonly':''} min="0" max="100" step="any" required value="${p.time}"></label><label>${this.switchMode?'额外扩张量':this.strokeMode?'粗细倍率':(this.waveMode?'扩散完成度':'收缩完成度')}（%）<input name="progress" type="number" min="0" max="${this.maxY()}" step="any" required value="${p.progress}"></label><p class="curve-error"></p><div class="curve-actions"><button type="submit">应用</button><button type="button" class="curve-cancel">取消</button></div></form>`;
+    this.form.innerHTML=`<form><h2>${this.custom?'编辑速度控制点':'编辑收缩控制点'}</h2><label>${this.custom?this.custom.x:this.attackMode?'攻击动画进度':this.strokeMode?(this.waveMode?'扩散完成度':'收缩完成度'):'时间进度'}（%）<input name="time" type="number" ${this.endpoint(p.time)?'readonly':''} min="0" max="100" step="any" required value="${p.time}"></label><label>${this.custom?this.custom.y:this.switchMode?'额外扩张量':this.strokeMode?'粗细倍率':(this.waveMode?'扩散完成度':'收缩完成度')}（%）<input name="progress" type="number" min="0" max="${this.maxY()}" step="any" required value="${p.progress}"></label><p class="curve-error"></p><div class="curve-actions"><button type="submit">应用</button><button type="button" class="curve-cancel">取消</button></div></form>`;
     this.form.querySelector('.curve-cancel')!.addEventListener('click',()=>this.form.close());
     this.form.querySelector('form')!.addEventListener('submit',event=>{
       event.preventDefault();const time=this.form.querySelector<HTMLInputElement>('[name=time]')!.valueAsNumber,progress=this.form.querySelector<HTMLInputElement>('[name=progress]')!.valueAsNumber;
@@ -105,11 +107,11 @@ export class ProgressCurveEditor {
       surface.querySelector('svg')!.innerHTML=`<rect x="70" y="45" width="620" height="300" fill="#102b25"/>
         ${[0,25,50,75,100].map(v=>`<path d="M70 ${this.y(v/100*this.maxY())}H690" stroke="#365148"/><text x="62" y="${this.y(v/100*this.maxY())+5}" text-anchor="end">${v/100*this.maxY()}%</text><text x="${this.x(v)}" y="370" text-anchor="middle">${v}%</text>`).join('')}
         ${this.attackMode?`<text x="180" y="65">蓄力</text><text x="${this.x(this.playback.releaseTime/this.playback.duration*100)+8}" y="85">松弦参考 → 恢复</text><line data-release-marker x1="395" x2="395" y1="45" y2="345" stroke="#e6bc79" stroke-dasharray="5 5"/>`:''}
-        <text x="70" y="25">${this.switchMode?'额外扩张量（%）':this.strokeMode?'粗细倍率（%）':(this.waveMode?'扩散完成度（%）':'收缩完成度（%）')}</text><text x="690" y="395" text-anchor="end">${this.attackMode?'攻击动画进度':this.strokeMode?(this.waveMode?'扩散完成度':'收缩完成度'):'时间进度'}：0% → 100%</text>
+        <text x="70" y="25">${this.custom?this.custom.y+'（%）':this.switchMode?'额外扩张量（%）':this.strokeMode?'粗细倍率（%）':(this.waveMode?'扩散完成度（%）':'收缩完成度（%）')}</text><text x="690" y="395" text-anchor="end">${this.custom?this.custom.x:this.attackMode?'攻击动画进度':this.strokeMode?(this.waveMode?'扩散完成度':'收缩完成度'):'时间进度'}：0% → 100%</text>
         <path d="${points.map((p,i)=>`${i?'L':'M'}${this.x(p.time)} ${this.y(p.progress)}`).join(' ')}" fill="none" stroke="#f36c72" stroke-width="3"/>
         ${this.attackMode?'<line data-attack-cursor x1="70" x2="70" y1="45" y2="345" stroke="#8fe8ef" stroke-width="2"/>':''}
         ${points.map(p=>`<circle data-time="${p.time}" cx="${this.x(p.time)}" cy="${this.y(p.progress)}" r="${p.time===this.selected?8:6}" fill="${p.time===this.selected?'#fff':'#f36c72'}" stroke="#20362d" stroke-width="2"/>`).join('')}`;
-      surface.querySelector('.curve-selection')!.textContent=`已选：${this.strokeMode?'完成':'时间'} ${selected.time}% · ${this.switchMode?'扩张':this.strokeMode?'粗细':'完成'} ${selected.progress}%${this.endpoint(selected.time)?(this.strokeMode?'（端点粗细可编辑）':'（固定端点）'):''}`;
+      surface.querySelector('.curve-selection')!.textContent=`已选：${this.custom?'寿命':this.strokeMode?'完成':'时间'} ${selected.time}% · ${this.custom?'速度':this.switchMode?'扩张':this.strokeMode?'粗细':'完成'} ${selected.progress}%${this.endpoint(selected.time)?(this.custom?'（端点速度可编辑）':this.strokeMode?'（端点粗细可编辑）':'（固定端点）'):''}`;
       for(const action of ['edit','delete'])(surface.querySelector(`[data-curve="${action}"]`) as HTMLButtonElement).disabled=this.endpoint(selected.time)&&(action==='delete'||!this.strokeMode);
       surface.querySelector('.curve-warning')!.textContent='';
     }
