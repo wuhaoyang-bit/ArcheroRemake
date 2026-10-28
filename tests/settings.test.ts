@@ -23,7 +23,7 @@ test('requested defaults match the screenshot, with speed 16 / upper limit 30 an
     ...ARROW_TRAIL_DEFAULTS,
     recoilEnabled:1,recoilDistance:.16,recoilDuration:.12,recoilSpeedCurve:DEFAULTS.recoilSpeedCurve,
     monsterSpeed: 3, monsterScale: 1, monsterHitRadius: 1.105, monsterHitSpeed: 1, attackSpeed: 1,
-    joystickRadius: 64, unlockDistance: 12, showThreshold: 0, anchorScale: 0.036, anchorFollow: 1, anchorCurve: DEFAULTS.anchorCurve,
+    joystickSize: 1, joystickRadius: 64, unlockDistance: 12, showThreshold: 0, anchorScale: 0.036, anchorFollow: 1, anchorCurve: DEFAULTS.anchorCurve,
     moveSpeed: 16, moveModel: 0, moveCurve: DEFAULTS.moveCurve, turnSpeed: 1200, turnModel: 0, curveSnapAngle: 0.1, turnCurve: exponentialCurve(10.4), blendDuration: 0.06, runSpeed: 1.6, bowScale: 1.5, arrowScale: 1.5, arrowSpeed: 50,
     monsterCount: 2, arrowPierce: 0, arrowsPerAttack: 1, arrowFireInterval: 0.05,
     slerpResponse: 40.872, slerpSnapAngle: 0.1, smoothTime: 0.03039, smoothSnapAngle: 0.1,
@@ -140,4 +140,18 @@ test('camera zoom tuning round trips and old documents receive defaults',()=>{
  assert.deepEqual(parseSettingsDocument(settingsDocument(tuned)),tuned);
  const migrated=parseSettingsDocument({version:1,settings:{moveSpeed:16}});
  for(const key of Object.keys(CAMERA_ZOOM_DEFAULTS) as (keyof typeof CAMERA_ZOOM_DEFAULTS)[])assert.equal(migrated[key],CAMERA_ZOOM_DEFAULTS[key]);
+});
+
+test('directional squash mode persists and old files keep overall scaling',()=>{
+ const tuned={...DEFAULTS,hitSquashMode:1,hitSquashCompensation:.6};
+ assert.deepEqual(parseSettingsDocument(settingsDocument(tuned)),tuned);
+ assert.equal(parseSettingsDocument({version:1,settings:{}}).hitSquashMode,0);
+});
+
+test('removed spark settings are discarded when loading and saving legacy documents',()=>{
+ const legacy={hitBaseEnabled:1,hitDirectionEnabled:1,hitParticleFeetEnabled:1,hitParticleDuration:.8,hitParticleLife:.6,hitParticleCount:14,hitParticleAngle:26,hitParticleMinSpeed:10,hitParticleMaxSpeed:17.5,hitParticleDrag:5,hitParticleSize:1};
+ const loaded=parseSettingsDocument({version:1,settings:{...legacy,juiceEnabled:1,hitSquashAmount:.3}},true);
+ const saved=settingsDocument(loaded).settings;
+ for(const key of Object.keys(legacy)){assert.equal(key in loaded,false);assert.equal(key in saved,false);}
+ assert.equal(saved.juiceEnabled,1);assert.equal(saved.hitSquashAmount,.3);
 });

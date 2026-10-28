@@ -1,4 +1,3 @@
-import { HitParticles } from '../src/hit-particles.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as T from 'three/webgpu';
@@ -19,9 +18,8 @@ test('spring and knockback are independent of step partition across damping regi
 test('whole dummy including base scales; raycast silhouette stays fixed; all parts flash independently per dummy',()=>{const ctl=new MovementController();ctl.setTraining('locking');const group=buildLockingTraining(16,38),feedback=new TrainingFeedback(group,ctl.getPracticeTargets(),16,38);const id=ctl.getPracticeTargets()[0].id,root=group.children.find(o=>o.userData.practiceTarget===id)!;const visual=root.getObjectByName('WholeDummyVisual')!,proxy=root.getObjectByName('UnscaledHitProxy')!;const originalProxyBox=new T.Box3().setFromObject(proxy),originalVisualBox=new T.Box3().setFromObject(visual);feedback.hit(id,{x:1,z:0},{...HIT_DEFAULTS,hitKnockEnabled:0});feedback.update(.1,HIT_DEFAULTS);const proxyBox=new T.Box3().setFromObject(proxy),visualBox=new T.Box3().setFromObject(visual);close(proxyBox.max.y,originalProxyBox.max.y);close(visualBox.max.y,originalVisualBox.max.y*.85);assert.ok(visual.children.length>10);assert.equal(visual.children.length,proxy.children.length);const snap=feedback.snapshot();assert.ok(snap[0].rim>0);assert.ok(snap.slice(1).every(s=>s.rim===0&&s.scale===1));feedback.reset();assert.ok(feedback.snapshot().every(s=>s.scale===1&&s.rim===0));});
 test('moving target coordinates are read by existing selection and reset on reenter',()=>{const c=new MovementController();c.setTraining('locking');c.press(1,0,0);const selected=c.targeting.target!,moving=c.getPracticeTargets().find(t=>t.id===selected.id)!;moving.x=100;c.refreshTargetPositions();assert.equal(c.targeting.target?.id,selected.id);assert.equal(c.targeting.target?.x,100);c.move(1,40,0);c.update(.01);assert.notEqual(c.targeting.target?.id,selected.id);c.restartTraining();assert.ok(c.getPracticeTargets().every(t=>Math.abs(t.x)<16));});
 test('arrow snapshots contact and direction before recycling, once per hit',()=>{const scene=new T.Scene(),template=new T.Group();template.add(new T.Mesh(new T.BoxGeometry(.1,.1,1)));const arrows=new ArrowProjectiles(scene,template),target=new T.Mesh(new T.BoxGeometry(1,1,1));target.position.z=3;target.userData.practiceTarget='target';target.updateMatrixWorld();let count=0;arrows.onHit=hit=>{count++;assert.equal(arrows.snapshot().active.length,0);assert.equal(hit.id,'target');close(hit.point.z,2.5);close(hit.direction.z,1);};arrows.setTargets([target]);arrows.fire(new T.Vector3(),new T.Vector3(0,0,3),10);arrows.update(.1);arrows.update(.1);assert.equal(count,1);});
-test('legacy settings inherit confirmed feedback values and new values round-trip',()=>{const c=parseSettingsDocument({version:1,settings:{}});assert.equal(c.hitSquashAmount,.15);assert.equal(c.hitSpringDamping,.15);assert.equal(c.hitParticleCount,14);assert.equal(c.hitReleaseTime,.2);const d=parseSettingsDocument({version:1,settings:{...c,hitRimTime:.6,hitParticleCount:19}});assert.equal(d.hitRimTime,.6);assert.equal(d.hitParticleCount,19);});
+test('legacy settings inherit confirmed feedback values and new values round-trip',()=>{const c=parseSettingsDocument({version:1,settings:{}});assert.equal(c.hitSquashAmount,.15);assert.equal(c.hitSpringDamping,.15);assert.equal(c.hitReleaseTime,.2);const d=parseSettingsDocument({version:1,settings:{...c,hitRimTime:.6}});assert.equal(d.hitRimTime,.6);});
 
-test('particle pool supports simultaneous hits, expires independently and reuses capacity',()=>{const particles=new HitParticles(new T.Scene()),c=HIT_DEFAULTS;for(let i=0;i<12;i++)particles.emit(new T.Vector3(i,1,0),new T.Vector3(1,0,0),c);particles.update(.1,c);assert.equal(particles.snapshot().active,12*47);const capacity=particles.snapshot().capacity;particles.update(1,c);assert.equal(particles.snapshot().active,0);for(let i=0;i<12;i++)particles.emit(new T.Vector3(i,1,0),new T.Vector3(1,0,0),c);assert.equal(particles.snapshot().capacity,capacity);particles.clear();assert.equal(particles.snapshot().active,0);});
 
 test('release time is independent of knockback duration and restarts on latest hit',()=>{
   const c={...HIT_DEFAULTS,hitKnockTime:.1,hitReleaseTime:.5},r=make();
@@ -64,33 +62,28 @@ test('squash total duration smoothly finishes even before release; independent c
 });
 
 
-test('overall spark duration scales every layer, expires lights, and is captured per hit',()=>{
- const originalRandom=Math.random;Math.random=()=>.5;
- try{
-  const a=new HitParticles(new T.Scene()),b=new HitParticles(new T.Scene());
-  a.emit(new T.Vector3(),new T.Vector3(1,0,0),HIT_DEFAULTS);
-  const short={...HIT_DEFAULTS,hitParticleDuration:.4};b.emit(new T.Vector3(),new T.Vector3(1,0,0),short);
-  const full=a.snapshot().particles,half=b.snapshot().particles;
-  assert.equal(full.length,47);full.forEach((p,i)=>close(half[i].life,p.life*.5));
-  b.update(.03,HIT_DEFAULTS);a.update(.03,HIT_DEFAULTS);
-  a.snapshot().particles.forEach((p,i)=>p.position.forEach((v,j)=>close(v,b.snapshot().particles[i].position[j])));
-  b.update(.37,HIT_DEFAULTS);assert.equal(b.snapshot().active,0);assert.equal(b.snapshot().lights,0);
-  a.update(.37,HIT_DEFAULTS);assert.ok(a.snapshot().active>0);
-  for(const duration of [.05,3]){const c={...HIT_DEFAULTS,hitParticleDuration:duration,hitParticleLife:1};b.emit(new T.Vector3(),new T.Vector3(1,0,0),c);assert.ok(b.snapshot().particles.every(p=>p.life<=duration));b.update(duration,c);assert.equal(b.snapshot().active,0);assert.equal(b.snapshot().lights,0);}
- }finally{Math.random=originalRandom;}
-});
 
-test('feet-follow particles keep origin on moving feet while relative motion continues',()=>{
-  const particles=new HitParticles(new T.Scene());
-  const feet=new T.Vector3(0,.05,0);
-  particles.emit(feet.clone(),new T.Vector3(1,0,0),{...HIT_DEFAULTS,hitDirectionEnabled:0,hitBaseEnabled:1},'mob');
-  assert.ok(particles.snapshot().particles.every(p=>p.followId==='mob'));
-  particles.update(0,HIT_DEFAULTS,()=>feet);
-  const before=particles.snapshot().particles.find(p=>p.kind==='flash')!;
-  close(before.origin[0],0);close(before.origin[2],0);
-  feet.set(3,.05,-2);
-  particles.update(.02,HIT_DEFAULTS,()=>feet);
-  const after=particles.snapshot().particles.find(p=>p.kind==='flash')!;
-  close(after.origin[0],3);close(after.origin[2],-2);
-  close(after.position[0],3);close(after.position[2],-2);
+
+test('directional compression follows world hit direction through turns, preserves volume and collision proxy',()=>{
+ const ctl=new MovementController();ctl.setTraining('locking');
+ const group=buildLockingTraining(16,38),f=new TrainingFeedback(group,ctl.getPracticeTargets(),16,38);
+ const id=ctl.getPracticeTargets()[0].id,root=group.children.find(o=>o.userData.practiceTarget===id)!;
+ const visual=root.getObjectByName('WholeDummyVisual')!,proxy=root.getObjectByName('UnscaledHitProxy')!;
+ const c={...HIT_DEFAULTS,hitKnockEnabled:0,hitSquashMode:1};
+ const dir=new T.Vector3(1,0,1).normalize(),side=new T.Vector3(1,0,-1).normalize();
+ f.hit(id,{x:dir.x,z:dir.z},c);f.update(.1,c);
+ for(const yaw of [0,.7,2.4]){
+  root.rotation.y=yaw;f.refresh(c);
+  const deform=visual.matrixWorld.clone().multiply(root.matrixWorld.clone().invert());
+  // Remove translation: compare two transformed positions.
+  const origin=new T.Vector3().applyMatrix4(deform);
+  const along=dir.clone().applyMatrix4(deform).sub(origin);
+  close(along.length(),.85);close(along.clone().normalize().dot(dir),1);
+  close(side.clone().applyMatrix4(deform).sub(origin).length(),1/Math.sqrt(.85));
+  close(visual.matrix.determinant(),1);assert.deepEqual(proxy.scale.toArray(),[1,1,1]);
+ }
+ f.refresh({...c,hitSquashCompensation:0});close(visual.matrix.determinant(),.85);
+ f.refresh({...c,hitSquashMode:0});close(visual.matrix.determinant(),.85**3);
+ f.refresh({...c,hitSquashEnabled:0});close(visual.matrix.determinant(),1);
+ f.reset();assert.deepEqual(visual.matrix.toArray(),new T.Matrix4().toArray());
 });

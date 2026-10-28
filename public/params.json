@@ -1,33 +1,24 @@
 {
   "version": 1,
   "settings": {
-    "hitBaseEnabled": 1,
-    "hitDirectionEnabled": 1,
     "hitKnockEnabled": 1,
     "hitRimEnabled": 1,
     "hitSquashEnabled": 1,
-    "hitParticleFeetEnabled": 1,
-    "hitKnockTime": 0.18,
-    "hitKnockDistance": 2.6,
-    "hitRimTime": 0.24,
-    "hitRimFadeStart": 0.18,
+    "hitSquashMode": 1,
+    "hitSquashCompensation": 1,
+    "hitKnockTime": 0.2,
+    "hitKnockDistance": 3,
+    "hitRimTime": 0.16,
+    "hitRimFadeStart": 0.08,
     "hitRimStrength": 1,
     "hitRimBrightness": 2,
     "hitRimWidth": 0.65,
     "hitSquashTime": 2,
-    "hitSquashAmount": 0.12,
+    "hitSquashAmount": 0.45,
     "hitCompressTime": 0.1,
-    "hitReleaseTime": 0.18,
+    "hitReleaseTime": 0.1,
     "hitSpringFrequency": 5.2,
     "hitSpringDamping": 0.25,
-    "hitParticleDuration": 0.4,
-    "hitParticleLife": 0.4,
-    "hitParticleCount": 14,
-    "hitParticleAngle": 26,
-    "hitParticleMinSpeed": 10,
-    "hitParticleMaxSpeed": 17.5,
-    "hitParticleDrag": 5,
-    "hitParticleSize": 1,
     "juiceSpeedCurve": [
       {
         "time": 0,
@@ -159,6 +150,7 @@
     "monsterHitRadius": 0.47,
     "monsterHitSpeed": 2,
     "monsterCount": 1,
+    "joystickSize": 0.95,
     "joystickRadius": 64,
     "unlockDistance": 20,
     "showThreshold": 0,
@@ -200,39 +192,39 @@
     "turnCurve": [
       {
         "angle": 0,
-        "speed": 876
+        "speed": 1068
       },
       {
         "angle": 31.22,
-        "speed": 901
+        "speed": 1105
       },
       {
         "angle": 65.75,
-        "speed": 943
+        "speed": 1210
       },
       {
         "angle": 96.34,
-        "speed": 996
+        "speed": 1320
       },
       {
-        "angle": 120.75,
-        "speed": 1208
+        "angle": 122.28,
+        "speed": 1771
       },
       {
-        "angle": 141,
-        "speed": 1542
+        "angle": 137.86,
+        "speed": 2377
       },
       {
-        "angle": 153.42,
-        "speed": 1998
+        "angle": 155.48,
+        "speed": 3143
       },
       {
-        "angle": 166.15,
-        "speed": 2660
+        "angle": 170.11,
+        "speed": 3924
       },
       {
         "angle": 180,
-        "speed": 3568
+        "speed": 5363
       }
     ],
     "slerpResponse": 40.872,
@@ -464,11 +456,11 @@
     "lockSmoothSnapAngle": 0.1,
     "blendDuration": 0.25,
     "runSpeed": 1,
-    "attackSpeed": 0.75,
+    "attackSpeed": 1.3,
     "bowScale": 2.2,
     "arrowScale": 2.4,
     "arrowSpeed": 115,
-    "arrowPierce": 0,
+    "arrowPierce": 1,
     "arrowsPerAttack": 1,
     "arrowFireInterval": 0.1,
     "roomSize": 16,

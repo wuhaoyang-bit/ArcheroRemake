@@ -21,6 +21,7 @@ export const DEFAULTS = {
   monsterHitRadius: 1.105,
   monsterHitSpeed: 1,
   monsterCount: 2,
+  joystickSize: 1,
   joystickRadius: 64,
   unlockDistance: 12,
   showThreshold: 0,
@@ -92,7 +93,7 @@ export const LIMITS: Record<SettingKey, [number, number, number]> = {
   monsterHitRadius: [0.05,3,0.005],
   monsterHitSpeed: [0.25,6,0.05],
   monsterCount: [1,10,1],
-  joystickRadius: [32, 100, 1], unlockDistance: [1, 40, 1],
+  joystickSize: [.5, 2, .05], joystickRadius: [32, 100, 1], unlockDistance: [1, 40, 1],
   showThreshold: [0, 1, 1],
   anchorFollow: [0, 1, 1], moveModel: [0, 1, 1],
   anchorScale: [0.005, 0.08, 0.001], moveSpeed: [1, 30, 0.1],
@@ -128,7 +129,8 @@ export function sanitize(key: SettingKey, value: number): number {
   if (key.startsWith('bowFx') && (key.endsWith('Enabled') || key==='bowFxRingCurve')) return value>=.5?1:0;
   if (key==='bowFxSpikeCount')value=Math.round(value);
   if (key === 'arrowTrailEnabled' || key === 'recoilEnabled' || key === 'arrowPierce' || key === 'juiceDepthTest') return value >= .5 ? 1 : 0;
-  if (key === 'hitParticleCount' || key === 'monsterCount' || key === 'arrowsPerAttack' || key === 'juiceCount' || key === 'juiceCurve' || key === 'juiceColor') value = Math.round(value);
+  if (key === 'monsterCount' || key === 'arrowsPerAttack' || key === 'juiceCount' || key === 'juiceCurve' || key === 'juiceColor') value = Math.round(value);
+  if (key === 'hitSquashMode') return value === 1 ? 1 : 0;
   if (key === 'moveModel') return value === 1 ? 1 : 0;
   if (key === 'turnModel' || key === 'lockTurnModel') return [0, 2, 5, 6, 7].includes(value) ? value : 0;
   if (key === 'targetModel') return [0, 1, 2].includes(value) ? value : 0;

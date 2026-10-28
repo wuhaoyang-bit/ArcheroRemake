@@ -18,7 +18,7 @@ try{
  await page.waitForFunction(()=>window.__ARCHERO__.snapshot().arrows.hits>0,{},{timeout:15000});
  for(const target of (await snap()).feedback){assert.equal(target.animation,undefined);}
  await mkdir('analysis/monster-training',{recursive:true});await page.locator('#viewport').screenshot({path:`analysis/monster-training/${mobile?'mobile':'desktop'}.png`});
- await page.locator('#reset-dummies').click();const reset=await snap();assert.equal(reset.particles.active,0);assert.ok(distance(reset.feedback[0].position,start.feedback[0].position)<.5);
+ await page.locator('#reset-dummies').click();const reset=await snap();assert.ok(distance(reset.feedback[0].position,start.feedback[0].position)<.5);
  await page.locator('#switch-locking-training').click();assert.equal((await snap()).feedback.length,8);
  await page.locator('#switch-monster-training').click();assert.equal((await snap()).feedback.length,count);
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);

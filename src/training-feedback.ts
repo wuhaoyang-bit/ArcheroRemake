@@ -1,3 +1,4 @@
+import { hitDeformation } from './hit-deformation.ts';
 import { DEFAULTS } from './config.ts';
 import { monsterInstance, type MonsterInstance } from './training-monster.ts';
 import * as T from 'three/webgpu';
@@ -10,12 +11,13 @@ type Dummy={monster?:MonsterInstance;lastPosition:Point;root:T.Object3D;visual:T
 /** One response per whole dummy; immutable-scale proxy meshes retain its original silhouette. */
 export class TrainingFeedback {
   private dummies:Dummy[]=[];
+  private worldRotation=new T.Quaternion();
   constructor(group:T.Group,targets:({id:string}&Point)[],width:number,length:number){
     for(const root of group.children.filter(o=>o.userData.practiceTarget)){
       const target=targets.find(t=>t.id===root.userData.practiceTarget)!;
-      const visual=new T.Group();visual.name='WholeDummyVisual';while(root.children.length)visual.add(root.children[0]);root.add(visual);
+      const visual=new T.Group();visual.name='WholeDummyVisual';visual.matrixAutoUpdate=false;while(root.children.length)visual.add(root.children[0]);root.add(visual);
       const monster=monsterInstance(root);
-      const proxy=monster?.proxy ?? visual.clone(true);proxy.name='UnscaledHitProxy';proxy.visible=false;proxy.userData.practiceTarget=target.id;root.add(proxy);
+      const proxy=monster?.proxy ?? visual.clone(true);proxy.name='UnscaledHitProxy';proxy.matrixAutoUpdate=true;proxy.visible=false;proxy.userData.practiceTarget=target.id;root.add(proxy);
       root.updateWorldMatrix(true,true);const box=new T.Box3().setFromObject(visual),halfX=Math.max(root.position.x-box.min.x,box.max.x-root.position.x),halfZ=Math.max(root.position.z-box.min.z,box.max.z-root.position.z);
       const rim=uniform(0),brightness=uniform(2),power=uniform(1.5);
       // Preserve the original material colours. All parts share the SAME hit uniform.
@@ -26,7 +28,11 @@ export class TrainingFeedback {
   }
   get proxies(){return this.dummies.map(d=>d.proxy);}
   hit(id:string,direction:Point,settings:FeedbackSettings){const d=this.dummies.find(d=>d.root.userData.practiceTarget===id);if(!d)return false;d.monster?.animation?.hit(settings.monsterHitSpeed ?? 1);d.response.hit(direction,settings);d.response.update(0,settings);this.apply(d,settings);return true;}
-  private apply(d:Dummy,c:FeedbackSettings){d.root.position.set(d.response.position.x,0,d.response.position.z);const modelScale=d.monster ? (c.monsterScale ?? 1) : 1;d.proxy.scale.setScalar(modelScale);if(d.monster){const radius=c.monsterHitRadius??DEFAULTS.monsterHitRadius;d.monster.hitBody.scale.set(radius,1,radius);}d.visual.scale.setScalar(modelScale*(c.hitSquashEnabled?d.response.scale:1));d.rim.value=d.response.rim(c);d.brightness.value=c.hitRimBrightness;d.power.value=8*Math.pow(.05,(c.hitRimWidth-.1)/.9);d.root.updateWorldMatrix(true,true);}
+  private apply(d:Dummy,c:FeedbackSettings){d.root.position.set(d.response.position.x,0,d.response.position.z);const modelScale=d.monster ? (c.monsterScale ?? 1) : 1;d.proxy.scale.setScalar(modelScale);if(d.monster){const radius=c.monsterHitRadius??DEFAULTS.monsterHitRadius;d.monster.hitBody.scale.set(radius,1,radius);}const squash=c.hitSquashEnabled?d.response.scale:1;
+    d.visual.scale.setScalar(modelScale*squash);
+    d.root.getWorldQuaternion(this.worldRotation);
+    hitDeformation(d.visual.matrix,squash,modelScale,c.hitSquashMode,c.hitSquashCompensation,d.response.direction,this.worldRotation);
+    d.visual.matrixWorldNeedsUpdate=true;d.rim.value=d.response.rim(c);d.brightness.value=c.hitRimBrightness;d.power.value=8*Math.pow(.05,(c.hitRimWidth-.1)/.9);d.root.updateWorldMatrix(true,true);}
   update(dt:number,c:FeedbackSettings){for(const d of this.dummies){d.response.update(dt,c);this.apply(d,c);}}
   pursue(dt:number,player:Point,speed:number,c:FeedbackSettings){for(const d of this.dummies){
     const p=d.response.position,dx=player.x-p.x,dz=player.z-p.z,distance=Math.hypot(dx,dz);
@@ -46,6 +52,6 @@ export class TrainingFeedback {
     return out;
   }
   dispose(){for(const d of this.dummies){d.monster?.animation?.dispose();d.visual.traverse(o=>{if(o instanceof T.SkinnedMesh)o.skeleton.dispose();});}}
-  reset(){for(const d of this.dummies){Object.assign(d.response.position,d.initial);d.response.reset();d.monster?.animation?.reset();Object.assign(d.lastPosition,d.initial);d.root.position.set(d.initial.x,0,d.initial.z);d.root.quaternion.copy(d.initialRotation);d.visual.scale.setScalar(d.proxy.scale.x);d.rim.value=0;d.root.updateWorldMatrix(true,true);}}
-  snapshot(){return this.dummies.map(d=>({id:d.root.userData.practiceTarget as string,model:d.root.userData.monsterModel ?? 'dummy',animation:d.monster?.animation?.snapshot(),aimHeight:d.monster ? d.monster.aimHeight*d.proxy.scale.y : undefined,modelScale:d.proxy.scale.x,hitRadius:d.monster ? d.monster.hitBody.scale.x*d.proxy.scale.x : undefined,position:{...d.response.position},age:Number.isFinite(d.response.age)?d.response.age:null,scale:d.visual.scale.x,rim:d.rim.value,compression:d.response.x,blocked:d.response.blocked,bounds:{...d.response.bounds},proxyScale:d.proxy.scale.toArray(),parts:d.visual.children.length}));}
+  reset(){for(const d of this.dummies){Object.assign(d.response.position,d.initial);d.response.reset();d.monster?.animation?.reset();Object.assign(d.lastPosition,d.initial);d.root.position.set(d.initial.x,0,d.initial.z);d.root.quaternion.copy(d.initialRotation);d.visual.scale.setScalar(d.proxy.scale.x);d.visual.matrix.makeScale(d.proxy.scale.x,d.proxy.scale.x,d.proxy.scale.x);d.visual.matrixWorldNeedsUpdate=true;d.rim.value=0;d.root.updateWorldMatrix(true,true);}}
+  snapshot(){return this.dummies.map(d=>({id:d.root.userData.practiceTarget as string,model:d.root.userData.monsterModel ?? 'dummy',animation:d.monster?.animation?.snapshot(),aimHeight:d.monster ? d.monster.aimHeight*d.proxy.scale.y : undefined,modelScale:d.proxy.scale.x,hitRadius:d.monster ? d.monster.hitBody.scale.x*d.proxy.scale.x : undefined,position:{...d.response.position},age:Number.isFinite(d.response.age)?d.response.age:null,scale:d.visual.scale.x,rim:d.rim.value,compression:d.response.x,direction:{...d.response.direction},visualMatrix:d.visual.matrix.toArray(),blocked:d.response.blocked,bounds:{...d.response.bounds},proxyScale:d.proxy.scale.toArray(),parts:d.visual.children.length}));}
 }

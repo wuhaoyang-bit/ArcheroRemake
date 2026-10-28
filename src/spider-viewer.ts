@@ -5,7 +5,6 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TrainingMonsterFactory, monsterInstance } from './training-monster.ts';
 import { TrainingFeedback } from './training-feedback.ts';
 import { JuiceParticles, newJuiceSeed } from './juice-particles.ts';
-import { HitParticles } from './hit-particles.ts';
 import { HIT_CONTROLS } from './hit-feedback-config.ts';
 import { DEFAULTS, LIMITS, sanitize, type SettingKey } from './config.ts';
 import { loadSettings } from './settings-store.ts';
@@ -20,35 +19,31 @@ async function main(){
  const stage=el('stage');stage.replaceChildren(renderer.domElement);
  const controls=new OrbitControls(camera,renderer.domElement);controls.target.set(0,.45,0);controls.minDistance=1;controls.maxDistance=40;controls.maxPolarAngle=Math.PI*.495;
  scene.add(new T.HemisphereLight(0xf5ffe5,0xb6ca6c,1.7));const sun=new T.DirectionalLight(0xfff4ce,1.8);sun.position.set(-9,22,-8);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-12,right:12,top:12,bottom:-12,near:.5,far:70});sun.shadow.bias=-.0003;scene.add(sun);
- const floor=new T.Mesh(new T.PlaneGeometry(100,100),new T.MeshStandardMaterial({color:0xe1e1c5,roughness:1}));floor.receiveShadow=true;floor.rotation.x=-Math.PI/2;floor.position.y=-.015;floor.userData.hitParticleGround=true;scene.add(floor);
- const grid=new T.GridHelper(40,40,0xa1a388,0xc4c5a9);grid.userData.hitParticleGround=true;scene.add(grid);
+ const floor=new T.Mesh(new T.PlaneGeometry(100,100),new T.MeshStandardMaterial({color:0xe1e1c5,roughness:1}));floor.receiveShadow=true;floor.rotation.x=-Math.PI/2;floor.position.y=-.015;scene.add(floor);
+ const grid=new T.GridHelper(40,40,0xa1a388,0xc4c5a9);scene.add(grid);
  const factory=await TrainingMonsterFactory.load(),root=factory.create(),group=new T.Group();root.userData.practiceTarget='spider';group.add(root);scene.add(group);
  const instance=monsterInstance(root)!,durations=instance.animation!.durations(),feedback=new TrainingFeedback(group,[{id:'spider',x:0,z:0}],100,100);
- let seed=1;const particles=new HitParticles(scene,()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;});
  const juice=await JuiceParticles.load(scene);
  let juiceSeed=newJuiceSeed();
  let time=0,playing=true,duration=2;
  const clip=()=>el<HTMLSelectElement>('clip').value;
- const flags=['hitBaseEnabled','hitDirectionEnabled','hitParticleFeetEnabled','hitKnockEnabled','hitRimEnabled','hitSquashEnabled','juiceEnabled'] as const;
+ const flags=['hitKnockEnabled','hitRimEnabled','hitSquashEnabled','juiceEnabled'] as const;
  const rows:[SettingKey,string,string,string][]=[['monsterScale','模型大小','倍','基础模型大小'],['monsterHitSpeed','受伤动画倍率','倍','仅调整原作受伤动作；与预览播放速度独立'],...HIT_CONTROLS];
  function buildControls(){el('params').innerHTML=rows.map(([key,label,unit,hint])=>{const [min,max,step]=LIMITS[key];if(key==='juiceCurve')return `<label class="param">绿汁曲线<select data-key="juiceCurve">${['Linear','OutQuad','OutCubic','OutExpo','smoothstep','指数阻力','自定义曲线'].map((name,i)=>`<option value="${i}" ${settings.juiceCurve===i?'selected':''}>${name}</option>`).join('')}</select></label>`;return `<label class="param" title="${hint}"><span>${label} <small>${unit}</small></span><input data-key="${key}" type="${key.endsWith('Enabled')?'checkbox':'number'}" min="${min}" max="${max}" step="${step}" value="${settings[key]}" ${settings[key]?'checked':''}></label>`;}).join('');}
  const juiceEditor=new JuiceCurveEditor(el('juice-speed-curve-editor'),()=>settings.juiceSpeedCurve,points=>{settings.juiceSpeedCurve=points;seek(time);});
- function length(){const native=durations[clip()]/(clip()==='Hitted'?settings.monsterHitSpeed:1);return clip()==='Hitted'?Math.max(native,settings.hitKnockEnabled?settings.hitKnockTime:0,settings.hitRimEnabled?settings.hitRimTime:0,settings.hitSquashEnabled?settings.hitSquashTime:0,settings.hitBaseEnabled||settings.hitDirectionEnabled?settings.hitParticleDuration:0,settings.juiceEnabled?settings.juiceDelay+settings.juiceLife*1.12:0):native;}
+ function length(){const native=durations[clip()]/(clip()==='Hitted'?settings.monsterHitSpeed:1);return clip()==='Hitted'?Math.max(native,settings.hitKnockEnabled?settings.hitKnockTime:0,settings.hitRimEnabled?settings.hitRimTime:0,settings.hitSquashEnabled?settings.hitSquashTime:0,settings.juiceEnabled?settings.juiceDelay+settings.juiceLife*1.12:0):native;}
  function seek(t:number){
   el('juice-speed-curve-editor').hidden=settings.juiceCurve!==6;juiceEditor.render();
-  duration=length();time=Math.max(0,Math.min(t,duration));feedback.reset();particles.clear();juice.clear();seed=123456;
+  duration=length();time=Math.max(0,Math.min(t,duration));feedback.reset();juice.clear();
   const angle=Number(el<HTMLInputElement>('direction').value)*Math.PI/180,dir=new T.Vector3(Math.sin(angle),0,Math.cos(angle));
   if(clip()==='Hitted'){
    feedback.hit('spider',{x:dir.x,z:dir.z},settings);
-   const atFeet=!!settings.hitParticleFeetEnabled;
-   const origin=atFeet?new T.Vector3(0,.05,0):new T.Vector3(0,instance.aimHeight*settings.monsterScale,0);
-   particles.emit(origin,dir,settings,atFeet?'spider':null);
+
   }
   const emitTime=Math.min(time,settings.juiceDelay);
   feedback.update(emitTime,settings);
   if(clip()==='Hitted'&&time>=settings.juiceDelay)juice.emit(new T.Vector3(root.position.x,feedback.aimHeight('spider')+settings.juiceHeight,root.position.z),settings,time-settings.juiceDelay,juiceSeed);
   feedback.update(time-emitTime,settings);instance.animation!.preview(clip(),time*(clip()==='Hitted'?settings.monsterHitSpeed:1));root.updateMatrixWorld(true);
-  particles.update(time,settings,id=>id==='spider'?new T.Vector3(root.position.x,.05,root.position.z):null);
   const timeline=el<HTMLInputElement>('timeline');timeline.max=String(duration);timeline.value=String(time);
   const fps=Number(el<HTMLSelectElement>('fps').value);el('time').textContent=`${time.toFixed(4)} s / ${duration.toFixed(3)} s · 第 ${Math.floor(time*fps+1e-6)} 帧`;
   el('timing').textContent=`原作动画 ${durations[clip()].toFixed(3)} 秒${clip()==='Hitted'?` → 当前倍率下 ${(durations.Hitted/settings.monsterHitSpeed).toFixed(3)} 秒；完整受击预览 ${duration.toFixed(3)} 秒`:''}`;
@@ -66,7 +61,7 @@ async function main(){
  window.addEventListener('keydown',e=>{if((e.target as HTMLElement).matches('input,select,textarea,button'))return;if(['Space','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();if(e.code==='Space')el('play').click();if(e.code==='ArrowLeft')step(-1);if(e.code==='ArrowRight')step(1);});
  new ResizeObserver(()=>{const {width,height}=stage.getBoundingClientRect();renderer.setSize(width,height);camera.aspect=width/height;camera.updateProjectionMatrix();}).observe(stage);
  buildControls();view('game');seek(0);let previous=performance.now();
- renderer.setAnimationLoop(now=>{const dt=Math.min(.1,(now-previous)/1000);previous=now;if(playing){let next=time+dt*Number(el<HTMLSelectElement>('speed').value);if(next>duration){if(el<HTMLInputElement>('loop').checked){next%=duration;juiceSeed=newJuiceSeed();}else{next=duration;setPlay(false);}}seek(next);}controls.update();juice.prepare(camera,settings);particles.prepare(camera,settings);particles.renderDepth(renderer,camera);renderer.render(scene,camera);});
- Object.assign(window,{__SPIDER_VIEWER__:{seek:(t:number)=>{setPlay(false);seek(t);},snapshot:()=>({time,duration,clip:clip(),playing,feedback:feedback.snapshot(),particles:particles.snapshot(),juice:juice.snapshot(),camera:camera.position.toArray()})}});
+ renderer.setAnimationLoop(now=>{const dt=Math.min(.1,(now-previous)/1000);previous=now;if(playing){let next=time+dt*Number(el<HTMLSelectElement>('speed').value);if(next>duration){if(el<HTMLInputElement>('loop').checked){next%=duration;juiceSeed=newJuiceSeed();}else{next=duration;setPlay(false);}}seek(next);}controls.update();juice.prepare(camera,settings);renderer.render(scene,camera);});
+ Object.assign(window,{__SPIDER_VIEWER__:{seek:(t:number)=>{setPlay(false);seek(t);},snapshot:()=>({time,duration,clip:clip(),playing,feedback:feedback.snapshot(),juice:juice.snapshot(),camera:camera.position.toArray()})}});
 }
 main().catch(e=>{el('stage').textContent=`预览加载失败：${e.message}`;console.error(e);});

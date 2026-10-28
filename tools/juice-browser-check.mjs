@@ -15,7 +15,7 @@ try{
  await page.route('**/params.json',r=>r.fulfill({json:{version:1,settings}}));await page.goto('http://127.0.0.1:5173/');await page.waitForFunction(()=>window.__ARCHERO__?.snapshot().ready);
  assert.equal(await page.locator('#value-juiceCurve').inputValue(),'2');assert.equal(await page.locator('#value-juiceColor').inputValue(),'#55991e');assert.equal(await page.locator('#value-juiceSize').inputValue(),'0.6');
  await page.locator('#switch-locking-training').click();const box=await page.locator('#viewport').boundingBox();await page.mouse.click(box.x+box.width/2,box.y+box.height*.65);
- await page.waitForFunction(()=>{const s=window.__ARCHERO__.snapshot();return s.juice.active>0&&s.particles.active>0;});await page.evaluate(()=>window.__ARCHERO__.pauseForInspection(true));
+ await page.waitForFunction(()=>{const s=window.__ARCHERO__.snapshot();return s.juice.active>0;});await page.evaluate(()=>window.__ARCHERO__.pauseForInspection(true));
  const s=await page.evaluate(()=>window.__ARCHERO__.snapshot());const group=s.juice.particles.slice(0,16);assert.equal(group.length,16);
  for(let i=0;i<16;i++){
   const p=group[i];assert.ok(p.s0>=.52&&p.s0<=.68&&p.speed0>=3&&p.speed0<=5);

@@ -3,7 +3,6 @@ import { BowReleaseEffects } from './bow-release-effects.ts';
 import { HitDebug } from './hit-debug.ts';
 import type { ArrowHit } from './arrow-projectiles.ts';
 import { TrainingMonsterFactory, createTrainingCube } from './training-monster.ts';
-import { HitParticles } from './hit-particles.ts';
 import { JuiceParticles } from './juice-particles.ts';
 import { TrainingFeedback } from './training-feedback.ts';
 import { ArrowProjectiles } from './arrow-projectiles.ts';
@@ -52,11 +51,11 @@ function buildRoom(size: number, length: number) {
   geo.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
   geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
   const floor = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 }));
-  floor.userData.hitParticleGround = true;
+  
   floor.receiveShadow = true; group.add(floor);
 
   const base = new THREE.Mesh(new RoundedBoxGeometry(size + 0.48, 0.4, length + 0.48, 2, 0.12), mat(0xd3ad63));
-  base.userData.hitParticleGround = true;
+  
   base.position.y = -0.25; base.receiveShadow = true; group.add(base);
   const across = Math.ceil(size / 0.78), alongCount = Math.ceil(length / 0.78);
   const count = 2 * (across + alongCount);
@@ -134,7 +133,6 @@ export class GameScene {
   private bowGrip!: THREE.Object3D;
   private shotOrigin = new THREE.Vector3();
   private shotAim = new THREE.Vector3();
-  private feetScratch = new THREE.Vector3();
   blend = new AnimationBlend();
   mixer!: THREE.AnimationMixer;
   idle!: THREE.AnimationAction;
@@ -146,7 +144,6 @@ export class GameScene {
   hitDebug=new HitDebug(this.scene);
   private deferredDebugHits:ArrowHit[]=[];
   private applyArrowHit?:(hit:ArrowHit)=>void;
-  particles?: HitParticles;
   juice?: JuiceParticles;
   private practiceRevision=-1;
   private monsterRosterSignature='';
@@ -194,8 +191,7 @@ export class GameScene {
     this.scene.add(sun);
     const outside = new THREE.Mesh(new THREE.PlaneGeometry(120, 160), mat(0xa0c74b));
     outside.rotation.x = -Math.PI / 2; outside.position.y = -0.22; outside.receiveShadow = true;
-    outside.userData.hitParticleGround = true; this.scene.add(outside);
-    this.particles=new HitParticles(this.scene);
+    this.scene.add(outside);
     this.juice=await JuiceParticles.load(this.scene);
     this.setRoom();
     const halo = groundCircle(1.05, 0x63e5d6, 0.15); halo.position.y = 0.025; this.player.add(halo);
@@ -237,22 +233,10 @@ export class GameScene {
     this.arrows.debug=this.hitDebug;
     this.arrows.setTargets(this.feedback?.proxies ?? []);
     this.applyArrowHit=hit=>{
-      if(!this.controller.combatTraining||!this.feedback||!this.particles)return;
+      if(!this.controller.combatTraining||!this.feedback)return;
       if(!this.feedback.hit(hit.id,hit.direction,this.controller.settings))return;
       const settings=this.controller.settings;
       this.cameraZoom.trigger('hit',settings);
-      const atFeet=!!settings.hitParticleFeetEnabled;
-      if(atFeet){
-        const feet=this.feedback.feetOrigin(hit.id,this.feetScratch);
-        if(!feet)return;
-        this.particles.emit(feet,hit.direction,settings,hit.id);
-      }else{
-        // Default: ray XZ, body aim height (avoids tall hit-cylinder contact height).
-        const origin=hit.point.clone();
-        origin.y=this.feedback.aimHeight(hit.id);
-        this.particles.emit(origin,hit.direction,settings,null);
-      }
-      // Independent delayed juice; sparks above remain unchanged.
       this.juice?.schedule(hit.id,settings,id=>this.juiceOriginFor(id));
     };
     this.arrows.onHit=hit=>{
@@ -296,7 +280,6 @@ export class GameScene {
 
   private setRoom() {
     this.hitDebug.clear();this.deferredDebugHits=[];
-    this.particles?.clear();
     this.juice?.clear();
     this.bowRelease?.clear();
     this.cameraZoom.reset();this.applyCameraZoom();
@@ -325,7 +308,6 @@ export class GameScene {
     this.controller.cancel();
     this.pendingShots.length=0;
     this.arrows?.clear();
-    this.particles?.clear();
     this.juice?.clear();
     this.bowRelease?.clear();
     this.cameraZoom.reset();this.applyCameraZoom();
@@ -344,7 +326,6 @@ export class GameScene {
     for(const hit of this.deferredDebugHits.splice(0))this.applyArrowHit?.(hit);
     this.feedback?.update(dt,this.controller.settings);
     if(this.controller.training==='monsters'){this.feedback?.pursue(dt,this.controller.position,this.controller.settings.monsterSpeed,this.controller.settings);this.controller.resolveMonsterContacts();this.feedback?.refresh(this.controller.settings);}
-    this.particles?.update(dt,this.controller.settings,id=>this.feedback?.feetOrigin(id,this.feetScratch)??null);
     this.juice?.update(dt,id=>this.juiceOriginFor(id));
   }
 
@@ -453,7 +434,7 @@ export class GameScene {
     this.camera.lookAt(0, 0, this.cameraZ);
     this.camera.updateMatrixWorld();
     this.applyCameraZoom();
-    this.rings.update(dt, ctl.settings, this.camera, ctl.position, ctl.combatTraining ? ctl.targeting.target : null, this.animation.snapshot());
+    this.rings.update(dt, ctl.settings, this.camera, ctl.position, ctl.combatTraining ? ctl.targeting.target : null);
   }
 
   render() {
@@ -462,8 +443,6 @@ export class GameScene {
     this.feedback?.refresh(this.controller.settings);
     this.bowRelease?.update(0,this.controller.settings);
     this.hitDebug.update(this.hitDebug.enabled?(this.arrows?.snapshot().active.map(a=>a.tip)??[]):[]);
-    this.particles?.prepare(this.camera,this.controller.settings);
-    this.particles?.renderDepth(this.renderer,this.camera);
     this.juice?.prepare(this.camera,this.controller.settings);
     this.arrows?.prepare(this.camera,this.controller.settings);
     this.renderer.render(this.scene, this.camera);

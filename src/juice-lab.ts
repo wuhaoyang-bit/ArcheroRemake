@@ -193,9 +193,6 @@ async function main() {
   const instance = monsterInstance(spiderRoot)!;
   const hitSettings: HitSettings & { monsterScale: number; monsterHitSpeed: number } = {
     ...HIT_DEFAULTS,
-    hitBaseEnabled: 0,
-    hitDirectionEnabled: 0,
-    hitParticleFeetEnabled: 0,
     hitKnockEnabled: 0,
     hitRimEnabled: 1,
     hitSquashEnabled: 1,
