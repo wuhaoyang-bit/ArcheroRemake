@@ -427,7 +427,7 @@
     "lockSmoothSnapAngle": 0.1,
     "blendDuration": 0.25,
     "runSpeed": 1,
-    "attackSpeed": 1,
+    "attackSpeed": 0.7,
     "bowScale": 1.8,
     "arrowScale": 2.4,
     "arrowSpeed": 200,
