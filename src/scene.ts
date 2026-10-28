@@ -344,7 +344,7 @@ export class GameScene {
     for(const shot of this.pendingShots)shot.delay-=dt;
     const ready=this.pendingShots.filter(s=>s.delay<=1e-9);
     this.pendingShots=this.pendingShots.filter(s=>s.delay>1e-9);
-    for(const shot of ready)this.arrows?.fire(shot.origin,shot.aim,shot.range,0);
+    for(const shot of ready){this.arrows?.fire(shot.origin,shot.aim,shot.range,0);this.controller.triggerShotRecoil({x:shot.aim.x-shot.origin.x,z:shot.aim.z-shot.origin.z});}
   }
 
   private fireAttackVolley(remaining:number){
@@ -359,6 +359,7 @@ export class GameScene {
     this.arrows.setPierce(pierce);
     // Lifetime is tip-vs-wall / hit-vs-pierce only; range arg is unused.
     this.arrows.fire(this.shotOrigin,this.shotAim,Infinity,remaining);
+    ctl.triggerShotRecoil({x:this.shotAim.x-this.shotOrigin.x,z:this.shotAim.z-this.shotOrigin.z},remaining);
     this.pendingShots.length=0;
     for(let i=1;i<count;i++){
       this.pendingShots.push({
@@ -430,6 +431,7 @@ export class GameScene {
     this.animation.update(dt, ctl.mode, ctl.activeAttackRequest, ctl.settings.blendDuration, ctl.settings.runSpeed, remaining => {
       this.fireAttackVolley(remaining);
     }, ctl.settings.attackSpeed);
+    this.player.position.set(ctl.position.x,0,ctl.position.z);
     this.cameraZ = follow(this.cameraZ, ctl.position.z, ctl.settings.cameraResponse, dt);
     this.camera.position.set(0, 24, this.cameraZ + 24 / Math.tan(this.tilt));
     this.camera.lookAt(0, 0, this.cameraZ);

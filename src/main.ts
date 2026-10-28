@@ -1,3 +1,5 @@
+import { DEFAULT_RECOIL_CURVE } from './shot-recoil.ts';
+import { validateJuiceSpeedCurve } from './juice-speed-curve.ts';
 import { JuiceCurveEditor } from './juice-curve-editor.ts';
 import { HIT_CONTROLS } from './hit-feedback-config.ts';
 import { ProgressCurveEditor } from './progress-curve-editor.ts';
@@ -38,6 +40,7 @@ const settings: { title: string; items: [SettingKey, string, string, string][] }
     ['arrowsPerAttack', '一次攻击箭数', '支', '默认 1；同点同向，按出发间隔依次生成。所有战斗训练场通用。'],
     ['arrowFireInterval', '箭出发间隔', 's', '同一次攻击中相邻两支箭的间隔；最小 0.01 秒。'],
   ] },
+  { title: '射击后坐力', items: [['recoilEnabled','启用射击后坐力','0/1','每支箭射出时沿箭的反方向击退角色。'],['recoilDistance','后坐距离','u','默认 0.16；连射从当前位置重新触发，不叠加剩余距离。'],['recoilDuration','后坐时长','s','默认 0.12 秒；与怪物击退独立，修改后下一支箭生效。']] },
   { title: '训练场 · 受击反馈', items: HIT_CONTROLS },
   { title: '怪物训练场', items: [['monsterCount','怪物数量','只','1–10，默认 2；拖动即时增减。变多在现有附近散开，变少只删多余。'],['monsterHitSpeed','怪物受伤动画倍率','倍','默认 1 倍；只调整原作受伤动作，修改后下一次命中生效。击退、边缘光和缩放时长独立控制。'],['monsterScale','怪物模型缩放','倍','默认 1 倍；两个训练场即时生效，命中范围和瞄准高度同步缩放，移动碰撞半径保持不变。'],['monsterHitRadius','怪物命中圆柱半径','u','模型 1 倍时的半径，默认 1.105 u，随怪物模型缩放。仅调整箭的命中圆柱，不改变移动碰撞；打开命中调试可实时查看。'],['monsterSpeed','怪物追赶速度','u/s','朝角色匀速移动，受击击退期间暂停追赶。']] },
   { title: '房间与镜头', items: [
@@ -92,7 +95,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         if(key==='juiceCurve')return `<div class="setting" title="${hint}"><label for="value-${key}">${name}</label><select id="value-${key}" data-setting="${key}">${['Linear','OutQuad','OutCubic · 截图方案','OutExpo','smoothstep','指数阻力','自定义曲线'].map((label,i)=>`<option value="${i}">${label}</option>`).join('')}</select><div id="juice-speed-curve-editor" hidden></div></div>`;
         if(key==='juiceColor')return `<div class="setting" title="${hint}"><label for="value-${key}">${name}</label><input id="value-${key}" data-setting="${key}" type="color" value="#55991e"></div>`;
         return `<div class="setting" title="${hint}"><div class="setting-label"><label for="slider-${key}">${name}</label><div class="numeric"><input id="value-${key}" data-setting="${key}" type="number" min="${min}" max="${max}" step="${step}" value="${DEFAULTS[key]}" aria-label="${name}数值"><span>${unit}</span></div></div><input id="slider-${key}" data-setting="${key}" type="range" min="${min}" max="${max}" step="${step}" value="${DEFAULTS[key]}" aria-label="${name}"></div>`;
-      }).join('')}${group.title === '锁定圆环 UI' ? '<p class="threshold-help">以下曲线及本组全部参数在下一次锁定入场生效。换目标沿用当前值；失去全部目标后重新锁定才应用新值。</p><div id="ring-curve-editor"></div><h3>冲击波扩散 / 时间进度</h3><div id="ring-wave-editor"></div><h3>换目标扩张 / 时间进度</h3><div id="ring-switch-editor"></div><h3>连线粗细 / 攻击动画进度</h3><div id="link-attack-editor"></div><h3>目标圆粗细 / 收缩完成度</h3><div id="ring-stroke-editor"></div><div id="ring-preview" class="ring-preview"><label for="ring-preview-progress">收缩预览 <output id="ring-preview-label">未锁定</output></label><input id="ring-preview-progress" type="range" min="0" max="100" step="0.1" value="0" disabled><button id="ring-preview-resume" disabled>恢复自动播放</button><p class="threshold-help">有锁定目标时可拖动。拖后停留在指定完成度，换目标保留预览；丢锁退出。仅改变圆环，不影响角色操作。参数修改仍在下一次入场生效。</p></div>' : ''}${group.title === '轮盘与锚点' ? '<label class="threshold-toggle"><input id="show-threshold" type="checkbox">显示移动阈值范围</label><p class="threshold-help">黄圈为首次解锁边界，越过后变青色；回圈内不会再次锁定。</p>' : ''}</section>`).join('')}<section class="setting-group"><h2>移动速度模型</h2><div class="turn-model-field"><label for="move-model">移动速度模型</label><select id="move-model" disabled><option value="0">恒定移动速度</option><option value="1">角度差曲线</option></select><p class="threshold-help">身体与实际锚点方向的最短角度差 → 基础移动速度百分比。100% 保持当前速度，80% 为当前速度的八成。默认全程 100%。</p></div><div id="move-curve-editor" hidden></div></section><section class="setting-group"><h2>锚点防抖</h2><label class="threshold-toggle"><input id="anchor-follow" type="checkbox">启用锚点跟随</label><div id="anchor-curve-editor"></div></section><section class="setting-group"><h2>箭矢命中调试</h2><label class="threshold-toggle"><input id="hit-debug-enabled" type="checkbox">显示命中范围与箭尖轨迹</label><label class="threshold-toggle"><input id="hit-debug-auto" type="checkbox" checked>命中时暂停（受击反馈之前）</label><label>模拟速度 <select id="hit-debug-speed"><option value="1">正常</option><option value="0.25">1/4 速</option><option value="0.1">1/10 速</option><option value="0.05">1/20 速</option></select></label><p class="threshold-help">青色：真实命中体；绿色：箭尖；黄色：扫掠路径。命中时蓝色箭表示检测前位置，金色箭表示真实接触位置，红点表示交点。仅本次调试，不保存到参数。</p></section><section class="setting-group"><h2>朝向调试</h2><label class="threshold-toggle"><input id="show-heading" type="checkbox">显示角色朝向线</label><label class="threshold-toggle debug-toggle"><input id="show-idle-anchor" type="checkbox">待机时也显示移动锚点</label><label class="threshold-toggle debug-toggle"><input id="show-anchor-outline" type="checkbox">锚点遮挡轮廓</label><p class="threshold-help">粉红直线代表角色当前朝向；蓝点代表移动锚点；遮挡轮廓让浅蓝圆环透过角色显示。开关仅用于本次页面调试。</p></section></div>
+      }).join('')}${group.title === '射击后坐力' ? '<div id="recoil-speed-curve-editor"></div>' : ''}${group.title === '锁定圆环 UI' ? '<p class="threshold-help">以下曲线及本组全部参数在下一次锁定入场生效。换目标沿用当前值；失去全部目标后重新锁定才应用新值。</p><div id="ring-curve-editor"></div><h3>冲击波扩散 / 时间进度</h3><div id="ring-wave-editor"></div><h3>换目标扩张 / 时间进度</h3><div id="ring-switch-editor"></div><h3>连线粗细 / 攻击动画进度</h3><div id="link-attack-editor"></div><h3>目标圆粗细 / 收缩完成度</h3><div id="ring-stroke-editor"></div><div id="ring-preview" class="ring-preview"><label for="ring-preview-progress">收缩预览 <output id="ring-preview-label">未锁定</output></label><input id="ring-preview-progress" type="range" min="0" max="100" step="0.1" value="0" disabled><button id="ring-preview-resume" disabled>恢复自动播放</button><p class="threshold-help">有锁定目标时可拖动。拖后停留在指定完成度，换目标保留预览；丢锁退出。仅改变圆环，不影响角色操作。参数修改仍在下一次入场生效。</p></div>' : ''}${group.title === '轮盘与锚点' ? '<label class="threshold-toggle"><input id="show-threshold" type="checkbox">显示移动阈值范围</label><p class="threshold-help">黄圈为首次解锁边界，越过后变青色；回圈内不会再次锁定。</p>' : ''}</section>`).join('')}<section class="setting-group"><h2>移动速度模型</h2><div class="turn-model-field"><label for="move-model">移动速度模型</label><select id="move-model" disabled><option value="0">恒定移动速度</option><option value="1">角度差曲线</option></select><p class="threshold-help">身体与实际锚点方向的最短角度差 → 基础移动速度百分比。100% 保持当前速度，80% 为当前速度的八成。默认全程 100%。</p></div><div id="move-curve-editor" hidden></div></section><section class="setting-group"><h2>锚点防抖</h2><label class="threshold-toggle"><input id="anchor-follow" type="checkbox">启用锚点跟随</label><div id="anchor-curve-editor"></div></section><section class="setting-group"><h2>箭矢命中调试</h2><label class="threshold-toggle"><input id="hit-debug-enabled" type="checkbox">显示命中范围与箭尖轨迹</label><label class="threshold-toggle"><input id="hit-debug-auto" type="checkbox" checked>命中时暂停（受击反馈之前）</label><label>模拟速度 <select id="hit-debug-speed"><option value="1">正常</option><option value="0.25">1/4 速</option><option value="0.1">1/10 速</option><option value="0.05">1/20 速</option></select></label><p class="threshold-help">青色：真实命中体；绿色：箭尖；黄色：扫掠路径。命中时蓝色箭表示检测前位置，金色箭表示真实接触位置，红点表示交点。仅本次调试，不保存到参数。</p></section><section class="setting-group"><h2>朝向调试</h2><label class="threshold-toggle"><input id="show-heading" type="checkbox">显示角色朝向线</label><label class="threshold-toggle debug-toggle"><input id="show-idle-anchor" type="checkbox">待机时也显示移动锚点</label><label class="threshold-toggle debug-toggle"><input id="show-anchor-outline" type="checkbox">锚点遮挡轮廓</label><p class="threshold-help">粉红直线代表角色当前朝向；蓝点代表移动锚点；遮挡轮廓让浅蓝圆环透过角色显示。开关仅用于本次页面调试。</p></section></div>
       <div class="panel-footer"><div class="store-actions"><button id="save-settings" class="text-button save-button" disabled>保存 JSON <span>↓</span></button><button id="undo-settings" class="text-button" disabled>撤回</button><button id="restore" class="text-button" disabled>撤回全部</button></div><p id="store-status" role="status" aria-live="polite">正在读取参数…</p><p>圆环参数下次入场生效 · 其余即时生效 · 390 宽基准</p></div>
     </aside>
     <section class="stage" aria-label="游戏测试区域">
@@ -121,6 +124,7 @@ const viewport = element('viewport'), stage = document.querySelector<HTMLElement
 const joystick = element('joystick'), knob = joystick.querySelector<HTMLElement>('.knob')!;
 const controller = new MovementController();
 const game = new GameScene(viewport, controller);
+const recoilEditor=new ProgressCurveEditor(element('recoil-speed-curve-editor'),()=>controller.settings.recoilSpeedCurve,points=>{controller.setRecoilSpeedCurve(points);settingsChanged();},true,false,false,false,{title:'射击后坐速度曲线',x:'后坐时间进度',y:'相对速度',max:300,defaults:DEFAULT_RECOIL_CURVE,validate:validateJuiceSpeedCurve,help:'横轴：后坐时间 0–100%；纵轴：相对速度权重。曲线决定快慢分布，总距离始终由后坐距离控制；全零曲线不产生位移。双击加点、拖动调整或编辑数值，下一支箭生效。'});
 const juiceEditor=new JuiceCurveEditor(element('juice-speed-curve-editor'),()=>controller.settings.juiceSpeedCurve,points=>{controller.setJuiceSpeedCurve(points);settingsChanged();});
 const ringEditor = new ProgressCurveEditor(element('ring-curve-editor'), () => controller.settings.ringCurve, points => {
   controller.setRingCurve(points); settingsChanged();
@@ -382,6 +386,7 @@ function syncSettings() {
   element<HTMLSelectElement>('move-model').value = String(controller.settings.moveModel);
   element('move-curve-editor').hidden = controller.settings.moveModel !== 1;
   anchorEditor.render();
+  recoilEditor.render();
   element('juice-speed-curve-editor').hidden=controller.settings.juiceCurve!==6;juiceEditor.render();
   ringEditor.render();waveEditor.render();switchEditor.render();strokeEditor.render();linkAttackEditor.render();
   element<HTMLInputElement>('anchor-follow').checked = !!controller.settings.anchorFollow;
@@ -427,6 +432,7 @@ element('show-threshold').addEventListener('change', () => {
   syncSettings(); settingsChanged();
 });
 function applySettings(next: Settings) {
+  controller.setRecoilSpeedCurve(next.recoilSpeedCurve);
   controller.setJuiceSpeedCurve(next.juiceSpeedCurve);
   controller.setCurve(next.turnCurve); controller.setLockCurve(next.lockTurnCurve);
   controller.setMoveCurve(next.moveCurve); controller.setAnchorCurve(next.anchorCurve);
@@ -551,6 +557,7 @@ async function start() {
   try {
     const loaded = await loadSettings();
     for (const key of Object.keys(LIMITS) as SettingKey[]) controller.set(key, loaded[key]);
+    controller.setRecoilSpeedCurve(loaded.recoilSpeedCurve);
     controller.setJuiceSpeedCurve(loaded.juiceSpeedCurve);
     controller.setCurve(loaded.turnCurve);
     controller.setLockCurve(loaded.lockTurnCurve);

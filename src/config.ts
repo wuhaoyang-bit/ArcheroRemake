@@ -1,3 +1,4 @@
+import { DEFAULT_RECOIL_CURVE } from './shot-recoil.ts';
 import { HIT_DEFAULTS, HIT_LIMITS } from './hit-feedback-config.ts';
 import { DEFAULT_RING_CURVE, DEFAULT_STROKE_CURVE, DEFAULT_LINK_ATTACK_CURVE, DEFAULT_SWITCH_CURVE } from './lock-rings.ts';
 import { DEFAULT_MOVE_CURVE } from './move-speed.ts';
@@ -8,6 +9,7 @@ export const ASPECT = 9 / 19.5;
 
 export const DEFAULTS = {
   ...HIT_DEFAULTS,
+  recoilEnabled:1,recoilDistance:.16,recoilDuration:.12,recoilSpeedCurve:DEFAULT_RECOIL_CURVE,
   monsterSpeed: 3,
   monsterScale: 1,
   monsterHitRadius: 1.105,
@@ -66,7 +68,7 @@ export const DEFAULTS = {
   viewWidth: 18,
 };
 export type Settings = typeof DEFAULTS;
-export type SettingKey = Exclude<keyof Settings, 'juiceSpeedCurve' | 'turnCurve' | 'lockTurnCurve' | 'anchorCurve' | 'moveCurve' | 'ringCurve' | 'ringStrokeCurve' | 'ringLinkAttackCurve' | 'ringSwitchCurve' | 'ringWaveCurve'>;
+export type SettingKey = Exclude<keyof Settings, 'recoilSpeedCurve' | 'juiceSpeedCurve' | 'turnCurve' | 'lockTurnCurve' | 'anchorCurve' | 'moveCurve' | 'ringCurve' | 'ringStrokeCurve' | 'ringLinkAttackCurve' | 'ringSwitchCurve' | 'ringWaveCurve'>;
 /** Missing lock values inherit the corresponding ordinary tuning once, on load. */
 export const LOCK_TURN_KEYS = {
   lockTurnModel: 'turnModel', lockTurnSpeed: 'turnSpeed', lockCurveSnapAngle: 'curveSnapAngle',
@@ -75,6 +77,7 @@ export const LOCK_TURN_KEYS = {
 } as const;
 export const LIMITS: Record<SettingKey, [number, number, number]> = {
   ...HIT_LIMITS,
+  recoilEnabled:[0,1,1],recoilDistance:[0,2,.01],recoilDuration:[.01,1,.01],
   monsterSpeed: [0,10,.1],
   monsterScale: [0.1,6,0.1],
   monsterHitRadius: [0.05,3,0.005],
@@ -112,7 +115,7 @@ export const LIMITS: Record<SettingKey, [number, number, number]> = {
 export function sanitize(key: SettingKey, value: number): number {
   if (!Number.isFinite(value)) return DEFAULTS[key];
   if ((key.startsWith('hit') || key.startsWith('juice')) && key.endsWith('Enabled')) return value >= .5 ? 1 : 0;
-  if (key === 'arrowPierce' || key === 'juiceDepthTest') return value >= .5 ? 1 : 0;
+  if (key === 'recoilEnabled' || key === 'arrowPierce' || key === 'juiceDepthTest') return value >= .5 ? 1 : 0;
   if (key === 'hitParticleCount' || key === 'monsterCount' || key === 'arrowsPerAttack' || key === 'juiceCount' || key === 'juiceCurve' || key === 'juiceColor') value = Math.round(value);
   if (key === 'moveModel') return value === 1 ? 1 : 0;
   if (key === 'turnModel' || key === 'lockTurnModel') return [0, 2, 5, 6, 7].includes(value) ? value : 0;

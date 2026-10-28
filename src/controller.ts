@@ -1,3 +1,4 @@
+import { ShotRecoil } from './shot-recoil.ts';
 import { validateJuiceSpeedCurve, type JuiceSpeedPoint } from './juice-speed-curve.ts';
 import { monsterTargets, spawnNearMonsters, separateMonsters, DUMMY_RADIUS, type MonsterTarget } from './monster-training.ts';
 import { validateProgressCurve, validateSwitchCurve, validateStrokeCurve, type StrokePoint, type ProgressPoint } from './lock-rings.ts';
@@ -19,6 +20,7 @@ export const follow = (current: number, target: number, response: number, dt: nu
 /** Pure input/movement state. The visual model and camera never drive this state. */
 export class MovementController {
   settings: Settings;
+  readonly recoil=new ShotRecoil();
   training: TrainingMode = 'free';
   targeting = new TargetSelection();
   private targetCache: ReturnType<typeof lockingTargets> = [];
@@ -83,6 +85,7 @@ export class MovementController {
     this.restartTraining();
   }
   restartTraining() {
+    this.recoil.reset();
     this.practiceRevision++;
     this.deadTargetIds.clear();
     this.passedCheckpoints = 0;
@@ -163,7 +166,7 @@ export class MovementController {
   }
 
   constructor(settings: Settings = { ...DEFAULTS }) {
-    this.settings = { ...settings, ringWaveCurve:validateProgressCurve(settings.ringWaveCurve), ringSwitchCurve:validateSwitchCurve(settings.ringSwitchCurve), ringLinkAttackCurve:validateStrokeCurve(settings.ringLinkAttackCurve), ringStrokeCurve:validateStrokeCurve(settings.ringStrokeCurve), ringCurve: validateProgressCurve(settings.ringCurve), turnCurve: validateCurve(settings.turnCurve), lockTurnCurve: validateCurve(settings.lockTurnCurve), anchorCurve: validateAnchorCurve(settings.anchorCurve), moveCurve: validateMoveCurve(settings.moveCurve) };
+    this.settings = { ...settings, recoilSpeedCurve:validateJuiceSpeedCurve(settings.recoilSpeedCurve), ringWaveCurve:validateProgressCurve(settings.ringWaveCurve), ringSwitchCurve:validateSwitchCurve(settings.ringSwitchCurve), ringLinkAttackCurve:validateStrokeCurve(settings.ringLinkAttackCurve), ringStrokeCurve:validateStrokeCurve(settings.ringStrokeCurve), ringCurve: validateProgressCurve(settings.ringCurve), turnCurve: validateCurve(settings.turnCurve), lockTurnCurve: validateCurve(settings.lockTurnCurve), anchorCurve: validateAnchorCurve(settings.anchorCurve), moveCurve: validateMoveCurve(settings.moveCurve) };
     this.position = { x: 0, z: settings.roomSize * 0.27 };
   }
   get anchorVisible() { return this.mode !== 'idle'; }
@@ -286,6 +289,7 @@ export class MovementController {
 
   setMoveCurve(points: TurnCurvePoint[]) { this.settings.moveCurve = validateMoveCurve(points); }
 
+  setRecoilSpeedCurve(points:JuiceSpeedPoint[]){this.settings.recoilSpeedCurve=validateJuiceSpeedCurve(points);}
   setJuiceSpeedCurve(points:JuiceSpeedPoint[]){this.settings.juiceSpeedCurve=validateJuiceSpeedCurve(points);}
   setCurve(points: TurnCurvePoint[]) { this.settings.turnCurve = validateCurve(points); }
   setLockCurve(points: TurnCurvePoint[]) { this.settings.lockTurnCurve = validateCurve(points); }
@@ -297,6 +301,7 @@ export class MovementController {
       && next !== this.settings[key]) this.dampedVelocity = 0;
     if (key === 'targetModel' && next !== this.settings.targetModel && this.mode === 'moving') this.targeting.reselect();
     this.settings[key] = next;
+    if(key==='recoilEnabled'&&!next)this.recoil.reset();
     if (key === 'anchorFollow' && !next) { this.offset = {...this.targetOffset}; this.syncAnchorDirection(); }
     if (this.unlocked && (key === 'joystickRadius' || key === 'anchorScale')) this.mapStick();
     if (key === 'roomSize' || key === 'roomLength') {
@@ -316,6 +321,20 @@ export class MovementController {
     if (['targetModel', 'lockRange', 'targetCone', 'targetAdvantage', 'targetDwell', 'roomSize', 'roomLength'].includes(key)) this.updateTargeting(0);
   }
 
+  triggerShotRecoil(direction:GroundVector,remaining=0){
+    this.recoil.trigger(direction,this.settings);
+    this.advanceRecoil(remaining);
+  }
+  advanceRecoil(dt:number){
+    if(!this.settings.recoilEnabled){this.recoil.reset();return;}
+    const delta=this.recoil.update(dt);
+    if(!delta.x&&!delta.z)return;
+    if(this.training==='obstacles')moveAroundObstacles(this.position,delta.x,delta.z,this.course.obstacles,PLAYER_RADIUS);
+    else if(this.training==='monsters')moveAroundObstacles(this.position,delta.x,delta.z,this.getPracticeTargets().map(t=>({...t,radius:DUMMY_RADIUS})),PLAYER_RADIUS);
+    else {this.position.x+=delta.x;this.position.z+=delta.z;}
+    this.constrain();
+  }
+
   private constrain() {
     const edge = this.settings.roomSize / 2 - PLAYER_RADIUS;
     const longitudinalEdge = this.settings.roomLength / 2 - PLAYER_RADIUS;
@@ -325,6 +344,7 @@ export class MovementController {
 
   update(dt: number) {
     if (!Number.isFinite(dt) || dt <= 0) return;
+    this.advanceRecoil(dt);
     this.followAnchor(dt);
     this.syncAnchorDirection();
     this.movementSpeed = 0;
@@ -396,6 +416,7 @@ export class MovementController {
       dampingVelocity: this.dampedVelocity * 180 / Math.PI,
       targeting: this.targeting.snapshot(), anchorHeading: this.anchorHeading,
       turnContext: this.usesLockTurn ? 'lock' : 'ordinary', activeTurnModel: this.activeTurnModel,
+      recoil:this.recoil.snapshot(),
       attackRequest: this.attackRequest,
       activeAttackRequest: this.activeAttackRequest,
     };

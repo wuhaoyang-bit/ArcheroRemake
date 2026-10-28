@@ -6,7 +6,7 @@ const out='analysis/attack-checks';
 await mkdir(out,{recursive:true});
 const original=await readFile('public/params.json','utf8');
 const fixture={version:1,settings:{...JSON.parse(original).settings,targetModel:1,lockRange:30,
-  targetCone:90,blendDuration:.06,lockTurnModel:0,lockTurnSpeed:180,anchorFollow:0}};
+  recoilEnabled:0,targetCone:90,blendDuration:.06,lockTurnModel:0,lockTurnSpeed:180,anchorFollow:0}};
 const browser=await chromium.launch({executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',args:['--enable-unsafe-webgpu']});
 const results=[],errors=[];
 const snap=p=>p.evaluate(()=>window.__ARCHERO__.snapshot());

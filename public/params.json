@@ -80,6 +80,43 @@
     "juiceDragRel": 0.6,
     "juiceDepthTest": 1,
     "juiceHeight": 0.4,
+    "recoilEnabled": 1,
+    "recoilDistance": 2,
+    "recoilDuration": 0.2,
+    "recoilSpeedCurve": [
+      {
+        "time": 0,
+        "progress": 300
+      },
+      {
+        "time": 4.68,
+        "progress": 227.48
+      },
+      {
+        "time": 9.09,
+        "progress": 180.61
+      },
+      {
+        "time": 14.41,
+        "progress": 132.4
+      },
+      {
+        "time": 24.53,
+        "progress": 82
+      },
+      {
+        "time": 36.24,
+        "progress": 47.13
+      },
+      {
+        "time": 72.5,
+        "progress": 26.79
+      },
+      {
+        "time": 100,
+        "progress": 18.36
+      }
+    ],
     "monsterSpeed": 3,
     "monsterScale": 1,
     "monsterHitRadius": 0.47,
@@ -338,7 +375,7 @@
       }
     ],
     "targetModel": 0,
-    "lockRange": 18,
+    "lockRange": 22.2,
     "showLockRange": 0,
     "targetCone": 90,
     "targetAdvantage": 8,
@@ -349,39 +386,39 @@
     "lockTurnCurve": [
       {
         "angle": 0,
-        "speed": 876
+        "speed": 1068
       },
       {
         "angle": 31.22,
-        "speed": 901
+        "speed": 1105
       },
       {
         "angle": 65.75,
-        "speed": 943
+        "speed": 1210
       },
       {
         "angle": 96.34,
-        "speed": 996
+        "speed": 1320
       },
       {
-        "angle": 120.75,
-        "speed": 1208
+        "angle": 122.28,
+        "speed": 1771
       },
       {
-        "angle": 141,
-        "speed": 1542
+        "angle": 137.86,
+        "speed": 2377
       },
       {
-        "angle": 153.42,
-        "speed": 1998
+        "angle": 155.48,
+        "speed": 3143
       },
       {
-        "angle": 166.15,
-        "speed": 2660
+        "angle": 170.11,
+        "speed": 3924
       },
       {
         "angle": 180,
-        "speed": 3568
+        "speed": 5363
       }
     ],
     "lockSlerpResponse": 40.872,
@@ -390,9 +427,9 @@
     "lockSmoothSnapAngle": 0.1,
     "blendDuration": 0.25,
     "runSpeed": 1,
-    "attackSpeed": 1.75,
+    "attackSpeed": 1,
     "bowScale": 1.8,
-    "arrowScale": 2,
+    "arrowScale": 2.4,
     "arrowSpeed": 200,
     "arrowPierce": 0,
     "arrowsPerAttack": 1,

@@ -56,6 +56,7 @@ export function parseSettingsDocument(raw: unknown, strict = false): Settings {
   settings.ringSwitchCurve = validateSwitchCurve(source.ringSwitchCurve === undefined ? DEFAULTS.ringSwitchCurve : source.ringSwitchCurve);
   settings.ringCurve = validateProgressCurve(source.ringCurve === undefined ? DEFAULTS.ringCurve : source.ringCurve);
   settings.juiceSpeedCurve=validateJuiceSpeedCurve(source.juiceSpeedCurve ?? DEFAULTS.juiceSpeedCurve);
+  settings.recoilSpeedCurve=validateJuiceSpeedCurve(source.recoilSpeedCurve ?? DEFAULTS.recoilSpeedCurve);
   return settings;
 }
 
