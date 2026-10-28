@@ -1,3 +1,5 @@
+import { BOW_FX_DEFAULTS, BOW_FX_LIMITS } from './bow-release-config.ts';
+import { ARROW_TRAIL_DEFAULTS, ARROW_TRAIL_LIMITS } from './arrow-trail-config.ts';
 import { DEFAULT_RECOIL_CURVE } from './shot-recoil.ts';
 import { HIT_DEFAULTS, HIT_LIMITS } from './hit-feedback-config.ts';
 import { DEFAULT_RING_CURVE, DEFAULT_STROKE_CURVE, DEFAULT_LINK_ATTACK_CURVE, DEFAULT_SWITCH_CURVE } from './lock-rings.ts';
@@ -9,6 +11,8 @@ export const ASPECT = 9 / 19.5;
 
 export const DEFAULTS = {
   ...HIT_DEFAULTS,
+  ...BOW_FX_DEFAULTS,
+  ...ARROW_TRAIL_DEFAULTS,
   recoilEnabled:1,recoilDistance:.16,recoilDuration:.12,recoilSpeedCurve:DEFAULT_RECOIL_CURVE,
   monsterSpeed: 3,
   monsterScale: 1,
@@ -77,6 +81,8 @@ export const LOCK_TURN_KEYS = {
 } as const;
 export const LIMITS: Record<SettingKey, [number, number, number]> = {
   ...HIT_LIMITS,
+  ...BOW_FX_LIMITS,
+  ...ARROW_TRAIL_LIMITS,
   recoilEnabled:[0,1,1],recoilDistance:[0,2,.01],recoilDuration:[.01,1,.01],
   monsterSpeed: [0,10,.1],
   monsterScale: [0.1,6,0.1],
@@ -115,7 +121,9 @@ export const LIMITS: Record<SettingKey, [number, number, number]> = {
 export function sanitize(key: SettingKey, value: number): number {
   if (!Number.isFinite(value)) return DEFAULTS[key];
   if ((key.startsWith('hit') || key.startsWith('juice')) && key.endsWith('Enabled')) return value >= .5 ? 1 : 0;
-  if (key === 'recoilEnabled' || key === 'arrowPierce' || key === 'juiceDepthTest') return value >= .5 ? 1 : 0;
+  if (key.startsWith('bowFx') && (key.endsWith('Enabled') || key==='bowFxRingCurve')) return value>=.5?1:0;
+  if (key==='bowFxSpikeCount')value=Math.round(value);
+  if (key === 'arrowTrailEnabled' || key === 'recoilEnabled' || key === 'arrowPierce' || key === 'juiceDepthTest') return value >= .5 ? 1 : 0;
   if (key === 'hitParticleCount' || key === 'monsterCount' || key === 'arrowsPerAttack' || key === 'juiceCount' || key === 'juiceCurve' || key === 'juiceColor') value = Math.round(value);
   if (key === 'moveModel') return value === 1 ? 1 : 0;
   if (key === 'turnModel' || key === 'lockTurnModel') return [0, 2, 5, 6, 7].includes(value) ? value : 0;

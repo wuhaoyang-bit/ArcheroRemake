@@ -228,7 +228,7 @@ export class GameScene {
     this.bowRelease=bowRelease;
     this.monsterFactory=monsters;
     this.arrows = arrows;
-    this.arrows.onFire=(origin,direction,elapsed)=>this.bowRelease?.emit(origin,direction,elapsed);
+    this.arrows.onFire=(origin,direction,elapsed)=>this.bowRelease?.emit(origin,direction,elapsed,this.controller.settings);
     this.arrows.debug=this.hitDebug;
     this.arrows.setTargets(this.feedback?.proxies ?? []);
     this.applyArrowHit=hit=>{
@@ -263,6 +263,7 @@ export class GameScene {
     this.sync(0);
     this.resize();
     await this.renderer.compileAsync(this.scene, this.camera);
+    this.arrows?.prepare(this.camera,this.controller.settings);
     this.renderer.render(this.scene, this.camera);
   }
 
@@ -426,7 +427,7 @@ export class GameScene {
     if (!ctl.combatTraining || ctl.activeAttackRequest === null) this.pendingShots.length = 0;
     this.queuePendingShots(dt);
     this.arrows?.update(dt);
-    this.bowRelease?.update(dt);
+    this.bowRelease?.update(dt,ctl.settings);
     if(this.hitDebug.enabled&&this.hitDebug.paused)return;
     this.animation.update(dt, ctl.mode, ctl.activeAttackRequest, ctl.settings.blendDuration, ctl.settings.runSpeed, remaining => {
       this.fireAttackVolley(remaining);
@@ -442,10 +443,12 @@ export class GameScene {
   render() {
     // Apply tuning even while hit-debug simulation is paused.
     this.feedback?.refresh(this.controller.settings);
+    this.bowRelease?.update(0,this.controller.settings);
     this.hitDebug.update(this.hitDebug.enabled?(this.arrows?.snapshot().active.map(a=>a.tip)??[]):[]);
     this.particles?.prepare(this.camera,this.controller.settings);
     this.particles?.renderDepth(this.renderer,this.camera);
     this.juice?.prepare(this.camera,this.controller.settings);
+    this.arrows?.prepare(this.camera,this.controller.settings);
     this.renderer.render(this.scene, this.camera);
   }
 }

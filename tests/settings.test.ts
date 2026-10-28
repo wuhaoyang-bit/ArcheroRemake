@@ -1,3 +1,5 @@
+import { BOW_FX_DEFAULTS } from '../src/bow-release-config.ts';
+import { ARROW_TRAIL_DEFAULTS } from '../src/arrow-trail-config.ts';
 import { HIT_DEFAULTS } from '../src/hit-feedback-config.ts';
 import test from 'node:test';
 import { exponentialCurve } from '../src/turn-curve.ts';
@@ -15,6 +17,8 @@ import { MovementController } from '../src/controller.ts';
 test('requested defaults match the screenshot, with speed 16 / upper limit 30 and independent Run rate', () => {
   assert.deepEqual(DEFAULTS, {
     ...HIT_DEFAULTS,
+    ...BOW_FX_DEFAULTS,
+    ...ARROW_TRAIL_DEFAULTS,
     recoilEnabled:1,recoilDistance:.16,recoilDuration:.12,recoilSpeedCurve:DEFAULTS.recoilSpeedCurve,
     monsterSpeed: 3, monsterScale: 1, monsterHitRadius: 1.105, monsterHitSpeed: 1, attackSpeed: 1,
     joystickRadius: 64, unlockDistance: 12, showThreshold: 0, anchorScale: 0.036, anchorFollow: 1, anchorCurve: DEFAULTS.anchorCurve,

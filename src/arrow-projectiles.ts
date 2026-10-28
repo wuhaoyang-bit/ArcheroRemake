@@ -1,3 +1,5 @@
+import { ARROW_TRAIL_DEFAULTS, type ArrowTrailSettings } from './arrow-trail-config.ts';
+import { ArrowTrail } from './arrow-trail.ts';
 import type { HitDebug } from './hit-debug.ts';
 import * as THREE from 'three/webgpu';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -6,6 +8,7 @@ export const ARROW_SPEED = 50; // World units/second; independent of attack and 
 
 type Arrow = {
   object: THREE.Object3D;
+  trail: ArrowTrail;
   direction: THREE.Vector3;
   distance: number;
   active: boolean;
@@ -65,8 +68,9 @@ export class ArrowProjectiles {
     object.visible = false;
     object.scale.setScalar(this.scale);
     this.scene.add(object);
+    const trail=new ArrowTrail();this.scene.add(trail.mesh);
     const arrow: Arrow = {
-      object,
+      object,trail,
       direction: new THREE.Vector3(),
       distance: 0,
       active: false,
@@ -115,6 +119,7 @@ export class ArrowProjectiles {
   }
 
   private recycle(arrow: Arrow) {
+    arrow.trail.clear();
     arrow.active = false;
     arrow.object.visible = false;
     arrow.hitIds.clear();
@@ -221,6 +226,14 @@ export class ArrowProjectiles {
 
   update(dt: number) {
     for (const arrow of this.pool){if(this.debug?.enabled&&this.debug.paused)break;this.advance(arrow, dt);}
+  }
+
+  prepare(camera:THREE.Camera,settings:ArrowTrailSettings=ARROW_TRAIL_DEFAULTS){
+    for(const arrow of this.pool){
+      if(!arrow.active)continue;
+      this.tipPoint.copy(arrow.object.position).addScaledVector(arrow.direction,this.tail*this.scale);
+      arrow.trail.update(this.tipPoint,arrow.direction,arrow.distance,this.scale,camera,settings);
+    }
   }
 
   snapshot() {

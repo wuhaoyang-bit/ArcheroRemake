@@ -1,6 +1,6 @@
 import * as T from 'three/webgpu';
 import { texture, uv, uniform, vec2, float } from 'three/tsl';
-import { BOW_RELEASE_DEFAULTS, type BowReleaseSettings } from './bow-release-config.ts';
+import { BOW_RELEASE_DEFAULTS, BOW_FX_DEFAULTS, bowReleaseParameters, type BowFxSettings, type BowReleaseSettings } from './bow-release-config.ts';
 export async function loadBowReleaseTextures(){const loader=new T.TextureLoader();return Promise.all([loader.loadAsync(`${import.meta.env.BASE_URL}textures/bow-release/ring_a_streaks.png`),loader.loadAsync(`${import.meta.env.BASE_URL}textures/bow-release/cone_e.png`)]);}
 /** Shared world-space geometry, masks and absolute-time animation for lab and game. */
 export class BowReleaseVisual {
@@ -51,16 +51,25 @@ export class BowReleaseVisual {
 }
 /** Independent pooled bursts: rapid / multi-arrow shots never restart an existing burst. */
 export class BowReleaseEffects {
- private pool:{visual:BowReleaseVisual;age:number;active:boolean}[]=[];
+ private pool:{visual:BowReleaseVisual;age:number;active:boolean;origin:T.Vector3;direction:T.Vector3}[]=[];
  private emitted=0;
  constructor(private scene:T.Scene,private textures:[T.Texture,T.Texture]){}
  static async load(scene:T.Scene){return new BowReleaseEffects(scene,await loadBowReleaseTextures());}
- emit(origin:T.Vector3,direction:T.Vector3,elapsed=0){
+ emit(origin:T.Vector3,direction:T.Vector3,elapsed=0,c:BowFxSettings=BOW_FX_DEFAULTS){
+  if(!c.bowFxEnabled)return;
   let entry=this.pool.find(e=>!e.active);
-  if(!entry){entry={visual:new BowReleaseVisual(...this.textures),age:0,active:false};this.pool.push(entry);this.scene.add(entry.visual.root);}
-  entry.age=Math.max(0,elapsed);entry.active=true;entry.visual.root.visible=true;entry.visual.place(origin,direction);entry.visual.sample(entry.age);this.emitted++;
+  if(!entry){entry={visual:new BowReleaseVisual(...this.textures),age:0,active:false,origin:new T.Vector3(),direction:new T.Vector3()};this.pool.push(entry);this.scene.add(entry.visual.root);}
+  entry.age=Math.max(0,elapsed);entry.active=true;entry.visual.root.visible=true;entry.origin.copy(origin);entry.direction.copy(direction);const p=bowReleaseParameters(c);entry.visual.place(origin,direction,p);entry.visual.sample(entry.age,p,!!c.bowFxRingEnabled,!!c.bowFxSpikesEnabled,c.bowFxRingCurve?'outCubic':'linear');this.emitted++;
  }
- update(dt:number){for(const e of this.pool){if(!e.active)continue;e.age+=dt;if(e.age>=BOW_RELEASE_DEFAULTS.delay+Math.max(BOW_RELEASE_DEFAULTS.ringLife,BOW_RELEASE_DEFAULTS.spikeLife)){e.active=false;e.visual.root.visible=false;}else e.visual.sample(e.age);}}
+ update(dt:number,c:BowFxSettings=BOW_FX_DEFAULTS){
+  if(!c.bowFxEnabled){this.clear();return;}
+  const p=bowReleaseParameters(c);
+  for(const e of this.pool){
+   if(!e.active)continue;e.age+=dt;
+   if(e.age>=p.delay+Math.max(p.ringLife,p.spikeLife)){e.active=false;e.visual.root.visible=false;}
+   else {e.visual.place(e.origin,e.direction,p);e.visual.sample(e.age,p,!!c.bowFxRingEnabled,!!c.bowFxSpikesEnabled,c.bowFxRingCurve?'outCubic':'linear');}
+  }
+ }
  clear(){for(const e of this.pool){e.active=false;e.visual.root.visible=false;}}
  snapshot(){return {emitted:this.emitted,allocated:this.pool.length,defaults:{...BOW_RELEASE_DEFAULTS},active:this.pool.filter(e=>e.active).map(e=>({age:e.age,...e.visual.snapshot()}))};}
 }

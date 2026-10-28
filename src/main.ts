@@ -1,3 +1,5 @@
+import { BOW_FX_CONTROLS } from './bow-release-config.ts';
+import { ARROW_TRAIL_CONTROLS } from './arrow-trail-config.ts';
 import { DEFAULT_RECOIL_CURVE } from './shot-recoil.ts';
 import { validateJuiceSpeedCurve } from './juice-speed-curve.ts';
 import { JuiceCurveEditor } from './juice-curve-editor.ts';
@@ -40,6 +42,8 @@ const settings: { title: string; items: [SettingKey, string, string, string][] }
     ['arrowsPerAttack', '一次攻击箭数', '支', '默认 1；同点同向，按出发间隔依次生成。所有战斗训练场通用。'],
     ['arrowFireInterval', '箭出发间隔', 's', '同一次攻击中相邻两支箭的间隔；最小 0.01 秒。'],
   ] },
+  { title: '出箭特效 · 环带与尖刺', items: BOW_FX_CONTROLS },
+  { title: '箭矢拖尾', items: ARROW_TRAIL_CONTROLS },
   { title: '射击后坐力', items: [['recoilEnabled','启用射击后坐力','0/1','每支箭射出时沿箭的反方向击退角色。'],['recoilDistance','后坐距离','u','默认 0.16；连射从当前位置重新触发，不叠加剩余距离。'],['recoilDuration','后坐时长','s','默认 0.12 秒；与怪物击退独立，修改后下一支箭生效。']] },
   { title: '训练场 · 受击反馈', items: HIT_CONTROLS },
   { title: '怪物训练场', items: [['monsterCount','怪物数量','只','1–10，默认 2；拖动即时增减。变多在现有附近散开，变少只删多余。'],['monsterHitSpeed','怪物受伤动画倍率','倍','默认 1 倍；只调整原作受伤动作，修改后下一次命中生效。击退、边缘光和缩放时长独立控制。'],['monsterScale','怪物模型缩放','倍','默认 1 倍；两个训练场即时生效，命中范围和瞄准高度同步缩放，移动碰撞半径保持不变。'],['monsterHitRadius','怪物命中圆柱半径','u','模型 1 倍时的半径，默认 1.105 u，随怪物模型缩放。仅调整箭的命中圆柱，不改变移动碰撞；打开命中调试可实时查看。'],['monsterSpeed','怪物追赶速度','u/s','朝角色匀速移动，受击击退期间暂停追赶。']] },

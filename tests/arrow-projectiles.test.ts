@@ -157,3 +157,18 @@ test('flight stays horizontal at bow height even when aim height differs', () =>
   near(next.position[1], 2.4);
   near(next.position[2], ARROW_SPEED * .2);
 });
+
+test('trail grows from the actual scaled tail, tapers to a point and clears on recycle',()=>{
+  const {scene,arrows}=fixture(),camera=new THREE.PerspectiveCamera();camera.position.set(0,24,24);
+  arrows.setScale(2);arrows.fire(origin,aim);arrows.prepare(camera);
+  const trails=scene.children.filter(o=>o.name==='ArrowTailTrail') as THREE.Mesh[];
+  assert.equal(trails.filter(t=>t.visible).length,0);
+  arrows.update(.01);arrows.prepare(camera);
+  const trail=trails.find(t=>t.visible)!;near(trail.position.z,-.5);
+  const p=trail.geometry.getAttribute('position');
+  near(Math.hypot(p.getX(0)-p.getX(1),p.getY(0)-p.getY(1),p.getZ(0)-p.getZ(1)),.36);
+  near(p.getZ(24),-.5);near(p.getX(24),p.getX(25));near(p.getY(24),p.getY(25));
+  arrows.update(1);arrows.prepare(camera);near(p.getZ(24),-6.4);
+  arrows.clear();assert.equal(trails.some(t=>t.visible),false);
+  arrows.fire(origin,aim);arrows.prepare(camera);assert.equal(trails.some(t=>t.visible),false);
+});
