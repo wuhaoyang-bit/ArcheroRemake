@@ -9,6 +9,7 @@ export const ARROW_SPEED = 50; // World units/second; independent of attack and 
 type Arrow = {
   object: THREE.Object3D;
   trail: ArrowTrail;
+  paint:THREE.Mesh;
   direction: THREE.Vector3;
   distance: number;
   active: boolean;
@@ -31,6 +32,8 @@ export class ArrowProjectiles {
   onHit?: (hit: ArrowHit) => void;
   onFire?: (position: THREE.Vector3, direction: THREE.Vector3, elapsed: number) => void;
   private pool: Arrow[] = [];
+  private paintGeometry=new THREE.SphereGeometry(1,24,16);
+  private paintMaterial=new THREE.MeshStandardNodeMaterial({color:ARROW_TRAIL_DEFAULTS.arrowPaintColor,roughness:.3,metalness:0});
   private targets: THREE.Object3D[] = [];
   private ray = new THREE.Raycaster();
   private hits: THREE.Intersection[] = [];
@@ -65,12 +68,13 @@ export class ArrowProjectiles {
   private allocate() {
     const object = this.template.clone(true);
     object.name = 'ArcheroArrow';
+    const paint=new THREE.Mesh(this.paintGeometry,this.paintMaterial);paint.name='ArrowPaintPayload';paint.position.z=this.tip;paint.scale.setScalar(ARROW_TRAIL_DEFAULTS.arrowPaintRadius);object.add(paint);
     object.visible = false;
     object.scale.setScalar(this.scale);
     this.scene.add(object);
     const trail=new ArrowTrail();this.scene.add(trail.mesh);
     const arrow: Arrow = {
-      object,trail,
+      object,trail,paint,
       direction: new THREE.Vector3(),
       distance: 0,
       active: false,
@@ -229,8 +233,10 @@ export class ArrowProjectiles {
   }
 
   prepare(camera:THREE.Camera,settings:ArrowTrailSettings=ARROW_TRAIL_DEFAULTS){
+    this.paintMaterial.color.setHex(settings.arrowPaintColor);
     for(const arrow of this.pool){
       if(!arrow.active)continue;
+      arrow.paint.visible=!!settings.arrowPaintEnabled;arrow.paint.scale.setScalar(settings.arrowPaintRadius);arrow.paint.position.set(0,0,this.tip+settings.arrowPaintOffset);
       this.tipPoint.copy(arrow.object.position).addScaledVector(arrow.direction,this.tail*this.scale);
       arrow.trail.update(this.tipPoint,arrow.direction,arrow.distance,this.scale,camera,settings);
     }
@@ -252,6 +258,7 @@ export class ArrowProjectiles {
       lastHit: this.lastHit,
       allocated: this.pool.length,
       active: this.pool.filter(a => a.active).map(a => ({
+        paint:{visible:a.paint.visible,radius:a.paint.scale.x*this.scale,color:this.paintMaterial.color.getHex(),position:a.paint.getWorldPosition(new THREE.Vector3()).toArray()},
         position: a.object.position.toArray(),
         tip:a.object.position.clone().addScaledVector(a.direction,this.tip*this.scale).toArray(),
         direction: a.direction.toArray(),

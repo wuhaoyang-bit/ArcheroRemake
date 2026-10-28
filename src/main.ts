@@ -1,10 +1,13 @@
+import {slimeColorMarkup,bindSlimeColors} from './slime-color-controls.ts';
+import {createSettingsSidebar,GAME_SIDEBAR_CATEGORIES} from './settings-sidebar.ts';
+import {SLIME_FULLNESS_CONTROLS} from './slime-fullness-config.ts';
 import { SlimeBurstPreview } from './slime-burst-preview.ts';
 import { BURST_CONTROLS } from './slime-burst-config.ts';
 import { SLIME_INFLATION_CONTROLS } from './slime-inflation-config.ts';
 import { CameraZoomPreview } from './camera-zoom-preview.ts';
 import { CAMERA_ZOOM_CONTROLS } from './camera-zoom-config.ts';
 import { BOW_FX_CONTROLS } from './bow-release-config.ts';
-import { ARROW_TRAIL_CONTROLS } from './arrow-trail-config.ts';
+import { ARROW_TRAIL_CONTROLS, ARROW_PAINT_CONTROLS } from './arrow-trail-config.ts';
 import { DEFAULT_RECOIL_CURVE } from './shot-recoil.ts';
 import { validateJuiceSpeedCurve } from './juice-speed-curve.ts';
 import { JuiceCurveEditor } from './juice-curve-editor.ts';
@@ -50,10 +53,12 @@ const settings: { title: string; items: [SettingKey, string, string, string][] }
   ] },
   { title: '屏幕伸缩 · Out → 阻尼弹簧', items: CAMERA_ZOOM_CONTROLS },
   { title: '出箭特效 · 环带与尖刺', items: BOW_FX_CONTROLS },
+  { title: '箭头 · 颜料球', items: ARROW_PAINT_CONTROLS },
   { title: '箭矢拖尾', items: ARROW_TRAIL_CONTROLS },
   { title: '射击后坐力', items: [['recoilEnabled','启用射击后坐力','0/1','每支箭射出时沿箭的反方向击退角色。'],['recoilDistance','后坐距离','u','默认 0.16；连射从当前位置重新触发，不叠加剩余距离。'],['recoilDuration','后坐时长','s','默认 0.12 秒；与怪物击退独立，修改后下一支箭生效。']] },
   { title: '训练场 · 受击反馈', items: HIT_CONTROLS },
-  { title: '史莱姆 · 注入与弹性鼓胀', items: SLIME_INFLATION_CONTROLS },
+  { title: '史莱姆 · 注入与弹性鼓胀', items: SLIME_INFLATION_CONTROLS.filter(r=>!SLIME_FULLNESS_CONTROLS.some(f=>f[0]===r[0])) },
+  { title: '史莱姆 · 充盈变色与行走', items: SLIME_FULLNESS_CONTROLS },
   {title:'史莱姆 · 蓄爆',items:BURST_CONTROLS.filter(r=>!r[0].startsWith('puddle')&&!r[0].startsWith('burstLayer'))},
   {title:'撑爆 · 六层特效',items:BURST_CONTROLS.filter(r=>r[0].startsWith('burstLayer'))},
   {title:'撑爆 · 液体残留',items:BURST_CONTROLS.filter(r=>r[0].startsWith('puddle'))},
@@ -104,10 +109,11 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <aside class="panel left-panel" data-ui aria-label="参数调试">
       <div class="panel-heading"><div><span class="eyebrow">TUNING</span><h1>找到你的手感<span class="title-dot">.</span></h1></div><button class="icon-button mobile-only" id="close-settings" aria-label="关闭调试面板">×</button></div>
       <div class="settings-scroll">${settings.map(group => `<section class="setting-group"><h2>${group.title}</h2>${group.title === '目标锁定' ? targetingControls : group.title === '旋转角速度－锁定' ? lockTurnControls : ''}${group.title === '角色' ? '<div class="turn-model-field"><label for="turn-model">旋转角速度模型</label><select id="turn-model" disabled><option value="0">匀速转向</option><option value="2">自定义转向曲线</option><option value="5">Slerp</option><option value="6">SmoothDampAngle</option></select><p id="turn-model-hint" class="threshold-help"></p><div id="turn-curve-editor" hidden></div></div>' : ''}${group.items.map(([key, name, unit, hint]) => {
+        const colorMarkup=slimeColorMarkup(key);if(colorMarkup!==undefined)return colorMarkup;
         const [min, max, step] = LIMITS[key];
         if(key==='hitSquashMode')return `<div class="setting" title="${hint}"><label for="value-${key}">${name}</label><select id="value-${key}" data-setting="${key}"><option value="0">整体缩放</option><option value="1">沿命中方向压缩</option></select><p class="threshold-help">${hint}</p></div>`;
         if(key==='juiceCurve')return `<div class="setting" title="${hint}"><label for="value-${key}">${name}</label><select id="value-${key}" data-setting="${key}">${['Linear','OutQuad','OutCubic · 截图方案','OutExpo','smoothstep','指数阻力','自定义曲线'].map((label,i)=>`<option value="${i}">${label}</option>`).join('')}</select><div id="juice-speed-curve-editor" hidden></div></div>`;
-        if(key==='juiceColor')return `<div class="setting" title="${hint}"><label for="value-${key}">${name}</label><input id="value-${key}" data-setting="${key}" type="color" value="#55991e"></div>`;
+        if(key==='juiceColor'||key==='arrowTrailColor'||key==='arrowPaintColor')return `<div class="setting" title="${hint}"><label for="value-${key}">${name}</label><input id="value-${key}" data-setting="${key}" type="color" value="#${DEFAULTS[key].toString(16).padStart(6,'0')}"></div>`;
         return `<div class="setting" title="${hint}"><div class="setting-label"><label for="slider-${key}">${name}</label><div class="numeric"><input id="value-${key}" data-setting="${key}" type="number" min="${min}" max="${max}" step="${step}" value="${DEFAULTS[key]}" aria-label="${name}数值"><span>${unit}</span></div></div><input id="slider-${key}" data-setting="${key}" type="range" min="${min}" max="${max}" step="${step}" value="${DEFAULTS[key]}" aria-label="${name}"></div>`;
       }).join('')}${group.title === '射击后坐力' ? '<div id="recoil-speed-curve-editor"></div>' : ''}${group.title === '锁定圆环 UI' ? '<p class="threshold-help">以下曲线及本组全部参数在下一次锁定入场生效。换目标沿用当前值；失去全部目标后重新锁定才应用新值。</p><div id="ring-curve-editor"></div><h3>冲击波扩散 / 时间进度</h3><div id="ring-wave-editor"></div><h3>换目标扩张 / 时间进度</h3><div id="ring-switch-editor"></div><h3>目标圆粗细 / 收缩完成度</h3><div id="ring-stroke-editor"></div><div id="ring-preview" class="ring-preview"><label for="ring-preview-progress">收缩预览 <output id="ring-preview-label">未锁定</output></label><input id="ring-preview-progress" type="range" min="0" max="100" step="0.1" value="0" disabled><button id="ring-preview-resume" disabled>恢复自动播放</button><p class="threshold-help">有锁定目标时可拖动。拖后停留在指定完成度，换目标保留预览；丢锁退出。仅改变圆环，不影响角色操作。参数修改仍在下一次入场生效。</p></div>' : ''}${group.title === '史莱姆 · 蓄爆' ? '<a href="./slime-burst-lab.html" target="_blank" rel="noopener">打开怪物爆炸逐帧调试页 ↗</a><div id="slime-burst-preview"></div>' : ''}${group.title === '撑爆 · 液体残留' ? '<div id="puddle-preview"></div>' : ''}${group.title === '屏幕伸缩 · Out → 阻尼弹簧' ? '<div id="camera-zoom-preview"></div>' : ''}${group.title === '轮盘与锚点' ? '<label class="threshold-toggle"><input id="show-threshold" type="checkbox">显示移动阈值范围</label><p class="threshold-help">黄圈为首次解锁边界，越过后变青色；回圈内不会再次锁定。</p>' : ''}</section>`).join('')}<section class="setting-group"><h2>移动速度模型</h2><div class="turn-model-field"><label for="move-model">移动速度模型</label><select id="move-model" disabled><option value="0">恒定移动速度</option><option value="1">角度差曲线</option></select><p class="threshold-help">身体与实际锚点方向的最短角度差 → 基础移动速度百分比。100% 保持当前速度，80% 为当前速度的八成。默认全程 100%。</p></div><div id="move-curve-editor" hidden></div></section><section class="setting-group"><h2>锚点防抖</h2><label class="threshold-toggle"><input id="anchor-follow" type="checkbox">启用锚点跟随</label><div id="anchor-curve-editor"></div></section><section class="setting-group"><h2>箭矢命中调试</h2><label class="threshold-toggle"><input id="hit-debug-enabled" type="checkbox">显示命中范围与箭尖轨迹</label><label class="threshold-toggle"><input id="hit-debug-auto" type="checkbox" checked>命中时暂停（受击反馈之前）</label><label>模拟速度 <select id="hit-debug-speed"><option value="1">正常</option><option value="0.25">1/4 速</option><option value="0.1">1/10 速</option><option value="0.05">1/20 速</option></select></label><p class="threshold-help">青色：真实命中体；绿色：箭尖；黄色：扫掠路径。命中时蓝色箭表示检测前位置，金色箭表示真实接触位置，红点表示交点。仅本次调试，不保存到参数。</p></section><section class="setting-group"><h2>朝向调试</h2><label class="threshold-toggle"><input id="show-heading" type="checkbox">显示角色朝向线</label><label class="threshold-toggle debug-toggle"><input id="show-idle-anchor" type="checkbox">待机时也显示移动锚点</label><label class="threshold-toggle debug-toggle"><input id="show-anchor-outline" type="checkbox">锚点遮挡轮廓</label><p class="threshold-help">粉红直线代表角色当前朝向；蓝点代表移动锚点；遮挡轮廓让浅蓝圆环透过角色显示。开关仅用于本次页面调试。</p></section></div>
       <div class="panel-footer"><div class="store-actions"><button id="save-settings" class="text-button save-button" disabled>保存 JSON <span>↓</span></button><button id="undo-settings" class="text-button" disabled>撤回</button><button id="restore" class="text-button" disabled>撤回全部</button></div><p id="store-status" role="status" aria-live="polite">正在读取参数…</p><p>圆环参数下次入场生效 · 其余即时生效 · 390 宽基准</p></div>
@@ -134,10 +140,14 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <footer class="app-footer"><span>ARCHEROREMAKE / V0.1</span><span>鼠标拖动 · 手机触摸</span><span>THREE.JS + WEBGPU</span></footer>`;
 
 const element = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id)! as T;
+const settingsScroll=document.querySelector<HTMLElement>('.settings-scroll')!;
+createSettingsSidebar(settingsScroll,[...settingsScroll.querySelectorAll<HTMLElement>(':scope > .setting-group')],GAME_SIDEBAR_CATEGORIES,'settings-category');
 const viewport = element('viewport'), stage = document.querySelector<HTMLElement>('.stage')!;
 const joystick = element('joystick'), knob = joystick.querySelector<HTMLElement>('.knob')!;
 const controller = new MovementController();
 const game = new GameScene(viewport, controller);
+const slimeColors=bindSlimeColors(()=>controller.settings,values=>{for(const [key,value] of Object.entries(values))controller.set(key as SettingKey,value);syncSettings();settingsChanged();});
+slimeColors.setEnabled(false);
 const burstPreview=new SlimeBurstPreview(element('slime-burst-preview'),()=>controller.settings);
 const puddlePreview=new SlimeBurstPreview(element('puddle-preview'),()=>controller.settings,true);
 const cameraZoomPreview=new CameraZoomPreview(element('camera-zoom-preview'),()=>controller.settings);
@@ -354,6 +364,7 @@ window.addEventListener('blur', () => captureRelease());
 document.addEventListener('visibilitychange', () => { if (document.hidden) captureRelease(); lastFrame = 0; });
 
 function syncSettings() {
+  slimeColors.render();
   const model = controller.settings.turnModel;
   element<HTMLSelectElement>('turn-model').value = String(model);
   element('turn-model-hint').textContent = ({
@@ -592,7 +603,7 @@ async function start() {
   element<HTMLSelectElement>('turn-model').disabled = false;
   element<HTMLSelectElement>('move-model').disabled = false;
   for (const id of ['target-model', 'lock-turn-model', 'show-lock-range']) element<HTMLInputElement>(id).disabled = false;
-  saveButton.disabled = false;
+  saveButton.disabled = false;slimeColors.setEnabled(true);
   try {
     await game.init((progress,stage)=>{element<HTMLProgressElement>('loading-progress').value=progress*100;element('loading-percent').textContent=`${Math.round(progress*100)}%`;element('loading-stage').textContent=stage;});
     ready = true;

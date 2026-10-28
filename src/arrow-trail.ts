@@ -2,7 +2,7 @@ import { ARROW_TRAIL_DEFAULTS, type ArrowTrailSettings } from './arrow-trail-con
 import * as T from 'three/webgpu';
 import { uv, uniform } from 'three/tsl';
 
-/** Camera-facing white ribbon: attached at the tail, tapered along the flown path. */
+/** Camera-facing tinted ribbon: attached at the tail, tapered along the flown path. */
 export class ArrowTrail {
   readonly mesh:T.Mesh;
   private opacity=uniform(.9);
@@ -18,12 +18,13 @@ export class ArrowTrail {
     }
     geometry.setAttribute('position',this.positions);
     geometry.setAttribute('uv',new T.Float32BufferAttribute(coords,2));geometry.setIndex(indices);
-    const material=new T.MeshBasicNodeMaterial({color:0xffffff,transparent:true,depthWrite:false,side:T.DoubleSide,toneMapped:false});
+    const material=new T.MeshBasicNodeMaterial({color:ARROW_TRAIL_DEFAULTS.arrowTrailColor,transparent:true,depthWrite:false,side:T.DoubleSide,toneMapped:false});
     material.opacityNode=uv().x.pow(this.fade).mul(this.opacity);
     this.mesh=new T.Mesh(geometry,material);this.mesh.name='ArrowTailTrail';
     this.mesh.frustumCulled=false;this.mesh.visible=false;
   }
   update(tail:T.Vector3,direction:T.Vector3,distance:number,scale:number,camera:T.Camera,c:ArrowTrailSettings=ARROW_TRAIL_DEFAULTS){
+    (this.mesh.material as T.MeshBasicNodeMaterial).color.setHex(c.arrowTrailColor);
     const length=Math.min(distance,c.arrowTrailLength*scale);
     this.mesh.visible=!!c.arrowTrailEnabled&&length>1e-6&&c.arrowTrailWidth>0&&c.arrowTrailOpacity>0;
     this.opacity.value=c.arrowTrailOpacity;this.fade.value=c.arrowTrailFade;

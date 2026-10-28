@@ -369,7 +369,7 @@ export class GameScene {
     if(this.needsRoomRefresh())this.setRoom();
     for(const hit of this.deferredDebugHits.splice(0))this.applyArrowHit?.(hit);
     this.feedback?.update(dt,this.controller.settings);
-    if(this.controller.training==='monsters'){this.feedback?.pursue(dt,this.controller.position,this.controller.settings.monsterSpeed,this.controller.settings);this.controller.resolveMonsterContacts();this.feedback?.refresh(this.controller.settings);}
+    if(this.controller.training==='monsters'){this.feedback?.pursue(dt,this.controller.position,this.controller.settings.monsterSpeed,this.controller.settings,()=>this.controller.resolveMonsterContacts());}
     this.juice?.update(dt,id=>this.juiceOriginFor(id));
     this.burstEffects?.update(dt,this.controller.settings,this.roomSize,this.roomLength,this.camera);
   }

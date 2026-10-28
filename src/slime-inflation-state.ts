@@ -1,6 +1,7 @@
 import {spring} from './hit-response.ts';
 import type {SlimeInflationSettings} from './slime-inflation-config.ts';
 export class SlimeInflationState{
+ colorFill=0;
  amount=0;visual=0;target=0;age=Infinity;
  private settleTime=0;
  private from=0;private frequency=5.5;private damping=.55;
@@ -13,9 +14,11 @@ export class SlimeInflationState{
  hit(c:SlimeInflationSettings){if(!c.slimeInflationEnabled||c.slimeInjectionAmount<=0)return;this.amount+=Math.min(c.slimeInjectionAmount,Math.max(0,c.slimeCapacity-this.amount));this.target=Math.min(1,this.amount/c.slimeCapacity);this.begin(c);}
  update(dt:number,c:SlimeInflationSettings){
   const target=Math.min(1,this.amount/c.slimeCapacity);if(target!==this.target){this.target=target;this.begin(c);}
+  const colorStep=c.slimeColorTime>0?1-Math.exp(-Math.max(0,dt)*3/c.slimeColorTime):1;
+  this.colorFill+=(target-this.colorFill)*colorStep;if(Math.abs(target-this.colorFill)<1e-5)this.colorFill=target;
   if(!Number.isFinite(this.age))return;
   this.age+=Math.max(0,dt);const s=spring(this.from-this.target,0,this.age,this.frequency,this.damping);this.visual=Math.max(0,this.target+s.x);
   if(Math.abs(s.x)<1e-5&&Math.abs(s.v)<1e-4){this.visual=this.target;this.age=Infinity;}
  }
- reset(){this.amount=this.visual=this.target=this.from=0;this.age=Infinity;}
+ reset(){this.colorFill=this.amount=this.visual=this.target=this.from=0;this.age=Infinity;}
 }
