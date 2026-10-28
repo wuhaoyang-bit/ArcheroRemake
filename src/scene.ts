@@ -1,3 +1,4 @@
+import { LushBurstEffects } from './lush-burst-effects.ts';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { CameraZoomFeedback } from './camera-zoom.ts';
 import { BowReleaseEffects } from './bow-release-effects.ts';
@@ -147,6 +148,7 @@ export class GameScene {
   private deferredDebugHits:ArrowHit[]=[];
   private applyArrowHit?:(hit:ArrowHit)=>void;
   juice?: JuiceParticles;
+  burstEffects?: LushBurstEffects;
   private practiceRevision=-1;
   private monsterRosterSignature='';
   private trainingVisual?: THREE.Group;
@@ -196,7 +198,7 @@ export class GameScene {
     const outside = new THREE.Mesh(new THREE.PlaneGeometry(120, 160), mat(0xa0c74b));
     outside.rotation.x = -Math.PI / 2; outside.position.y = -0.22; outside.receiveShadow = true;
     this.scene.add(outside);
-    this.juice=await JuiceParticles.load(this.scene);
+    [this.juice,this.burstEffects]=await Promise.all([JuiceParticles.load(this.scene),LushBurstEffects.load(this.scene)]);
     this.setRoom();
     const halo = groundCircle(1.05, 0x63e5d6, 0.15); halo.position.y = 0.025; this.player.add(halo);
     const ring = new THREE.Mesh(new THREE.RingGeometry(1.01, 1.05, 48), new THREE.MeshBasicMaterial({ color: 0x8df3e3, transparent: true, opacity: 0.72, depthWrite: false }));
@@ -283,8 +285,9 @@ export class GameScene {
   }
 
   private setRoom() {
+    this.controller.resetTargetExclusions();
     this.hitDebug.clear();this.deferredDebugHits=[];
-    this.juice?.clear();
+    this.juice?.clear();this.burstEffects?.clear();
     this.bowRelease?.clear();
     this.cameraZoom.reset();this.applyCameraZoom();
     this.pendingShots.length=0;
@@ -301,6 +304,10 @@ export class GameScene {
       : this.controller.combatTraining ? buildLockingTraining(this.roomSize, this.roomLength,this.controller.getPracticeTargets(),()=>this.trainingMode === 'monsters' ? createTrainingCube(this.slimeEnvironment) : this.monsterFactory!.create()) : undefined;
     if (this.trainingVisual) this.room.add(this.trainingVisual);
     if(this.controller.combatTraining&&this.trainingVisual)this.feedback=new TrainingFeedback(this.trainingVisual,this.controller.getPracticeTargets(),this.roomSize,this.roomLength);
+    if(this.feedback){
+      this.feedback.onFilled=id=>{this.controller.notifyTargetDeath(id);this.arrows?.setTargets(this.feedback?.proxies??[]);};
+      this.feedback.onBurst=(center,feet,c)=>this.burstEffects?.emit(center,feet,c);
+    }
     this.scene.add(this.room);
     this.arrows?.clear();
     this.arrows?.setRoomBounds(this.roomSize, this.roomLength);
@@ -312,7 +319,7 @@ export class GameScene {
     this.controller.cancel();
     this.pendingShots.length=0;
     this.arrows?.clear();
-    this.juice?.clear();
+    this.juice?.clear();this.burstEffects?.clear();
     this.bowRelease?.clear();
     this.cameraZoom.reset();this.applyCameraZoom();
     if(this.controller.training==='monsters'){
@@ -331,6 +338,7 @@ export class GameScene {
     this.feedback?.update(dt,this.controller.settings);
     if(this.controller.training==='monsters'){this.feedback?.pursue(dt,this.controller.position,this.controller.settings.monsterSpeed,this.controller.settings);this.controller.resolveMonsterContacts();this.feedback?.refresh(this.controller.settings);}
     this.juice?.update(dt,id=>this.juiceOriginFor(id));
+    this.burstEffects?.update(dt,this.controller.settings,this.roomSize,this.roomLength,this.camera);
   }
 
   private queuePendingShots(dt:number){

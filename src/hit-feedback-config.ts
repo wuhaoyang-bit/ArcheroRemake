@@ -1,8 +1,9 @@
+import { BURST_DEFAULTS, BURST_LIMITS } from './slime-burst-config.ts';
 import { SLIME_INFLATION_DEFAULTS, SLIME_INFLATION_LIMITS } from './slime-inflation-config.ts';
 import { DEFAULT_JUICE_SPEED_CURVE } from './juice-speed-curve.ts';
 /** Confirmed training feedback defaults. Existing settings files inherit these fields. */
 export const HIT_DEFAULTS = {
-  ...SLIME_INFLATION_DEFAULTS,
+  ...SLIME_INFLATION_DEFAULTS,...BURST_DEFAULTS,
   hitKnockEnabled: 1, hitRimEnabled: 1, hitSquashEnabled: 1,
   hitSquashMode: 0, hitSquashCompensation: 1,
   hitKnockTime: .2, hitKnockDistance: 1.05,
@@ -15,7 +16,7 @@ export const HIT_DEFAULTS = {
   juiceColor:0xffdd32,juiceCurve:2,juiceDragRel:.55,juiceDepthTest:1,juiceHeight:.1,
 };
 export const HIT_LIMITS = {
-  ...SLIME_INFLATION_LIMITS,
+  ...SLIME_INFLATION_LIMITS,...BURST_LIMITS,
   hitKnockEnabled:[0,1,1],hitRimEnabled:[0,1,1],hitSquashEnabled:[0,1,1],
   hitSquashMode:[0,1,1],hitSquashCompensation:[0,1,.05],
   hitKnockTime:[.05,1,.01],hitKnockDistance:[0,3,.05],

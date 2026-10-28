@@ -29,7 +29,7 @@ export class MovementController {
   practiceRevision = 0;
   private deadTargetIds = new Set<string>();
   get combatTraining(){return this.training === 'locking' || this.training === 'monsters';}
-  resolveMonsterContacts(){if(this.training==='monsters')separateMonsters(this.getPracticeTargets(),this.position,PLAYER_RADIUS,this.settings.roomSize,this.settings.roomLength);}
+  resolveMonsterContacts(){if(this.training==='monsters')separateMonsters(this.getPracticeTargets().filter(t=>!this.deadTargetIds.has(t.id)),this.position,PLAYER_RADIUS,this.settings.roomSize,this.settings.roomLength);}
   /** Grow/shrink live roster without resetting kept monsters' positions. */
   syncMonsterRoster(rebuild = false) {
     const width = this.settings.roomSize, length = this.settings.roomLength;
@@ -145,6 +145,7 @@ export class MovementController {
   get activeTurnModel() { return this.usesLockTurn ? this.settings.lockTurnModel : this.settings.turnModel; }
   /** Death integration hook: exclude once, and reacquire once only if this was the locked enemy.
    * Entity visuals/collision removal remain the responsibility of the future death system. */
+  resetTargetExclusions(){this.deadTargetIds.clear();this.targeting.reselect();}
   notifyTargetDeath(id: string) {
     if (!this.combatTraining || this.deadTargetIds.has(id)) return;
     this.deadTargetIds.add(id);

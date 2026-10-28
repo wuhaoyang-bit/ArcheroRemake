@@ -4,7 +4,7 @@ export const SLIME_INFLATION_LIMITS:Record<keyof SlimeInflationSettings,[number,
 export const SLIME_INFLATION_CONTROLS:[keyof SlimeInflationSettings,string,string,string][]=[
  ['slimeInflationEnabled','启用累计鼓胀','0/1','仅黄色史莱姆。关闭暂停注入并隐藏累计膨胀，保留已注入量；重置怪物清空。与受击伸缩独立。'],
  ['slimeInjectionAmount','每箭注入量','单位','每次有效命中累计一次，默认 20。'],
- ['slimeCapacity','颜料容量','单位','默认 100；填满后维持满体型，目前不触发爆开。修改后按当前累计量重新计算。'],
+ ['slimeCapacity','颜料容量','单位','默认 100；启用撑爆时，填满后完整播放最后受击，再蓄爆。修改后按当前累计量重新计算。'],
  ['slimeMaxScale','满容量尺寸倍率','倍','默认 1.35；对应目标体积为原体积的倍率三次方。鼓面会改变外接尺寸。'],
  ['slimeBulge','最大鼓面程度','比例','方案 02 外鼓形态插值；0 保留原形，越大面中央越鼓。'],
  ['slimeInflationFrequency','鼓胀弹簧频率','Hz','方案 03 默认 5.5 Hz，越大越快。修改后下次命中生效。'],

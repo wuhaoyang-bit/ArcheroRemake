@@ -29,6 +29,8 @@ export class HitResponse {
     if(this.age>tailStart){const u=(this.age-tailStart)/tail,weight=1-u*u*(3-2*u),derivative=-6*u*(1-u)/tail;s.v=s.v*weight+s.x*derivative;s.x*=weight;}
     this.x=s.x;this.v=s.v;if(this.age>=release&&Math.abs(this.x)<1e-4&&Math.abs(this.v)<1e-3)this.x=this.v=0;
   }
+  remaining(current:HitSettings){const c=this.config;if(!c)return 0;return Math.max(0,Math.max(c.hitKnockEnabled&&current.hitKnockEnabled?c.hitKnockTime:0,c.hitSquashEnabled&&current.hitSquashEnabled?c.hitSquashTime:0,c.hitRimEnabled&&current.hitRimEnabled?c.hitRimTime:0)-this.age);}
+  complete(current:HitSettings){return this.remaining(current)<=0;}
   get knockingBack(){return !!this.config?.hitKnockEnabled && this.age<this.config.hitKnockTime;}
   get scale(){return Math.max(.15,Math.min(1.85,1-this.x));}
   rim(current:HitSettings){const c=this.config;if(!c||!c.hitRimEnabled||!current.hitRimEnabled)return 0;if(this.age>=c.hitRimTime)return 0;const start=Math.max(0,Math.min(c.hitRimTime,c.hitRimFadeStart));if(this.age<=start)return c.hitRimStrength;const progress=(this.age-start)/(c.hitRimTime-start);return c.hitRimStrength*(1-progress)**2;}
