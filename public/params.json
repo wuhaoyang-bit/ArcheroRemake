@@ -245,7 +245,7 @@
     "monsterScale": 1,
     "monsterHitRadius": 0.47,
     "monsterHitSpeed": 2,
-    "monsterCount": 2,
+    "monsterCount": 1,
     "joystickSize": 0.95,
     "joystickRadius": 64,
     "unlockDistance": 20,

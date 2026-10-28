@@ -41,7 +41,7 @@ try {
  const hit=await snap(); assert.equal(hit.arrows.lastHit,'north'); assert.equal(hit.arrows.active.length,0);
  assert.equal(hit.trainingTargets.length,8); // No target destruction or hit feedback.
  await page.waitForFunction(()=>window.__ARCHERO__.snapshot().arrows.hits>=3);
- const loop=await snap(); assert.equal(loop.arrows.fired,3); assert.equal(loop.arrows.allocated,4);
+ const loop=await snap(); assert.equal(loop.arrows.fired,3); assert.equal(loop.arrows.allocated,32);
  await page.mouse.move(x,y); await page.mouse.down();
  const cancelled=await snap(); await page.waitForTimeout(1200);
  assert.equal((await snap()).arrows.fired,cancelled.arrows.fired);

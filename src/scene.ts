@@ -1,3 +1,4 @@
+import { finishGpuWarmup } from './gpu-warmup.ts';
 import { LushBurstEffects } from './lush-burst-effects.ts';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { CameraZoomFeedback } from './camera-zoom.ts';
@@ -16,7 +17,7 @@ import { loadCharacter } from './character.ts';
 import { CharacterAnimation } from './character-animation.ts';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { AnimationBlend, follow, type MovementController } from './controller.ts';
-import { ASPECT } from './config.ts';
+import { ASPECT, LIMITS } from './config.ts';
 import { isAndroidApp } from './settings-store.ts';
 
 const CAMERA_TILT = Math.asin(0.82);
@@ -166,7 +167,12 @@ export class GameScene {
     this.rings = new LockRingView(viewport);
   }
 
-  async init() {
+  readonly startup={progress:0,stage:'准备加载',warmed:false};
+  async init(onProgress:(progress:number,stage:string)=>void=()=>{}) {
+    const report=(progress:number,stage:string)=>{this.startup.progress=Math.max(this.startup.progress,progress);this.startup.stage=stage;onProgress(this.startup.progress,stage);};
+    const breathe=()=>new Promise<void>(resolve=>setTimeout(resolve,0));
+    report(.02,'正在启动渲染器');
+
     if (!window.isSecureContext) throw new Error('请通过 localhost 或 HTTPS 打开页面，才能使用 WebGPU。手机访问请使用 HTTPS 测试地址。');
     if (!navigator.gpu || !await navigator.gpu.requestAdapter()) throw new Error(isAndroidApp()
       ? '当前 Android WebView 未能启用 WebGPU。请更新系统的 Android System WebView 后重试；若仍不可用，需要检查该设备的 WebGPU 支持。'
@@ -198,7 +204,16 @@ export class GameScene {
     const outside = new THREE.Mesh(new THREE.PlaneGeometry(120, 160), mat(0xa0c74b));
     outside.rotation.x = -Math.PI / 2; outside.position.y = -0.22; outside.receiveShadow = true;
     this.scene.add(outside);
-    [this.juice,this.burstEffects]=await Promise.all([JuiceParticles.load(this.scene),LushBurstEffects.load(this.scene)]);
+    report(.08,'正在加载角色、箭矢与特效资源');
+    const progress=[0,0,0,0,0,0],weights=[.06,.5,.2,.08,.1,.06];
+    const loaded=(i:number,value=1)=>{progress[i]=value;report(.08+.52*progress.reduce((n,p,j)=>n+p*weights[j],0),'正在加载角色、箭矢与特效资源');};
+    const track=<V,>(i:number,promise:Promise<V>)=>promise.then(value=>{loaded(i);return value;});
+    const [juice,burstEffects,character,arrows,monsters,bowRelease]=await Promise.all([
+      track(0,JuiceParticles.load(this.scene)),track(1,LushBurstEffects.load(this.scene,p=>loaded(1,p))),
+      track(2,loadCharacter()),track(3,ArrowProjectiles.load(this.scene)),track(4,TrainingMonsterFactory.load()),track(5,BowReleaseEffects.load(this.scene)),
+    ]);
+    this.juice=juice;this.burstEffects=burstEffects;this.monsterFactory=monsters;
+    report(.6,'正在准备场景');await breathe();
     this.setRoom();
     const halo = groundCircle(1.05, 0x63e5d6, 0.15); halo.position.y = 0.025; this.player.add(halo);
     const ring = new THREE.Mesh(new THREE.RingGeometry(1.01, 1.05, 48), new THREE.MeshBasicMaterial({ color: 0x8df3e3, transparent: true, opacity: 0.72, depthWrite: false }));
@@ -228,7 +243,7 @@ export class GameScene {
     }
     this.candidateMarker.renderOrder = 102;
 
-    const [character, arrows, monsters, bowRelease] = await Promise.all([loadCharacter(), ArrowProjectiles.load(this.scene), TrainingMonsterFactory.load(), BowReleaseEffects.load(this.scene)]);
+
     this.bowRelease=bowRelease;
     this.monsterFactory=monsters;
     this.arrows = arrows;
@@ -258,9 +273,27 @@ export class GameScene {
     this.blend = this.animation.blend;
     this.sync(0);
     this.resize();
-    await this.renderer.compileAsync(this.scene, this.camera);
-    this.arrows?.prepare(this.camera,this.controller.settings);
-    this.renderer.render(this.scene, this.camera);
+    const compile=async(start:number,end:number,label:string)=>{
+      report(start,label);await breathe();
+      await this.renderer.compileAsync(this.scene,this.camera,null,e=>{if(e.total)report(start+(end-start)*e.loaded/e.total,label);});
+      this.renderer.render(this.scene,this.camera);await finishGpuWarmup(this.renderer);report(end,label);
+    };
+    await compile(.61,.7,'正在准备场景画面');
+    try{
+      // Warm actual pooled objects, including effects disabled in the current settings.
+      // The loading overlay stays opaque until GPU work has completed and these are cleared.
+      report(.7,'正在准备射箭与命中特效');await breathe();
+      this.arrows.prepareWarmup(32,this.camera);this.bowRelease.prepareWarmup(16);this.juice.prepareWarmup(16,this.controller.settings,this.camera);
+      await compile(.7,.82,'正在准备射箭与命中特效');
+    }finally{this.arrows.clear();this.bowRelease.finishWarmup();this.juice.finishWarmup();}
+    try{
+      report(.82,'正在准备爆炸与地面液体');await breathe();
+      this.burstEffects.prepareWarmup(LIMITS.monsterCount[1],this.controller.settings,this.camera,this.roomSize,this.roomLength);
+      await compile(.82,.98,'正在准备爆炸与地面液体');
+    }finally{this.burstEffects.clear();}
+    this.sync(0);this.renderer.render(this.scene,this.camera);await finishGpuWarmup(this.renderer);
+    this.startup.warmed=true;report(1,'准备完成');
+
   }
 
   private rosterSignature(){

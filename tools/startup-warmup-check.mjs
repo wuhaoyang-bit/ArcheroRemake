@@ -1,0 +1,18 @@
+import {chromium} from '@playwright/test';
+import assert from 'node:assert/strict';
+import {mkdir,writeFile} from 'node:fs/promises';
+const out='analysis/startup-warmup';await mkdir(out,{recursive:true});
+const browser=await chromium.launch({executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',args:['--enable-unsafe-webgpu']});const errors=[];
+try{
+ const page=await browser.newPage({viewport:{width:1440,height:1000}});page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
+ await page.addInitScript(()=>{window.__pipelineBuilds=0;for(const key of ['createRenderPipeline','createRenderPipelineAsync']){const original=GPUDevice.prototype[key];GPUDevice.prototype[key]=function(...args){window.__pipelineBuilds++;return original.apply(this,args);};}window.__loadingValues=[];new MutationObserver(()=>{const p=document.querySelector('#loading-progress');if(p)window.__loadingValues.push(p.value);}).observe(document,{subtree:true,childList:true,attributes:true});});
+ await page.route('**/params.json',r=>r.fulfill({json:{version:1,settings:{monsterCount:2,monsterSpeed:0,slimeInjectionAmount:100,slimeCapacity:100,targetModel:0,lockRange:50}}}));
+ let interactive=false;const lateResources=[];page.on('request',r=>{if(interactive&&/\.(png|glb|hdr|bin)(\?|$)/.test(r.url()))lateResources.push(r.url());});
+ const start=Date.now();await page.goto('http://localhost:5173');await page.locator('#loading-progress').waitFor();await page.locator('#loading').screenshot({path:out+'/loading.png'});await page.waitForFunction(()=>window.__ARCHERO__?.snapshot().ready,{},{timeout:120000});const startupMs=Date.now()-start;
+ const snap=()=>page.evaluate(()=>window.__ARCHERO__.snapshot());const initial=await snap();assert.ok(initial.startup.warmed);assert.equal(initial.startup.progress,1);assert.equal(initial.arrows.fired,0);assert.equal(initial.bowRelease.emitted,0);assert.equal(initial.juice.emitted,0);assert.equal(initial.arrows.active.length,0);assert.equal(initial.burstEffects.bursts.length,0);assert.equal(initial.burstEffects.puddles.length,0);assert.equal(initial.arrows.allocated,32);assert.equal(initial.bowRelease.allocated,16);assert.equal(initial.burstEffects.allocated,10);
+ const progress=await page.evaluate(()=>window.__loadingValues);assert.ok(progress.some(p=>p>0&&p<100));assert.ok(progress.every((p,i)=>i===0||p>=progress[i-1]));assert.equal(await page.locator('#loading').count(),0);
+ await page.locator('#switch-monster-training').click();await page.waitForTimeout(600);const before=await snap(),pipelinesBefore=await page.evaluate(()=>window.__pipelineBuilds);interactive=true;
+ const box=await page.locator('#viewport').boundingBox();await page.mouse.click(box.x+box.width/2,box.y+box.height*.65);await page.waitForFunction(()=>window.__ARCHERO__.snapshot().feedback.every(d=>d.burst.phase==='gone'),{},{timeout:30000});await page.waitForTimeout(500);const after=await snap(),pipelinesAfter=await page.evaluate(()=>window.__pipelineBuilds);
+ assert.ok(after.arrows.fired>=2);assert.equal(after.arrows.allocated,before.arrows.allocated);assert.equal(after.bowRelease.allocated,before.bowRelease.allocated);assert.equal(after.juice.capacity,before.juice.capacity);assert.equal(after.burstEffects.allocated,before.burstEffects.allocated);assert.deepEqual(lateResources,[]);assert.equal(pipelinesAfter,pipelinesBefore);assert.deepEqual(errors,[]);
+ await writeFile(out+'/results.json',JSON.stringify({startupMs,progress,initial,before,after,pipelinesBefore,pipelinesAfter,lateResources,errors},null,2));console.log(JSON.stringify({startupMs,pipelinesBefore,pipelinesAfter,lateResources,errors}));
+}finally{await browser.close();}

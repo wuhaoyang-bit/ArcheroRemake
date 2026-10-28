@@ -71,5 +71,7 @@ export class BowReleaseEffects {
   }
  }
  clear(){for(const e of this.pool){e.active=false;e.visual.root.visible=false;}}
+ prepareWarmup(count:number){for(let i=0;i<count;i++)this.emit(new T.Vector3(0,1,0),new T.Vector3(0,0,-1),.03,BOW_FX_DEFAULTS);}
+ finishWarmup(){this.clear();this.emitted=0;}
  snapshot(){return {emitted:this.emitted,allocated:this.pool.length,defaults:{...BOW_RELEASE_DEFAULTS},active:this.pool.filter(e=>e.active).map(e=>({age:e.age,...e.visual.snapshot()}))};}
 }

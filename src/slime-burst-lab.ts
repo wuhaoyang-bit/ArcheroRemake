@@ -1,3 +1,4 @@
+import { finishGpuWarmup } from './gpu-warmup.ts';
 import * as T from 'three/webgpu';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
@@ -79,15 +80,21 @@ $('import').onchange=async()=>{try{const file=$<HTMLInputElement>('import').file
 document.querySelectorAll<HTMLButtonElement>('[data-view]').forEach(b=>b.onclick=()=>{if(!ready)return;camera.position.fromArray(views[b.dataset.view!]);orbit.target.set(0,1,-.5);orbit.update();});
 
 async function init(){try{
+ $('loading').innerHTML='<span id="lab-loading-stage">正在准备资源…</span><progress id="lab-loading-progress" max="100" value="0" aria-label="爆炸调试页加载进度"></progress><span id="lab-loading-percent">0%</span>';
+ const report=(p:number,stage:string)=>{$<HTMLProgressElement>('lab-loading-progress').value=p*100;$('lab-loading-stage').textContent=stage;$('lab-loading-percent').textContent=`${Math.round(p*100)}%`;};
+ report(.02,'正在启动渲染器');
  try{c=await loadSettings();}catch{message('无法读取游戏参数，已使用默认值。');}updateInputs();
  renderer=new T.WebGPURenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));await renderer.init();renderer.shadowMap.enabled=true;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1;
  $('view').prepend(renderer.domElement);scene.background=new T.Color('#29392e');scene.add(new T.HemisphereLight(0xf5ffe5,0xb6ca6c,1.7));const sun=new T.DirectionalLight(0xfff4ce,1.8);sun.position.set(-9,22,-8);sun.castShadow=true;scene.add(sun);
  const env=new RoomEnvironment(),pmrem=new T.PMREMGenerator(renderer);const environment=pmrem.fromScene(env).texture;env.dispose();pmrem.dispose();
  const ground=new T.Mesh(new T.PlaneGeometry(24,24),new T.MeshStandardMaterial({color:0x344b3b,roughness:.85}));ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);const grid=new T.GridHelper(24,24,0x70816a,0x485e4c);grid.position.y=.005;scene.add(grid);
  camera.position.fromArray(views.perspective);orbit=new OrbitControls(camera,renderer.domElement);orbit.target.set(0,1,-.5);orbit.enableDamping=false;orbit.minDistance=2;orbit.maxDistance=50;orbit.update();
- root=createTrainingCube(environment);root.userData.practiceTarget='preview';const group=new T.Group();group.add(root);scene.add(group);feedback=new TrainingFeedback(group,[{id:'preview',x:0,z:0}],24,24);effects=await LushBurstEffects.load(scene);
+ root=createTrainingCube(environment);root.userData.practiceTarget='preview';const group=new T.Group();group.add(root);scene.add(group);feedback=new TrainingFeedback(group,[{id:'preview',x:0,z:0}],24,24);effects=await LushBurstEffects.load(scene,p=>report(.1+p*.55,'正在加载爆炸与液体资源'));
  feedback.onBurst=(center,feet)=>{event={center:center.clone(),feet:feet.clone(),frame};if(!seekMode)effects.emit(center,feet,c,random());};
- const resize=()=>{const r=$('view').getBoundingClientRect();renderer.setSize(r.width,r.height);camera.aspect=r.width/r.height;camera.updateProjectionMatrix();};new ResizeObserver(resize).observe($('view'));resize();ready=true;measure();seek(0);$('loading').remove();
+ const resize=()=>{const r=$('view').getBoundingClientRect();renderer.setSize(r.width,r.height);camera.aspect=r.width/r.height;camera.updateProjectionMatrix();};new ResizeObserver(resize).observe($('view'));resize();
+ report(.65,'正在准备爆炸与液体效果');await new Promise<void>(resolve=>setTimeout(resolve,0));
+ try{effects.prepareWarmup(1,c,camera,24,24);await renderer.compileAsync(scene,camera,null,e=>{if(e.total)report(.65+.33*e.loaded/e.total,'正在准备爆炸与液体效果');});renderer.render(scene,camera);await finishGpuWarmup(renderer);}finally{effects.clear();}
+ ready=true;measure();seek(0);renderer.render(scene,camera);await finishGpuWarmup(renderer);report(1,'准备完成');$('loading').remove();
  renderer.setAnimationLoop(now=>{const dt=last?Math.min(.1,(now-last)/1000):0;last=now;if(playing){accumulator+=dt*Number($<HTMLSelectElement>('speed').value);while(accumulator>=STEP&&frame<total){advance();accumulator-=STEP;}if(frame>=total){if($<HTMLInputElement>('loop').checked){seek(0);playing=true;$('play').textContent='暂停';}else stop();}updateReadout();}effects.update(0,c,24,24,camera);renderer.render(scene,camera);});
  if(import.meta.env.DEV)Object.assign(window,{__BURST_LAB__:{seek,snapshot:()=>({ready,frame,total,windFrame,burstFrame,playing,feedback:feedback.snapshot(),effects:effects.snapshot(),settings:{...c}})}});
  }catch(e){console.error(e);$('loading').textContent=`加载失败：${e}。请刷新重试。`;}}

@@ -118,7 +118,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         <div id="hit-debug-toolbar" data-ui hidden><div><button id="hit-debug-pause">暂停</button><button id="hit-debug-step">下一帧 · 1/60s</button></div><output id="hit-debug-readout">等待命中</output></div><div class="state-pill"><i></i><span id="game-state">准备中</span></div>
         <div class="joystick" id="joystick" aria-hidden="true"><div class="joystick-visual"><div class="joystick-ring"><span class="chevron top"></span><span class="chevron right"></span><span class="chevron bottom"></span><span class="chevron left"></span></div><div class="knob"></div></div><div class="threshold"></div></div>
         <div class="game-hint" id="game-hint">按住任意位置，拖动开始移动</div>
-        <div class="loading" id="loading"><span class="loader"></span><strong>正在准备试验场</strong><p>加载角色与 WebGPU 渲染器</p></div>
+        <div class="loading" id="loading"><span class="loader"></span><strong>正在准备试验场</strong><p id="loading-stage">正在准备资源</p><progress id="loading-progress" value="0" max="100" aria-label="游戏加载进度"></progress><span id="loading-percent">0%</span></div>
       </div>
     </section>
     <aside class="panel right-panel" data-ui aria-label="实时状态">
@@ -594,7 +594,7 @@ async function start() {
   for (const id of ['target-model', 'lock-turn-model', 'show-lock-range']) element<HTMLInputElement>(id).disabled = false;
   saveButton.disabled = false;
   try {
-    await game.init();
+    await game.init((progress,stage)=>{element<HTMLProgressElement>('loading-progress').value=progress*100;element('loading-percent').textContent=`${Math.round(progress*100)}%`;element('loading-stage').textContent=stage;});
     ready = true;
     element<HTMLButtonElement>('switch-training').disabled = false;
     element<HTMLButtonElement>('switch-monster-training').disabled = false;
@@ -606,7 +606,7 @@ async function start() {
         pauseForInspection: (paused:boolean) => {game.renderer.setAnimationLoop(paused?null:frame);lastFrame=0;if(paused)game.render();},
         testSlimeHit: (id:string) => game.feedback?.hit(id,{x:0,z:-1},controller.settings),
         stepInspection: (dt:number) => {game.advanceFeedback(dt);game.sync(dt);game.render();},
-        snapshot: () => ({ ...controller.snapshot(), settings: { ...controller.settings }, center: { ...controller.center }, cameraZoom:game.cameraZoom.snapshot(controller.settings), cameraZ: game.cameraZ, cameraX: game.camera.position.x, footNdc: game.player.position.clone().project(game.camera).toArray(), anchorNdc: game.anchor.position.clone().project(game.camera).toArray(), trainingTargets: game.trainingTargetsSnapshot(), feedback: game.feedback?.snapshot() ?? [], bowRelease:game.bowRelease?.snapshot(), juice:game.juice?.snapshot(), burstEffects:game.burstEffects?.snapshot(), attack: game.animation.snapshot(), arrows: game.arrows?.snapshot(), runWeight: game.blend.weight, runTime: game.run.time, runTimeScale: game.run.getEffectiveTimeScale(), idleTimeScale: game.idle.getEffectiveTimeScale(), debug: { hit:game.hitDebug.snapshot(), headingVisible: game.headingGuide.visible, heading: game.headingGuide.rotation.y, anchorVisible: game.anchor.visible, anchorOutlineVisible: game.anchor.visible && game.anchorOutline.visible, lockRangeVisible: game.lockRangeGuide.visible, lockRangeRadius: game.lockRangeGuide.scale.x, rings: game.rings.state.snapshot(), candidateMarkerVisible: game.candidateMarker.visible }, renderer: 'webgpu', ready }),
+        snapshot: () => ({ ...controller.snapshot(), settings: { ...controller.settings }, center: { ...controller.center }, cameraZoom:game.cameraZoom.snapshot(controller.settings), cameraZ: game.cameraZ, cameraX: game.camera.position.x, footNdc: game.player.position.clone().project(game.camera).toArray(), anchorNdc: game.anchor.position.clone().project(game.camera).toArray(), trainingTargets: game.trainingTargetsSnapshot(), feedback: game.feedback?.snapshot() ?? [], bowRelease:game.bowRelease?.snapshot(), juice:game.juice?.snapshot(), burstEffects:game.burstEffects?.snapshot(), attack: game.animation.snapshot(), arrows: game.arrows?.snapshot(), runWeight: game.blend.weight, runTime: game.run.time, runTimeScale: game.run.getEffectiveTimeScale(), idleTimeScale: game.idle.getEffectiveTimeScale(), debug: { hit:game.hitDebug.snapshot(), headingVisible: game.headingGuide.visible, heading: game.headingGuide.rotation.y, anchorVisible: game.anchor.visible, anchorOutlineVisible: game.anchor.visible && game.anchorOutline.visible, lockRangeVisible: game.lockRangeGuide.visible, lockRangeRadius: game.lockRangeGuide.scale.x, rings: game.rings.state.snapshot(), candidateMarkerVisible: game.candidateMarker.visible }, gpuMemory:{...game.renderer.info.memory}, startup:{...game.startup}, renderer: 'webgpu', ready }),
       } });
     }
   } catch (error) {

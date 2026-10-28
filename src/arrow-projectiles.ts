@@ -236,6 +236,12 @@ export class ArrowProjectiles {
     }
   }
 
+  prepareWarmup(count:number,camera:THREE.Camera){
+    while(this.pool.length<count)this.allocate();
+    for(const arrow of this.pool){arrow.active=true;arrow.object.visible=true;arrow.object.position.set(0,1,0);arrow.direction.set(0,0,-1);arrow.object.quaternion.setFromUnitVectors(this.forward,arrow.direction);arrow.distance=2;}
+    this.prepare(camera,ARROW_TRAIL_DEFAULTS);
+  }
+
   snapshot() {
     return {
       scale: this.scale,

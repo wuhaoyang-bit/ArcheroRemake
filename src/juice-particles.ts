@@ -136,5 +136,7 @@ export class JuiceParticles{
   for(const w of this.waves){let count=0;if(c.juiceEnabled)for(const p of w.spawns){if(w.age>=p.life)continue;const sample=sampleJuice(p,w.age,juiceCurveFromSettings(w.settings),w.settings.juiceDragRel,w.settings.juiceSpeedCurve);this.dummy.position.fromArray(sample.position);this.dummy.quaternion.copy(camera.quaternion);this.dummy.scale.setScalar(sample.size);this.dummy.updateMatrix();w.mesh.setMatrixAt(count++,this.dummy.matrix);}w.mesh.count=count;w.mesh.instanceMatrix.needsUpdate=true;}
  }
  clear(){this.pending=[];for(const w of this.waves){w.spawns=[];w.mesh.count=0;}}
+ prepareWarmup(count:number,c:HitSettings,camera:T.Camera){const warm={...c,juiceEnabled:1,juiceCount:64,juiceLife:1.8};for(let i=0;i<count;i++)this.emit(new T.Vector3(),warm,.1,i);this.prepare(camera,warm);}
+ finishWarmup(){this.clear();this.emitted=0;}
  snapshot(){const particles=this.waves.flatMap(w=>w.spawns.filter(p=>w.age<p.life).map(p=>({...p,age:w.age,origin:[p.ox,p.oy,p.oz],...sampleJuice(p,w.age,juiceCurveFromSettings(w.settings),w.settings.juiceDragRel,w.settings.juiceSpeedCurve)})));return {active:particles.length,capacity:this.waves.length*JUICE_MAX,emitted:this.emitted,pending:this.pending.map(p=>({id:p.id,remaining:p.remaining})),particles};}
 }
