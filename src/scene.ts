@@ -1,7 +1,7 @@
 import { BowReleaseEffects } from './bow-release-effects.ts';
 import { HitDebug } from './hit-debug.ts';
 import type { ArrowHit } from './arrow-projectiles.ts';
-import { TrainingMonsterFactory } from './training-monster.ts';
+import { TrainingMonsterFactory, createTrainingCube } from './training-monster.ts';
 import { HitParticles } from './hit-particles.ts';
 import { JuiceParticles } from './juice-particles.ts';
 import { TrainingFeedback } from './training-feedback.ts';
@@ -303,7 +303,7 @@ export class GameScene {
     this.trainingMode = this.controller.training;
     this.room = buildRoom(this.roomSize, this.roomLength);
     this.trainingVisual = this.trainingMode === 'obstacles' ? buildTraining(this.roomSize, this.roomLength)
-      : this.controller.combatTraining ? buildLockingTraining(this.roomSize, this.roomLength,this.controller.getPracticeTargets(),()=>this.monsterFactory!.create()) : undefined;
+      : this.controller.combatTraining ? buildLockingTraining(this.roomSize, this.roomLength,this.controller.getPracticeTargets(),()=>this.trainingMode === 'monsters' ? createTrainingCube() : this.monsterFactory!.create()) : undefined;
     if (this.trainingVisual) this.room.add(this.trainingVisual);
     if(this.controller.combatTraining&&this.trainingVisual)this.feedback=new TrainingFeedback(this.trainingVisual,this.controller.getPracticeTargets(),this.roomSize,this.roomLength);
     this.scene.add(this.room);

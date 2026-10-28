@@ -53,9 +53,24 @@ export class MonsterAnimation {
   dispose(){this.mixer.stopAllAction();this.mixer.uncacheRoot(this.mixer.getRoot());}
   snapshot(){return {state:this.state,time:this.actions[this.state].time,hitRemaining:this.hitRemaining};}
 }
-export type MonsterInstance={animation:MonsterAnimation;proxy:T.Group;hitBody:T.Mesh;aimHeight:number};
+export type MonsterInstance={animation?:MonsterAnimation;proxy:T.Group;hitBody:T.Mesh;aimHeight:number};
 const instances=new WeakMap<T.Object3D,MonsterInstance>();
 export const monsterInstance=(root:T.Object3D)=>instances.get(root);
+
+/** Cube target without source animation; shared hit feedback still applies. */
+export function createTrainingCube(){
+  const root=new T.Group();root.name='WhiteTrainingCube';
+  root.userData.monsterModel='white-cube';
+  const size=1.8;
+  const body=new T.Mesh(new T.BoxGeometry(size,size,size),new T.MeshStandardMaterial({color:0xffffff,roughness:1}));
+  body.position.y=size/2;body.castShadow=body.receiveShadow=true;root.add(body);
+  const proxy=new T.Group();
+  const hitBody=new T.Mesh(new T.CylinderGeometry(1,1,MONSTER_HIT_HEIGHT,16),new T.MeshBasicMaterial({side:T.DoubleSide}));
+  hitBody.position.y=MONSTER_HIT_HEIGHT/2;
+  hitBody.scale.set(DEFAULTS.monsterHitRadius,1,DEFAULTS.monsterHitRadius);proxy.add(hitBody);
+  instances.set(root,{proxy,hitBody,aimHeight:size/2});
+  return root;
+}
 
 export class TrainingMonsterFactory {
   static async load(){return new TrainingMonsterFactory(await new GLTFLoader().loadAsync(`${import.meta.env.BASE_URL}models/archero-spider.glb`));}

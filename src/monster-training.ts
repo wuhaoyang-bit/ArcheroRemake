@@ -8,11 +8,11 @@ function clampSpawn(p:Point,width:number,length:number):Point{
   return {x:Math.max(-ex,Math.min(ex,p.x)),z:Math.max(-ez,Math.min(ez,p.z))};
 }
 
-/** Default two-spider layout, then random fills near existing anchors. */
+/** Default two-cube layout, then random fills near existing anchors. */
 export function monsterTargets(width:number,length:number,count=2,player:Point={x:0,z:0},playerRadius=0.46):MonsterTarget[]{
   const n=Math.max(1,Math.min(10,Math.round(count)));
   const base:MonsterTarget[]=[-1,1].map((side,i)=>({
-    id:`monster-${i+1}`,label:`蜘蛛 ${i+1}`,
+    id:`monster-${i+1}`,label:`方块 ${i+1}`,
     x:side*Math.min(3,width/2-1.5),z:-Math.min(6,length/2-1.5),
   }));
   const targets=base.slice(0,Math.min(n,base.length)).map(t=>({...t,...clampSpawn(t,width,length)}));
@@ -32,10 +32,10 @@ export function spawnNearMonsters(existing:Point[],player:Point,playerRadius:num
     const candidate=clampSpawn({x:anchor.x+Math.cos(angle)*radius,z:anchor.z+Math.sin(angle)*radius},width,length);
     if(Math.hypot(candidate.x-player.x,candidate.z-player.z)<minPlayer)continue;
     if(existing.some(t=>Math.hypot(candidate.x-t.x,candidate.z-t.z)<minMonster))continue;
-    return {id:`monster-${index+1}`,label:`蜘蛛 ${index+1}`,...candidate};
+    return {id:`monster-${index+1}`,label:`方块 ${index+1}`,...candidate};
   }
   const fallback=clampSpawn({x:player.x+((index%2)?1:-1)*(DUMMY_RADIUS+playerRadius+2.5),z:player.z-((index%3)+2)*1.4},width,length);
-  return {id:`monster-${index+1}`,label:`蜘蛛 ${index+1}`,...fallback};
+  return {id:`monster-${index+1}`,label:`方块 ${index+1}`,...fallback};
 }
 
 export function separateMonsters(targets:Point[],player:Point,playerRadius:number,width:number,length:number) {

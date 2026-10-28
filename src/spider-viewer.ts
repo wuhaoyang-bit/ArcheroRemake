@@ -23,7 +23,7 @@ async function main(){
  const floor=new T.Mesh(new T.PlaneGeometry(100,100),new T.MeshStandardMaterial({color:0xe1e1c5,roughness:1}));floor.receiveShadow=true;floor.rotation.x=-Math.PI/2;floor.position.y=-.015;floor.userData.hitParticleGround=true;scene.add(floor);
  const grid=new T.GridHelper(40,40,0xa1a388,0xc4c5a9);grid.userData.hitParticleGround=true;scene.add(grid);
  const factory=await TrainingMonsterFactory.load(),root=factory.create(),group=new T.Group();root.userData.practiceTarget='spider';group.add(root);scene.add(group);
- const instance=monsterInstance(root)!,durations=instance.animation.durations(),feedback=new TrainingFeedback(group,[{id:'spider',x:0,z:0}],100,100);
+ const instance=monsterInstance(root)!,durations=instance.animation!.durations(),feedback=new TrainingFeedback(group,[{id:'spider',x:0,z:0}],100,100);
  let seed=1;const particles=new HitParticles(scene,()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;});
  const juice=await JuiceParticles.load(scene);
  let juiceSeed=newJuiceSeed();
@@ -47,7 +47,7 @@ async function main(){
   const emitTime=Math.min(time,settings.juiceDelay);
   feedback.update(emitTime,settings);
   if(clip()==='Hitted'&&time>=settings.juiceDelay)juice.emit(new T.Vector3(root.position.x,feedback.aimHeight('spider')+settings.juiceHeight,root.position.z),settings,time-settings.juiceDelay,juiceSeed);
-  feedback.update(time-emitTime,settings);instance.animation.preview(clip(),time*(clip()==='Hitted'?settings.monsterHitSpeed:1));root.updateMatrixWorld(true);
+  feedback.update(time-emitTime,settings);instance.animation!.preview(clip(),time*(clip()==='Hitted'?settings.monsterHitSpeed:1));root.updateMatrixWorld(true);
   particles.update(time,settings,id=>id==='spider'?new T.Vector3(root.position.x,.05,root.position.z):null);
   const timeline=el<HTMLInputElement>('timeline');timeline.max=String(duration);timeline.value=String(time);
   const fps=Number(el<HTMLSelectElement>('fps').value);el('time').textContent=`${time.toFixed(4)} s / ${duration.toFixed(3)} s · 第 ${Math.floor(time*fps+1e-6)} 帧`;

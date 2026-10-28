@@ -368,7 +368,7 @@ async function main() {
     burstSeed=newJuiceSeed();
     feedback.reset();
     feedback.hit('spider', hitDir, hitSettings);
-    instance.animation.preview('Hitted', 0);
+    instance.animation!.preview('Hitted', 0);
     spiderRoot.updateMatrixWorld(true);
     emitFrame = Math.max(0, params().delay / DT);
     burst = spawnBurst(params(), origin());
@@ -398,8 +398,8 @@ async function main() {
     const c={...hitSettings,juiceEnabled:1,juiceCount:p.count,juiceSpeed:p.speed,juiceSpeedJitter:p.speedJitter,juiceRadius:p.radius,juiceLife:p.life,juiceSize:p.size,juiceSizeJitter:p.sizeJitter,juiceSpeedCurve:customSpeedCurve,juiceCurve:JUICE_CURVE_IDS.indexOf(p.curve),juiceDragRel:p.dragRel,juiceColor:parseInt(p.color.slice(1),16),juiceDepthTest:p.depthTest?1:0};
     if(particleAge>=0)juice.emit(origin(),c,particleAge,burstSeed);
     feedback.update(Math.max(0,t-emitTime),hitSettings);
-    const hitDur=instance.animation.durations().Hitted;
-    instance.animation.preview('Hitted',Math.min(t*hitSettings.monsterHitSpeed,hitDur));
+    const hitDur=instance.animation!.durations().Hitted;
+    instance.animation!.preview('Hitted',Math.min(t*hitSettings.monsterHitSpeed,hitDur));
     spiderRoot.updateMatrixWorld(true);
     layoutCamera();
     juice.prepare(camera,c);
