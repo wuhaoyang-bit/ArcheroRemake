@@ -80,7 +80,7 @@
     "juiceDragRel": 0.6,
     "juiceDepthTest": 1,
     "juiceHeight": 0.4,
-    "cameraZoomShotEnabled": 1,
+    "cameraZoomShotEnabled": 0,
     "cameraZoomHitEnabled": 0,
     "cameraZoomShotAmount": 1,
     "cameraZoomHitAmount": 1,
