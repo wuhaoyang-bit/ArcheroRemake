@@ -14,6 +14,6 @@ test('yellow slime retains transmissive physical material through hit feedback, 
  assert.equal(materials.length,1);const material=materials[0];
  assert.equal(material.color.getHex(),0xffdd32);assert.equal(material.transmission,.65);assert.equal(material.thickness,1.8);assert.equal(material.clearcoat,.8);assert.ok(material.emissiveNode);
  const c={...DEFAULTS,hitSquashMode:1};f.hit('slime',{x:1,z:1},c);f.update(.1,c);
- const s=f.snapshot()[0];assert.ok(s.compression>0);assert.deepEqual(s.proxyScale,[1,1,1]);assert.equal(DEFAULTS.juiceColor,material.color.getHex());
- f.reset();assert.equal(f.snapshot()[0].compression,0);
+ const s=f.snapshot()[0];assert.ok(s.compression>0);assert.ok(s.inflation!.amount===20);assert.deepEqual(s.proxyScale,Array(3).fill(s.inflation!.settledExtent));assert.equal(DEFAULTS.juiceColor,material.color.getHex());
+ f.reset();assert.equal(f.snapshot()[0].compression,0);assert.equal(f.snapshot()[0].inflation!.amount,0);assert.deepEqual(f.snapshot()[0].proxyScale,[1,1,1]);
 });

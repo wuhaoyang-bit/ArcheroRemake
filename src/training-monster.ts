@@ -1,3 +1,4 @@
+import { SlimeInflationVisual } from './slime-inflation-visual.ts';
 import { createYellowSlimeModel } from './yellow-slime-model.ts';
 import * as T from 'three/webgpu';
 import { GLTFLoader, type GLTF } from 'three/addons/loaders/GLTFLoader.js';
@@ -54,7 +55,7 @@ export class MonsterAnimation {
   dispose(){this.mixer.stopAllAction();this.mixer.uncacheRoot(this.mixer.getRoot());}
   snapshot(){return {state:this.state,time:this.actions[this.state].time,hitRemaining:this.hitRemaining};}
 }
-export type MonsterInstance={animation?:MonsterAnimation;proxy:T.Group;hitBody:T.Mesh;aimHeight:number};
+export type MonsterInstance={inflation?:SlimeInflationVisual;animation?:MonsterAnimation;proxy:T.Group;hitBody:T.Mesh;aimHeight:number};
 const instances=new WeakMap<T.Object3D,MonsterInstance>();
 export const monsterInstance=(root:T.Object3D)=>instances.get(root);
 
@@ -70,7 +71,8 @@ export function createTrainingCube(environment?:T.Texture){
   const hitBody=new T.Mesh(new T.CylinderGeometry(1,1,MONSTER_HIT_HEIGHT,16),new T.MeshBasicMaterial({side:T.DoubleSide}));
   hitBody.position.y=MONSTER_HIT_HEIGHT/2;
   hitBody.scale.set(DEFAULTS.monsterHitRadius,1,DEFAULTS.monsterHitRadius);proxy.add(hitBody);
-  instances.set(root,{proxy,hitBody,aimHeight:size/2});
+  const inflation=new SlimeInflationVisual(model,size);inflation.apply(DEFAULTS);
+  instances.set(root,{proxy,hitBody,aimHeight:size/2,inflation});
   return root;
 }
 
