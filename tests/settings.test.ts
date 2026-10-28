@@ -1,3 +1,4 @@
+import { CAMERA_ZOOM_DEFAULTS } from '../src/camera-zoom-config.ts';
 import { BOW_FX_DEFAULTS } from '../src/bow-release-config.ts';
 import { ARROW_TRAIL_DEFAULTS } from '../src/arrow-trail-config.ts';
 import { HIT_DEFAULTS } from '../src/hit-feedback-config.ts';
@@ -17,6 +18,7 @@ import { MovementController } from '../src/controller.ts';
 test('requested defaults match the screenshot, with speed 16 / upper limit 30 and independent Run rate', () => {
   assert.deepEqual(DEFAULTS, {
     ...HIT_DEFAULTS,
+    ...CAMERA_ZOOM_DEFAULTS,
     ...BOW_FX_DEFAULTS,
     ...ARROW_TRAIL_DEFAULTS,
     recoilEnabled:1,recoilDistance:.16,recoilDuration:.12,recoilSpeedCurve:DEFAULTS.recoilSpeedCurve,
@@ -131,4 +133,11 @@ test('HTTP save accepts five full curves without losing tuning; oversized writes
     if(server.listening) await new Promise<void>(resolve=>server.close(()=>resolve()));
     await rm(dir,{recursive:true,force:true});
   }
+});
+
+test('camera zoom tuning round trips and old documents receive defaults',()=>{
+ const tuned={...DEFAULTS,cameraZoomShotEnabled:0,cameraZoomHitEnabled:1,cameraZoomShotAmount:2.5,cameraZoomHitAmount:7,cameraZoomMaxAmount:10,cameraZoomAttack:.065,cameraZoomHold:.03,cameraZoomPower:4,cameraZoomFrequency:5.5,cameraZoomDamping:.6};
+ assert.deepEqual(parseSettingsDocument(settingsDocument(tuned)),tuned);
+ const migrated=parseSettingsDocument({version:1,settings:{moveSpeed:16}});
+ for(const key of Object.keys(CAMERA_ZOOM_DEFAULTS) as (keyof typeof CAMERA_ZOOM_DEFAULTS)[])assert.equal(migrated[key],CAMERA_ZOOM_DEFAULTS[key]);
 });

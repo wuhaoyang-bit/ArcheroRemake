@@ -1,3 +1,4 @@
+import { CameraZoomFeedback } from './camera-zoom.ts';
 import { BowReleaseEffects } from './bow-release-effects.ts';
 import { HitDebug } from './hit-debug.ts';
 import type { ArrowHit } from './arrow-projectiles.ts';
@@ -110,6 +111,7 @@ function disposeGroup(group: THREE.Group) {
 export class GameScene {
   renderer!: THREE.WebGPURenderer;
   scene = new THREE.Scene();
+  readonly cameraZoom=new CameraZoomFeedback();
   camera = new THREE.OrthographicCamera();
   player = new THREE.Group();
   body = new THREE.Group();
@@ -228,13 +230,17 @@ export class GameScene {
     this.bowRelease=bowRelease;
     this.monsterFactory=monsters;
     this.arrows = arrows;
-    this.arrows.onFire=(origin,direction,elapsed)=>this.bowRelease?.emit(origin,direction,elapsed,this.controller.settings);
+    this.arrows.onFire=(origin,direction,elapsed)=>{
+      this.bowRelease?.emit(origin,direction,elapsed,this.controller.settings);
+      this.cameraZoom.trigger('shot',this.controller.settings,elapsed);
+    };
     this.arrows.debug=this.hitDebug;
     this.arrows.setTargets(this.feedback?.proxies ?? []);
     this.applyArrowHit=hit=>{
       if(!this.controller.combatTraining||!this.feedback||!this.particles)return;
       if(!this.feedback.hit(hit.id,hit.direction,this.controller.settings))return;
       const settings=this.controller.settings;
+      this.cameraZoom.trigger('hit',settings);
       const atFeet=!!settings.hitParticleFeetEnabled;
       if(atFeet){
         const feet=this.feedback.feetOrigin(hit.id,this.feetScratch);
@@ -293,6 +299,7 @@ export class GameScene {
     this.particles?.clear();
     this.juice?.clear();
     this.bowRelease?.clear();
+    this.cameraZoom.reset();this.applyCameraZoom();
     this.pendingShots.length=0;
     this.practiceRevision=this.controller.practiceRevision;
     this.monsterRosterSignature=this.rosterSignature();
@@ -321,6 +328,7 @@ export class GameScene {
     this.particles?.clear();
     this.juice?.clear();
     this.bowRelease?.clear();
+    this.cameraZoom.reset();this.applyCameraZoom();
     if(this.controller.training==='monsters'){
       this.controller.regenerateMonsterRoster();
       this.setRoom();
@@ -398,10 +406,17 @@ export class GameScene {
     this.camera.near = 0.1; this.camera.far = 140; this.camera.updateProjectionMatrix();
   }
 
+  private applyCameraZoom(){
+    const c=this.controller.settings;this.cameraZoom.update(0,c);
+    const zoom=this.cameraZoom.value(c);
+    if(this.camera.zoom!==zoom){this.camera.zoom=zoom;this.camera.updateProjectionMatrix();}
+  }
+
   sync(dt: number) {
     const ctl = this.controller;
     if (this.needsRoomRefresh()) this.setRoom();
     if (this.viewWidth !== ctl.settings.viewWidth || this.offset !== ctl.settings.cameraOffset) this.projection();
+    this.cameraZoom.update(dt,ctl.settings);
     this.trainingVisual?.userData.setProgress?.(ctl.passedCheckpoints, dt);
     this.player.position.set(ctl.position.x, 0, ctl.position.z);
     this.body.rotation.y = ctl.heading;
@@ -437,10 +452,12 @@ export class GameScene {
     this.camera.position.set(0, 24, this.cameraZ + 24 / Math.tan(this.tilt));
     this.camera.lookAt(0, 0, this.cameraZ);
     this.camera.updateMatrixWorld();
+    this.applyCameraZoom();
     this.rings.update(dt, ctl.settings, this.camera, ctl.position, ctl.combatTraining ? ctl.targeting.target : null, this.animation.snapshot());
   }
 
   render() {
+    this.applyCameraZoom();
     // Apply tuning even while hit-debug simulation is paused.
     this.feedback?.refresh(this.controller.settings);
     this.bowRelease?.update(0,this.controller.settings);
