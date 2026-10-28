@@ -37,3 +37,6 @@ __pycache__/
 /releases/
 *.keystore
 *.jks
+
+# Downloaded reference projects (local only)
+/references/
