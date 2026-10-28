@@ -42,7 +42,7 @@ const el = <E extends HTMLElement = HTMLElement>(id: string) => document.getElem
 document.querySelector('#app')!.innerHTML = `
 <header>
   <div>
-    <small>ARCHERO · 绿汁 lab</small>
+    <small>ARCHERO · 汁液 lab</small>
     <h1>俯视外爆 · 曲线切换预览</h1>
     <p>圆盘出生、水平四周爆开；预设曲线同步控制速度与尺寸；自定义曲线单独控制速度。左侧切换曲线，并显示当前运动在曲线上的位置。</p>
   </div>
@@ -102,7 +102,7 @@ document.querySelector('#app')!.innerHTML = `
 
     <h3>颜色 / 深度</h3>
     <label>汁液颜色（可吸色）
-      <input id="color" type="color" value="#55991e"></label>
+      <input id="color" type="color" value="#ffdd32"></label>
     <label class="inline"><input id="depthTest" type="checkbox" checked> 深度遮挡</label>
     <div class="tex">
       <img id="texPreview" src="${import.meta.env.BASE_URL}juice-lab/juice.png" alt="mask" width="48" height="48">

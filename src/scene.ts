@@ -1,3 +1,4 @@
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { CameraZoomFeedback } from './camera-zoom.ts';
 import { BowReleaseEffects } from './bow-release-effects.ts';
 import { HitDebug } from './hit-debug.ts';
@@ -112,6 +113,7 @@ export class GameScene {
   scene = new THREE.Scene();
   readonly cameraZoom=new CameraZoomFeedback();
   camera = new THREE.OrthographicCamera();
+  private slimeEnvironment?: THREE.Texture;
   player = new THREE.Group();
   body = new THREE.Group();
   anchor = new THREE.Group();
@@ -179,6 +181,8 @@ export class GameScene {
     this.renderer.toneMapping = THREE.LinearToneMapping;
     this.renderer.toneMappingExposure = 1;
     this.viewport.prepend(this.renderer.domElement);
+    const studio=new RoomEnvironment(),pmrem=new THREE.PMREMGenerator(this.renderer);
+    this.slimeEnvironment=pmrem.fromScene(studio).texture;studio.dispose();pmrem.dispose();
     this.scene.background = new THREE.Color(0xe5f4bd);
     this.scene.fog = new THREE.Fog(0xe5f4bd, 36, 65);
     this.scene.add(new THREE.HemisphereLight(0xf5ffe5, 0xb6ca6c, 1.7));
@@ -294,7 +298,7 @@ export class GameScene {
     this.trainingMode = this.controller.training;
     this.room = buildRoom(this.roomSize, this.roomLength);
     this.trainingVisual = this.trainingMode === 'obstacles' ? buildTraining(this.roomSize, this.roomLength)
-      : this.controller.combatTraining ? buildLockingTraining(this.roomSize, this.roomLength,this.controller.getPracticeTargets(),()=>this.trainingMode === 'monsters' ? createTrainingCube() : this.monsterFactory!.create()) : undefined;
+      : this.controller.combatTraining ? buildLockingTraining(this.roomSize, this.roomLength,this.controller.getPracticeTargets(),()=>this.trainingMode === 'monsters' ? createTrainingCube(this.slimeEnvironment) : this.monsterFactory!.create()) : undefined;
     if (this.trainingVisual) this.room.add(this.trainingVisual);
     if(this.controller.combatTraining&&this.trainingVisual)this.feedback=new TrainingFeedback(this.trainingVisual,this.controller.getPracticeTargets(),this.roomSize,this.roomLength);
     this.scene.add(this.room);

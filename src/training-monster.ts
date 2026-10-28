@@ -1,3 +1,4 @@
+import { createYellowSlimeModel } from './yellow-slime-model.ts';
 import * as T from 'three/webgpu';
 import { GLTFLoader, type GLTF } from 'three/addons/loaders/GLTFLoader.js';
 import { clone } from 'three/addons/utils/SkeletonUtils.js';
@@ -57,13 +58,14 @@ export type MonsterInstance={animation?:MonsterAnimation;proxy:T.Group;hitBody:T
 const instances=new WeakMap<T.Object3D,MonsterInstance>();
 export const monsterInstance=(root:T.Object3D)=>instances.get(root);
 
-/** Cube target without source animation; shared hit feedback still applies. */
-export function createTrainingCube(){
-  const root=new T.Group();root.name='WhiteTrainingCube';
-  root.userData.monsterModel='white-cube';
-  const size=1.8;
-  const body=new T.Mesh(new T.BoxGeometry(size,size,size),new T.MeshStandardMaterial({color:0xffffff,roughness:1}));
-  body.position.y=size/2;body.castShadow=body.receiveShadow=true;root.add(body);
+/** Yellow soft cube; existing hit volume and shared feedback remain independent. */
+export function createTrainingCube(environment?:T.Texture){
+  const root=new T.Group();root.name='YellowSlime';
+  root.userData.monsterModel='yellow-slime';
+  const size=1.8,model=createYellowSlimeModel();
+  model.root.scale.setScalar(size/2);
+  if(environment)model.material.envMap=environment;
+  root.add(model.root);
   const proxy=new T.Group();
   const hitBody=new T.Mesh(new T.CylinderGeometry(1,1,MONSTER_HIT_HEIGHT,16),new T.MeshBasicMaterial({side:T.DoubleSide}));
   hitBody.position.y=MONSTER_HIT_HEIGHT/2;

@@ -57,7 +57,7 @@
         "progress": 4
       }
     ],
-    "juiceEnabled": 0,
+    "juiceEnabled": 1,
     "juiceDelay": 0,
     "juiceCount": 14,
     "juiceSpeed": 9,
@@ -66,7 +66,7 @@
     "juiceLife": 0.7,
     "juiceSize": 1.1,
     "juiceSizeJitter": 0.7,
-    "juiceColor": 7062561,
+    "juiceColor": 16768306,
     "juiceCurve": 6,
     "juiceDragRel": 0.6,
     "juiceDepthTest": 1,
@@ -460,7 +460,7 @@
     "bowScale": 2.2,
     "arrowScale": 2.4,
     "arrowSpeed": 115,
-    "arrowPierce": 1,
+    "arrowPierce": 0,
     "arrowsPerAttack": 1,
     "arrowFireInterval": 0.1,
     "roomSize": 16,
