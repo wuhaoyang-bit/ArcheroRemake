@@ -9,12 +9,14 @@ import * as T from 'three/webgpu';
 import { normalView, positionView, uniform, float } from 'three/tsl';
 import { HitResponse, type Point } from './hit-response.ts';
 import type { HitSettings } from './hit-feedback-config.ts';
+import type {SlimeTrailBody} from './slime-ground-trail.ts';
 type FeedbackSettings = HitSettings & {monsterScale?:number;monsterHitSpeed?:number;monsterHitRadius?:number};
 const floatUniform=()=>uniform(0);
 type Dummy={walkFrom:Point;breath:SlimeWalkBreath;burst:SlimeBurstState;burstBase?:FeedbackSettings;monster?:MonsterInstance;lastPosition:Point;root:T.Object3D;visual:T.Group;proxy:T.Group;response:HitResponse;initial:Point;initialRotation:T.Quaternion;rim:ReturnType<typeof floatUniform>;brightness:ReturnType<typeof floatUniform>;power:ReturnType<typeof floatUniform>};
 /** One response per whole dummy; immutable-scale proxy meshes retain its original silhouette. */
 export class TrainingFeedback {
   private dummies:Dummy[]=[];
+  private trailBodies:SlimeTrailBody[]=[];
   readonly eyeDebris:SlimeEyeDebris;
   onFilled?:(id:string)=>void;
   onBurst?:(center:T.Vector3,feet:T.Vector3,settings:BurstSettings,color?:T.Color)=>void;
@@ -34,6 +36,7 @@ export class TrainingFeedback {
         else material=new T.MeshStandardNodeMaterial(properties);const edge=float(1).sub(normalView.normalize().dot(positionView.negate().normalize()).abs()).clamp().pow(power);material.emissiveNode=edge.mul(rim).mul(brightness);materials.set(original,material);}o.material=material;});
       const response=new HitResponse(target,{x:Math.max(0,width/2-.155-halfX),z:Math.max(0,length/2-.155-halfZ)});
       this.dummies.push({walkFrom:{x:target.x,z:target.z},breath:new SlimeWalkBreath(),burst:new SlimeBurstState(),monster,lastPosition:{x:target.x,z:target.z},root,visual,proxy,response,initial:{x:target.x,z:target.z},initialRotation:root.quaternion.clone(),rim,brightness,power});
+      if(monster?.inflation){const inflation=monster.inflation;this.trailBodies.push({id:target.id,active:true,position:new T.Vector3(target.x,0,target.z),radius:1,color:new T.Color(),footToward:(ground,out)=>inflation.groundContact(ground,out)});}
     }
   }
   get proxies(){return this.dummies.filter(d=>d.burst.phase==='alive').map(d=>d.proxy);}
@@ -80,6 +83,12 @@ export class TrainingFeedback {
     }
   }
   refresh(c:FeedbackSettings){for(const d of this.dummies)this.apply(d,c);}
+  slimeTrailBodies(){
+    for(const body of this.trailBodies){const d=this.dummies.find(d=>d.root.userData.practiceTarget===body.id)!,inflation=d.monster!.inflation!;
+      body.active=d.root.visible&&d.burst.phase!=='gone';d.root.getWorldPosition(body.position);body.radius=inflation.groundRadius();inflation.copyColor(body.color);
+    }
+    return this.trailBodies;
+  }
   animate(dt:number,c:FeedbackSettings){for(const d of this.dummies){const p=d.response.position,moved=Math.hypot(p.x-d.lastPosition.x,p.z-d.lastPosition.z)>1e-5;d.monster?.animation?.update(dt,moved&&!d.response.knockingBack);Object.assign(d.lastPosition,p);this.apply(d,c);}}
   aimHeight(id:string){const d=this.dummies.find(d=>d.root.userData.practiceTarget===id);return d?.monster ? d.monster.aimHeight*d.proxy.scale.y : 1.65;}
   /** Enemy foot anchor slightly above the ground plane for hit FX. */

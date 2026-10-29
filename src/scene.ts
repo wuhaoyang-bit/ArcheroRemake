@@ -379,6 +379,7 @@ export class GameScene {
     if(this.controller.training==='monsters'){this.feedback?.pursue(dt,this.controller.position,this.controller.settings.monsterSpeed,this.controller.settings,()=>this.controller.resolveMonsterContacts());}
     this.hitSplash?.update(dt,this.camera,(id,out)=>this.feedback?.feetOrigin(id,out)??null,this.controller.settings);
     this.juice?.update(dt,id=>this.juiceOriginFor(id));
+    this.burstEffects?.setSlimeTrailBodies(this.feedback?.slimeTrailBodies()??[]);
     this.burstEffects?.update(dt,this.controller.settings,this.roomSize,this.roomLength,this.camera);
   }
 

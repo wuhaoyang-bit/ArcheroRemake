@@ -131,7 +131,7 @@ export function sanitize(key: SettingKey, value: number): number {
   if (key==='bowFxSpikeCount')value=Math.round(value);
   if (key === 'arrowTrailEnabled' || key === 'arrowPaintEnabled' || key === 'recoilEnabled' || key === 'arrowPierce' || key === 'juiceDepthTest') return value >= .5 ? 1 : 0;
   if (key === 'monsterCount' || key === 'arrowsPerAttack' || key === 'juiceCount' || key === 'juiceCurve' || key === 'juiceColor' || key === 'arrowTrailColor' || key === 'arrowPaintColor') value = Math.round(value);
-  if (key === 'puddleShape') value=Math.round(value);
+  if (key === 'puddleShape' || key === 'slimeStrandCount') value=Math.round(value);
   if ((key.startsWith('burst')||key.startsWith('puddle'))&&key.endsWith('Enabled')) return value>=.5?1:0;
   if (key.startsWith('slime') && key.endsWith('Enabled')) return value>=.5?1:0;
   if (key === 'hitSquashMode') return value === 1 ? 1 : 0;

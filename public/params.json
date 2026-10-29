@@ -243,6 +243,15 @@
         "progress": 0
       }
     ],
+    "slimeTrailEnabled": 1,
+    "slimeTrailWidth": 1,
+    "slimeTrailLifetime": 3,
+    "slimeTrailFade": 1.2,
+    "slimeStrandEnabled": 1,
+    "slimeStrandCount": 2,
+    "slimeStrandWidth": 0.24,
+    "slimeStrandLength": 3,
+    "slimeStrandRetract": 0.3,
     "hitKnockEnabled": 1,
     "hitRimEnabled": 1,
     "hitSquashEnabled": 1,

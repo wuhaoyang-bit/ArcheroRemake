@@ -1,4 +1,5 @@
 import {UnifiedSlimeLiquid,type LiquidSettings} from './unified-slime-liquid.ts';
+import type {SlimeTrailBody} from './slime-ground-trail.ts';
 import * as T from 'three/webgpu';
 import {texture,uv,uniform,vec2,vec3,float,normalMap,mix} from 'three/tsl';
 import {CurveFluidPuddles,MAX_CURVE_PUDDLES} from './curve-fluid-puddles.ts';
@@ -81,6 +82,7 @@ export class LushBurstEffects{
  prepareWarmup(count:number,c:BurstSettings,camera:T.Camera,width:number,length:number){
   const warm={...c,...BURST_DEFAULTS};for(let i=0;i<count;i++)this.emit(new T.Vector3(0,1,0),new T.Vector3(),{...warm,puddleShape:i%3+1},()=>.5);
   this.update(.08,warm,width,length,camera);
+  this.liquid.trail.prepareWarmup();
  }
  update(dt:number,c:LiquidSettings,width:number,length:number,camera:T.Camera){this.clock+=dt;this.globalC=c;const a=this.floorU;a.time.value=this.clock;a.color.value.setRGB(c.puddleColorR,c.puddleColorG,c.puddleColorB);for(const [key,setting] of Object.entries({noiseScale:'puddleNoiseScale',range:'puddleNoiseRange',power:'puddleOuterPower',distortion:'puddleDistortion',speed:'puddleFlowSpeed',normal:'puddleNormal',center:'puddleCenterNormal',roughness:'puddleRoughness'}))a[key].value=(c as any)[setting];
   a.highlight.value=c.puddleHighlightEnabled?c.puddleHighlightStrength:0;a.gradient.value=c.puddleGradientEnabled?c.puddleGradientStrength:0;a.shadow.value=c.puddleShadowEnabled?c.puddleShadowStrength:0;a.shadowSoft.value=c.puddleShadowSoftness;a.shadowOffset.value.set(c.puddleShadowX,c.puddleShadowZ);a.room.value.set(width,length);this.shadow.scale.set(width,length,1);
@@ -116,6 +118,7 @@ export class LushBurstEffects{
   this.colorTexture.needsUpdate=true;this.mask.needsUpdate=true;this.shade.needsUpdate=true;this.floor.visible=this.puddles.some(p=>p.age>=0);this.shadow.visible=this.floor.visible;this.dirty=false;
  }
  private removeBurst(b:Burst){b.root.visible=false;for(const p of b.particles)p.mesh.visible=false;this.bursts=this.bursts.filter(x=>x!==b);}
+ setSlimeTrailBodies(bodies:readonly SlimeTrailBody[]){this.liquid.setTrailBodies(bodies);}
  playerStep(from:{x:number;z:number},to:{x:number;z:number},dt:number,c:LiquidSettings){this.liquid.playerStep(from,to,dt,c);}
  clear(){this.liquid.clear();this.ground.clear();this.clock=0;for(const b of [...this.bursts])this.removeBurst(b);this.puddles=[];this.ctx.clearRect(0,0,1024,1024);this.shadeCtx.clearRect(0,0,1024,1024);this.mask.needsUpdate=true;this.shade.needsUpdate=true;this.floor.visible=false;this.shadow.visible=false;this.dirty=false;}
  snapshot(){return {ground:this.rendererMode===2?this.liquid.snapshot():this.rendererMode===1?this.ground.snapshot():{renderer:'canvas-puddle',instances:this.puddles.filter(p=>p.age>=0&&p.opacity>0&&p.scale>0).length},allocated:this.pool.length,bursts:this.bursts.map(b=>({age:b.age,visible:b.particles.filter(p=>p.mesh.visible).length})),puddles:this.puddles.map(p=>({age:p.age,scale:p.scale,settled:p.settled,shape:p.shape,opacity:p.opacity,x:p.x,z:p.z})),color:this.globalC?[this.globalC.puddleColorR,this.globalC.puddleColorG,this.globalC.puddleColorB]:null};}

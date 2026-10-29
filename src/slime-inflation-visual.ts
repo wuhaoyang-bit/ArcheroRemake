@@ -13,6 +13,8 @@ export class SlimeInflationVisual{
  private startColor=new T.Color();private endColor=new T.Color();private originalAttenuation:T.Color;
  private faceBase:T.Vector3[];private key='';private settledKey='';
  private p=new T.Vector3();private out=new T.Vector3();private a=new T.Vector3();private b=new T.Vector3();private c=new T.Vector3();
+ private groundInverse=new T.Matrix4();private groundPoint=new T.Vector3();private groundInner=new T.Vector3();private groundDirection=new T.Vector3();
+ private groundFill=0;private groundBulge=0;
  constructor(private model:ReturnType<typeof createYellowSlimeModel>,private size=1.8){
   this.originalAttenuation=model.material.attenuationColor.clone();
   const g=new T.BoxGeometry(2,2,2,16,16,16),p=g.getAttribute('position'),inner=new T.Vector3();
@@ -35,6 +37,7 @@ export class SlimeInflationVisual{
   material.attenuationColor.copy(this.startColor).lerp(this.originalAttenuation,colorProgress);
 
   const fill=c.slimeInflationEnabled?this.state.visual:0,target=c.slimeInflationEnabled?this.state.target:0;
+  this.groundFill=fill;this.groundBulge=Math.min(c.slimeBulge,1/Math.max(1,fill));
   const settledKey=[target,c.slimeMaxScale,c.slimeBulge].join();
   if(settledKey!==this.settledKey){this.settledExtent=this.shape(target,c).extent;this.settledKey=settledKey;this.key='';}
   const key=[fill,c.slimeMaxScale,c.slimeBulge].join();if(key===this.key)return;this.key=key;
@@ -47,6 +50,23 @@ export class SlimeInflationVisual{
    this.eyeHit.normals[i].crossVectors(dx.sub(this.eyeHit.surfaces[i]),dy.sub(this.eyeHit.surfaces[i])).normalize();});
  }
  get eyes(){return this.model.face.children;}
+ /** Analytic low rounded-box surface, with the same inflation and world deformation as the body. */
+ groundContact(ground:T.Vector3,out:T.Vector3){
+  const body=this.model.body;body.updateWorldMatrix(true,false);
+  this.groundInverse.copy(body.matrixWorld).invert();this.groundDirection.copy(ground).applyMatrix4(this.groundInverse);this.groundDirection.y=0;
+  const extent=Math.max(Math.abs(this.groundDirection.x),Math.abs(this.groundDirection.z),1e-6);
+  this.groundPoint.set(this.groundDirection.x/extent,-.9,this.groundDirection.z/extent);
+  this.groundInner.copy(this.groundPoint).clampScalar(-.76,.76);
+  this.groundPoint.sub(this.groundInner).normalize().multiplyScalar(.24).add(this.groundInner);
+  inflatePoint(out,this.groundPoint,'bulge',this.groundFill,this.groundBulge,3,this.radius);
+  // Embed the wide end just inside the body to avoid a visible detached ring.
+  out.x*=.975;out.z*=.975;return out.applyMatrix4(body.matrixWorld);
+ }
+ groundRadius(){
+  this.model.body.updateWorldMatrix(true,false);const m=this.model.body.matrixWorld.elements;
+  const scale=Math.max(Math.hypot(m[0],m[1],m[2]),Math.hypot(m[8],m[9],m[10]));
+  return Math.max(.08,scale*(1+this.groundBulge*this.groundFill*(this.radius-1))*.9);
+ }
  copyColor(out:T.Color){return out.copy((this.model.body.material as T.MeshPhysicalMaterial).color);}
  snapshot(){return {color:(this.model.body.material as T.MeshPhysicalMaterial).color.getHex(),colorFill:this.state.colorFill,amount:this.state.amount,target:this.state.target,visual:this.state.visual,extent:this.extent,settledExtent:this.settledExtent};}
 }

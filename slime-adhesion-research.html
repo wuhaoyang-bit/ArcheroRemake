@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="史莱姆受击黏地效果的 TRR 调研对照：原始预览、源码许可、可复用部件与实现建议。">
+  <meta name="theme-color" content="#182b27">
+  <title>史莱姆黏地 · 参考与实现对照</title>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="./slime-adhesion-research.html"><span class="brand-dot"></span> ARCHERO <span class="brand-light">/ 效果研究</span></a>
+    <nav aria-label="页面导航"><a href="#decision">结论</a><a href="#sources">参考库</a><a href="#route">怎么做</a><a href="./index.html">返回游戏 ↗</a></nav>
+  </header>
+  <main>
+    <section class="hero" aria-labelledby="page-title">
+      <div class="hero-copy">
+        <p class="eyebrow">RESEARCH NOTE 04 <span>2026.10.29</span></p>
+        <h1 id="page-title">让后退的史莱姆，<br>仍然<span>黏着地面。</span></h1>
+        <p class="lead">身体先离开，接触点留一会儿。把这段短暂的牵连，做成会拉薄、断开、回收的液桥。</p>
+        <div class="hero-actions"><a class="button primary" href="#decision">先看哪些能用 <span>↓</span></a><a class="button ghost" href="#sources">查看原作与源码 ↗</a></div>
+        <p class="hero-note">方案 4 · 受击黏附与拉丝　/　TRR R1–R3 + R4 补查</p>
+      </div>
+      <div class="motion-panel">
+        <div class="motion-heading"><span><i class="status-dot"></i> 动作示意</span><span>设计草图 · 非游戏实机</span></div>
+        <svg id="motion" viewBox="0 0 600 310" role="img" aria-labelledby="motion-title motion-desc">
+          <title id="motion-title">史莱姆黏地动作示意</title>
+          <desc id="motion-desc">地面端固定，身体向右后退，液桥变细并断开，地面留下湿痕。</desc>
+          <defs>
+            <linearGradient id="gel" x1="0" y1="0" x2="0.3" y2="1"><stop offset="0" stop-color="#e5f6ae"/><stop offset="0.55" stop-color="#a9cc74"/><stop offset="1" stop-color="#6f9e60"/></linearGradient>
+            <pattern id="floor-grid" width="34" height="18" patternUnits="userSpaceOnUse"><path d="M34 0H0V18" fill="none" stroke="#82988b" stroke-opacity=".12"/></pattern>
+          </defs>
+          <path d="M30 234H570L600 310H0Z" fill="url(#floor-grid)"/>
+          <path d="M35 234H565" stroke="#6b8374" stroke-opacity=".55"/>
+          <path d="M375 62H495m-9-6 9 6-9 6" fill="none" stroke="#a8c5b9" stroke-width="1.5"/>
+          <text x="375" y="49" class="diagram-text">击退方向</text>
+          <g id="motion-shape"></g>
+          <path d="M157 243v30h-55" fill="none" stroke="#a8c5b9" stroke-opacity=".6" stroke-dasharray="3 3"/>
+          <text x="47" y="291" class="diagram-text">原地面接触点</text>
+        </svg>
+        <div class="phase-buttons" role="group" aria-label="动作阶段"><button data-phase="0" aria-pressed="false">01 黏住</button><button data-phase="1" aria-pressed="true">02 拉薄</button><button data-phase="2" aria-pressed="false">03 断开</button><button data-phase="3" aria-pressed="false">04 留痕</button></div>
+        <div class="motion-controls"><button id="play-motion" aria-label="播放动作示意">播放</button><input id="motion-progress" aria-label="动作示意进度" type="range" min="0" max="1000" value="410"><output id="motion-label">拉薄</output></div>
+        <p id="phase-description" class="phase-description">身体继续后退，宽根之间拉出越来越细的液桥。</p>
+      </div>
+    </section>
+
+    <section id="decision" class="section" aria-labelledby="decision-title">
+      <div class="section-heading"><div><p class="eyebrow">01 / THE DECISION</p><h2 id="decision-title">能做，先用我们已有的部件。</h2></div><p class="section-caption">建议从短液桥做起，再决定是否增加薄膜与连续融合。</p></div>
+      <div class="decisions">
+        <article class="decision-card recommended"><span class="badge direct">可复用部件</span><h3>现有拉丝 + 融合液滩</h3><p>复用眼球拉丝的动态网格、颜色传递和宽根细颈形状；复用液滩沉积。补上地面固定端与断裂状态。</p><div class="decision-foot"><strong>首版建议</strong><a href="#route">看接入步骤 →</a></div></article>
+        <article class="decision-card"><span class="badge adapt">需要移植 / 扩展</span><h3>Three.js 几何与 Metaballs</h3><p>LoftGeometry 帮助构造扁截面、宽根薄膜；WebGPU Metaballs 提供隐式融合源码，集成量更大。</p><div class="decision-foot"><strong>MIT 源码可查</strong><button class="text-button" data-quick-filter="adapt">查看候选 →</button></div></article>
+        <article class="decision-card"><span class="badge reference">视觉与机制参考</span><h3>借鉴动作，重新制作</h3><p>Hotshark4 参考液桥形状，Sam 参考网格动画，液桥实验参考细颈断裂。没有确认这些作品提供可复用工程。</p><div class="decision-foot"><strong>原作 ≠ 可用素材</strong><button class="text-button" data-quick-filter="reference">查看参考 →</button></div></article>
+      </div>
+      <aside class="coalesce-note"><div class="coalesce-mark" aria-hidden="true">C</div><div><p class="eyebrow">你关注的 COALESCE</p><h3>商品附带 C++ 源码；目前没有找到公开开源版本。</h3><p>作者 12 个公开仓库中未找到 Coalesce。商品面向 Unreal Engine 5.6–5.8 / Win64；免费入口是可玩演示。购买后的源码范围与跨引擎使用许可尚未核实，不能当作可直接接入 Three.js 的开源模块。</p></div><a class="button" href="https://www.fab.com/listings/f8ca1cba-d7f3-4d66-bfb8-d57f8e991ca9" target="_blank" rel="noopener noreferrer">查看商品原文 ↗</a></aside>
+    </section>
+
+    <section id="sources" class="section" aria-labelledby="sources-title">
+      <div class="section-heading"><div><p class="eyebrow">02 / REFERENCE LIBRARY</p><h2 id="sources-title">参考什么，能拿来做什么。</h2></div><p class="section-caption">每项独立列出用途、源码、许可与核验范围。</p></div>
+      <div class="filter-bar"><div class="filters" role="group" aria-label="按使用方式筛选"><button data-filter="priority" aria-pressed="true">优先看</button><button data-filter="all" aria-pressed="false">全部</button><button data-filter="direct" aria-pressed="false">可复用部件</button><button data-filter="adapt" aria-pressed="false">需改造源码</button><button data-filter="reference" aria-pressed="false">仅供参考</button><button data-filter="commercial" aria-pressed="false">商业源码</button></div><label class="search"><span>搜索</span><input id="source-search" type="search" placeholder="名称、用途、许可…"></label></div>
+      <p id="source-count" class="source-count" role="status" aria-live="polite"></p>
+      <div id="source-cards" class="source-grid"></div>
+      <p id="empty-state" class="empty-state" hidden>没有匹配的来源。试试“全部”，或清空搜索词。</p>
+      <noscript><p>请启用 JavaScript 查看筛选与媒体预览。原始参考：<a href="https://realtimevfx.com/t/hotshark4-sketchbook/31682">Hotshark4</a>、<a href="https://github.com/mrdoob/three.js">Three.js</a>、<a href="https://github.com/toji/webgpu-metaballs">WebGPU Metaballs</a>。</p></noscript>
+    </section>
+
+    <section id="route" class="section" aria-labelledby="route-title">
+      <div class="section-heading"><div><p class="eyebrow">03 / BUILD IT IN ARCHERO</p><h2 id="route-title">首版实现，分成四步。</h2></div><p class="section-caption">以下是拟议方案，尚未接入游戏。</p></div>
+      <div class="route-grid">
+        <article><span class="step-number">01</span><h3>留住接触点</h3><p>受击时存下 1–3 个地面世界坐标。身体端跟随变形后的底部，地面端短暂固定。</p><small>地面端不能跟着怪物父节点一起平移。</small></article>
+        <article><span class="step-number">02</span><h3>拉出宽根细颈</h3><p>复用眼球拉丝网格，两端铺宽，地面附近压扁。拉得越长，中央越细。</p><small>先做有厚度的液桥，再试更宽的薄膜。</small></article>
+        <article><span class="step-number">03</span><h3>断开，再收回</h3><p>用长度或细颈半径触发断裂；分成两段，身体端缩回，地面端下塌。</p><small>各条连接错开断裂时机，并处理新断口的封口。</small></article>
+        <article><span class="step-number">04</span><h3>并入现有湿痕</h3><p>为融合液滩增加小面积沉积入口，接收断裂点、残留大小和怪物当前颜色。</p><small>湿痕延续现有融合与消退逻辑。</small></article>
+      </div>
+      <div class="budget"><strong>首版建议预算</strong><span>1–3 条 / 怪物</span><span>12 段 × 8 边 ≈ 192 个侧面三角形 / 条</span><span>缓冲与对象复用</span><p>这是设计预算，未测出手机帧率。还需评估同时受击数量、材质开销、法线更新与绘制次数。</p></div>
+      <div class="table-wrap"><table class="analysis-table"><caption>结论分析 · 依据与尚缺工作</caption><thead><tr><th>结论</th><th>依据</th><th>还差什么</th></tr></thead><tbody>
+        <tr><td>首版采用程序化短液桥</td><td>本项目眼球拉丝；Three.js 动态顶点</td><td>地面端、状态机、断裂两段网格</td></tr>
+        <tr><td>薄膜作为液桥形状扩展</td><td>LoftGeometry 的闭合 / 开放截面；Sam 顶点动画</td><td>实际视角下的厚度、法线与身体接缝</td></tr>
+        <tr><td>残留接入已有融合液滩</td><td>UnifiedSlimeLiquid 的沉积与覆盖场</td><td>增加公开沉积入口，联动颜色与消退参数</td></tr>
+        <tr><td>连续融合可留作后续方案</td><td>toji WebGPU Metaballs 的 MIT 源码</td><td>移植渲染、增加黏附与断裂控制、真机测量</td></tr>
+        <tr><td>Coalesce 目前作为商业参考</td><td>Fab 商品说明；作者公开仓库核查</td><td>实际源码包、具体许可与跨引擎移植评估</td></tr>
+      </tbody></table></div>
+    </section>
+
+    <section id="evidence" class="section evidence" aria-labelledby="evidence-title">
+      <p class="eyebrow">04 / EVIDENCE & LIMITS</p><h2 id="evidence-title">检索记录与证据边界</h2>
+      <details><summary>TRR 进度、每轮变化与未决项</summary><div class="detail-body"><ol><li><strong>R0 目标：</strong>① 拉伸与断裂视觉；② 几何、材质与动画方法；③ 身体 / 地面连接和脱离；④ Three.js / WebGPU 接入路径、手机开销与许可。</li><li><strong>R1 铺开：</strong>游戏作品、作者拆解、物理文档、开源几何与液桥研究进入来源版图。</li><li><strong>R2 改计划：</strong>反查专名；补漏；换成 liquid bridge、necking、pinch-off 等关键词；深挖源码站点；转述溯源。</li><li><strong>R3 执行：</strong>核对作者原文、实际源码与本项目实现，区分可复用部件、移植方案和视觉参考。</li><li><strong>R4 补查：</strong>增加断裂实验及视频入口，核实相关 MIT 声明。APS / PNAS 视频访问受限，未当作已观看证据。</li></ol><p><strong>相对 R0 的差距：</strong>四项目标已有来源支撑；完整断裂视频的实际播放、我们角色的观感与 APK 真机开销仍待验证。未找到即装即用的 Three.js 击退黏地模块。</p><p><strong>社区排序：</strong>直接相关动态画面 4 分 + 连接机制 3 分 + 作者拆解 2 分 + 公开代码入口 1 分。Hotshark4（9）→ Coalesce（5）→ Sam（5）；同分按发布时间。分数只决定阅读顺序。</p><p><strong>GitHub：</strong>按各目标分别查询，并按 updated 降序。截至 2026-10-29，纳入仓库顺序为 Three.js（10-29）、WebGPU Metaballs（10-21）、LiquidBridge2D（10-14）。</p><p class="muted">TRR 用于找来源；本页建议属于检索结束后的综合，不以来源数量代替效果验证。</p></div></details>
+      <details id="matrix-details"><summary>展开符合度表 · 全部来源与四项目标</summary><div class="detail-body"><p>“符合”表示已打开的原文支持该目标，不表示已经在游戏里验证。原作、源码与许可按作品合并；未成功读取的入口单独列出。</p><div class="table-wrap"><table id="evidence-table"><caption>符合度表</caption><thead><tr><th>来源</th><th>① 视觉</th><th>② 方法</th><th>③ 连接 / 脱离</th><th>④ 接入 / 许可</th></tr></thead><tbody id="evidence-rows"></tbody></table></div></div></details>
+    </section>
+  </main>
+  <footer><div><strong>从参考到实现，保留每一步的依据。</strong><p>结论依据 2026-10-29 的核查。原作媒体归原作者所有，由原站加载；素材和源码能否使用，以各自许可及核验状态为准。</p></div><div class="footer-links"><a href="./slime-burst-research.html">液体爆开参考 ↗</a><a href="./slime-burst-lab.html">爆开调试页 ↗</a><a href="#page-title">回到顶部 ↑</a></div></footer>
+  <script type="module" src="/src/slime-adhesion-research.ts"></script>
+</body>
+</html>

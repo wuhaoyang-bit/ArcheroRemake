@@ -6,6 +6,9 @@ import type {BurstSettings} from './slime-burst-config.ts';
 import {SlimeLiquidDrops} from './slime-liquid-drops.ts';
 import {slimeFlight,type FlightSettings} from './slime-flight-motion.ts';
 import {liquidFlightSettings,type LiquidFlightSettings} from './slime-liquid-flight-config.ts';
+import {SlimeGroundTrail,type SlimeTrailBody} from './slime-ground-trail.ts';
+import type {SlimeTrailSettings} from './slime-trail-config.ts';
+import {createSlimeLiquidMaterial} from './slime-liquid-material.ts';
 export type LiquidSettings=BurstSettings&LiquidFlightSettings;
 type DropSpawn={p:T.Vector3;v:T.Vector3;radius:number;color:T.Color;paint:boolean;seed:number};
 type Drop=DropSpawn&{age:number;origin:T.Vector3;direction:T.Vector3;ballistic:boolean;settings:FlightSettings};
@@ -16,6 +19,8 @@ const MAX_DROPS=384,MAX_MARKS=256,MAX_WAVES=16;
  */
 export class UnifiedSlimeLiquid{
  readonly field=new SlimeLiquidField();
+ readonly trail:SlimeGroundTrail;
+ private trailBodies:readonly SlimeTrailBody[]=[];
  private map=new T.DataTexture(this.field.data,this.field.nx,this.field.nz);
  private floor:T.Mesh;private dropRenderer:SlimeLiquidDrops;
  private time=uniform(0);private room=uniform(new T.Vector2(16,38));
@@ -25,7 +30,7 @@ export class UnifiedSlimeLiquid{
  private pendingDrops=0;
  constructor(scene:T.Scene){
   this.map.colorSpace=T.NoColorSpace;this.map.minFilter=this.map.magFilter=T.LinearFilter;this.map.generateMipmaps=false;
-  const mat=new T.MeshPhysicalNodeMaterial({roughness:.12,metalness:0,ior:1.45,alphaToCoverage:true});
+  const mat=createSlimeLiquidMaterial();
   const tex=texture(this.map,vec2(uv().x,uv().y.oneMinus())),coverage=smoothstep(.13,.25,tex.a);
   mat.colorNode=tex.rgb;mat.opacityNode=coverage;mat.alphaTest=.01;
   const normal=Fn(()=>{
@@ -44,6 +49,7 @@ export class UnifiedSlimeLiquid{
   mat.normalNode=normalMap(normal);
   this.floor=new T.Mesh(new T.PlaneGeometry(1,1),mat);this.floor.name='UnifiedSlimeSurface';this.floor.rotation.x=-Math.PI/2;this.floor.position.y=.042;this.floor.receiveShadow=true;this.floor.visible=false;scene.add(this.floor);
   this.dropRenderer=new SlimeLiquidDrops(scene,MAX_DROPS);
+  this.trail=new SlimeGroundTrail(scene);
  }
  emit(center:T.Vector3,c:LiquidSettings,random:()=>number,color?:T.Color){
   const tint=color?.clone()??new T.Color(c.puddleColorR,c.puddleColorG,c.puddleColorB);
@@ -69,8 +75,10 @@ export class UnifiedSlimeLiquid{
   // Secondary drops are cosmetic, preventing recursive creation of new liquid.
   for(let i=0;i<2;i++){const a=d.seed+i*2.8;this.addDrop({p:d.p.clone().setY(d.radius*.3+.06),v:new T.Vector3(Math.cos(a)*1.2,1.3+i*.35,Math.sin(a)*1.2),radius:d.radius*.28,color:d.color,paint:false,seed:a},d.settings);}
  }
- update(dt:number,puddles:PuddleState[],c:BurstSettings,width:number,length:number){
+ setTrailBodies(bodies:readonly SlimeTrailBody[]){this.trailBodies=bodies;}
+ update(dt:number,puddles:PuddleState[],c:BurstSettings&Partial<SlimeTrailSettings>,width:number,length:number){
   const endTime=this.clock+dt;this.time.value=endTime;this.enabled=c.puddleRenderer===2&&!!c.puddleEnabled;
+  if(this.trail.update(dt,this.trailBodies,c))this.dirty=true;
   this.floor.visible=this.enabled;
 
   if(this.field.width!==width||this.field.length!==length){this.field.width=width;this.field.length=length;this.dirty=true;}
@@ -112,6 +120,7 @@ export class UnifiedSlimeLiquid{
    const marks:LiquidMark[]=puddles.slice(-128).filter(p=>p.age>=0).map(p=>({x:p.x,z:p.z,radius:p.size*p.scale*.5*(1+.2*((p.origin.liquidScale??1)-1)),opacity:p.opacity,color:[p.c.puddleColorR,p.c.puddleColorG,p.c.puddleColorB],seed:p.angle+p.shape*2}));
    for(const d of this.deposits){const age=this.clock-d.born,grow=1-Math.pow(1-Math.min(1,Math.max(0,age)/.28),3),opacity=c.puddleLifetime>0&&age>c.puddleLifetime?Math.max(0,1-(age-c.puddleLifetime)/Math.max(.001,c.puddleFade)):1;
     marks.push({x:d.x+c.puddleX,z:d.z+c.puddleZ,radius:d.radius*(c.puddleSize/6)*(.35+.65*grow),opacity,color:d.color,seed:d.seed});}
+   this.trail.appendMarks(marks);
    this.field.rebuild(marks);this.map.needsUpdate=true;this.dirty=false;this.drawClock=0;
   }
   this.dropRenderer.update(this.drops,true,!!c.puddleShadowEnabled);
@@ -126,6 +135,6 @@ export class UnifiedSlimeLiquid{
   const motion=liquidFlightSettings(c);
   for(let i=0;i<3;i++){const side=i-1;this.addDrop({p:new T.Vector3(x,.07,z),v:new T.Vector3(dx/d*.6+dz/d*side,1+i*.25,dz/d*.6-dx/d*side),radius:.035+i*.008,color,paint:false,seed:i},motion);}
  }
- clear(){this.drops=[];this.deposits=[];this.field.rebuild([]);this.map.needsUpdate=true;this.clock=0;this.time.value=0;this.signature='';this.dirty=true;this.dropRenderer.clear();this.floor.visible=false;this.stepDistance=0;this.hits=this.steps=0;this.waves.forEach(w=>w.set(0,0,-100,0));}
- snapshot(){return {renderer:'unified-slime',drops:this.drops.length,deposits:this.deposits.length,impacts:this.hits,footsteps:this.steps,ripples:this.waves.filter(w=>this.clock-w.z<1.2).length,instances:1};}
+ clear(){this.trail.clear();this.trailBodies=[];this.drops=[];this.deposits=[];this.field.rebuild([]);this.map.needsUpdate=true;this.clock=0;this.time.value=0;this.signature='';this.dirty=true;this.dropRenderer.clear();this.floor.visible=false;this.stepDistance=0;this.hits=this.steps=0;this.waves.forEach(w=>w.set(0,0,-100,0));}
+ snapshot(){return {renderer:'unified-slime',drops:this.drops.length,deposits:this.deposits.length,impacts:this.hits,footsteps:this.steps,ripples:this.waves.filter(w=>this.clock-w.z<1.2).length,instances:1,trail:this.trail.snapshot()};}
 }

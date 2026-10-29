@@ -2,6 +2,7 @@ import './settings-sidebar.css';
 export type SidebarCategory={id:string;label:string;sections:string[]};
 /** Explicit newest-first feature order; moving existing controls preserves handlers and draft values. */
 export const GAME_SIDEBAR_CATEGORIES:SidebarCategory[]=[
+ {id:'slime-trail',label:'史莱姆 · 移动液路与黏丝',sections:['史莱姆 · 移动液路与黏丝']},
  {id:'shooting',label:'射箭 · 特效与后坐力',sections:['箭头 · 颜料球','出箭特效 · 环带与尖刺','箭矢拖尾','射击后坐力','弓与箭']},
  {id:'slime',label:'史莱姆 · 充盈与行走',sections:['史莱姆 · 眼睛外观','史莱姆 · 充盈变色与行走','史莱姆 · 注入与弹性鼓胀','怪物训练场']},
  {id:'puddle',label:'地面液体 · 外观与展开',sections:['撑爆 · 液体残留']},

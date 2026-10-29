@@ -4,6 +4,7 @@ import {SLIME_EYES_CONTROLS,DEFAULT_EYE_SPEED_CURVE} from './slime-eyes-config.t
 import {slimeColorMarkup,bindSlimeColors} from './slime-color-controls.ts';
 import {createSettingsSidebar,GAME_SIDEBAR_CATEGORIES} from './settings-sidebar.ts';
 import {SLIME_FULLNESS_CONTROLS} from './slime-fullness-config.ts';
+import {SLIME_TRAIL_CONTROLS} from './slime-trail-config.ts';
 import { SlimeBurstPreview } from './slime-burst-preview.ts';
 import { BURST_CONTROLS } from './slime-burst-config.ts';
 import {DEFAULT_LIQUID_SPEED_CURVE} from './slime-liquid-flight-config.ts';
@@ -29,6 +30,7 @@ import type { Settings } from './config.ts';
 
 const arrow = '<svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M8 24 24 8M9 8h15v15M7 17l8 8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const settings: { title: string; items: [SettingKey, string, string, string][] }[] = [
+  {title:'史莱姆 · 移动液路与黏丝',items:SLIME_TRAIL_CONTROLS},
   {title:'眼球 · 受击胶质滞后',items:EYE_HIT_CONTROLS},
   { title: '轮盘与锚点', items: [
     ['joystickSize', '轮盘大小', '倍', '整体调整轮盘底圈、方向标记和摇杆的显示尺寸，默认 1 倍。操作半径与移动阈值仍由各自参数控制。'],
