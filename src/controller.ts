@@ -29,7 +29,8 @@ export class MovementController {
   practiceRevision = 0;
   private deadTargetIds = new Set<string>();
   get combatTraining(){return this.training === 'locking' || this.training === 'monsters';}
-  resolveMonsterContacts(){if(this.training==='monsters')separateMonsters(this.getPracticeTargets().filter(t=>!this.deadTargetIds.has(t.id)),this.position,PLAYER_RADIUS,this.settings.roomSize,this.settings.roomLength);}
+  private get collidableMonsters(){return this.getPracticeTargets().filter(t=>!this.deadTargetIds.has(t.id));}
+  resolveMonsterContacts(){if(this.training==='monsters')separateMonsters(this.collidableMonsters,this.position,PLAYER_RADIUS,this.settings.roomSize,this.settings.roomLength);}
   /** Grow/shrink live roster without resetting kept monsters' positions. */
   syncMonsterRoster(rebuild = false) {
     const width = this.settings.roomSize, length = this.settings.roomLength;
@@ -144,7 +145,7 @@ export class MovementController {
   }
   get activeTurnModel() { return this.usesLockTurn ? this.settings.lockTurnModel : this.settings.turnModel; }
   /** Death integration hook: exclude once, and reacquire once only if this was the locked enemy.
-   * Entity visuals/collision removal remain the responsibility of the future death system. */
+   * Excluded targets also stop blocking movement/recoil; visuals are handled by the feedback system. */
   resetTargetExclusions(){this.deadTargetIds.clear();this.targeting.reselect();}
   notifyTargetDeath(id: string) {
     if (!this.combatTraining || this.deadTargetIds.has(id)) return;
@@ -331,7 +332,7 @@ export class MovementController {
     const delta=this.recoil.update(dt);
     if(!delta.x&&!delta.z)return;
     if(this.training==='obstacles')moveAroundObstacles(this.position,delta.x,delta.z,this.course.obstacles,PLAYER_RADIUS);
-    else if(this.training==='monsters')moveAroundObstacles(this.position,delta.x,delta.z,this.getPracticeTargets().map(t=>({...t,radius:DUMMY_RADIUS})),PLAYER_RADIUS);
+    else if(this.training==='monsters')moveAroundObstacles(this.position,delta.x,delta.z,this.collidableMonsters.map(t=>({...t,radius:DUMMY_RADIUS})),PLAYER_RADIUS);
     else {this.position.x+=delta.x;this.position.z+=delta.z;}
     this.constrain();
   }
@@ -357,7 +358,7 @@ export class MovementController {
       this.movementSpeed = this.movementBaseSpeed * this.movementSpeedRatio;
       const dx = this.direction.x * this.movementSpeed * dt, dz = this.direction.z * this.movementSpeed * dt;
       if (this.training === 'obstacles') moveAroundObstacles(this.position, dx, dz, this.course.obstacles, PLAYER_RADIUS, () => this.checkTrainingProgress());
-      else if(this.training==='monsters') moveAroundObstacles(this.position,dx,dz,this.getPracticeTargets().map(t=>({...t,radius:DUMMY_RADIUS})),PLAYER_RADIUS);
+      else if(this.training==='monsters') moveAroundObstacles(this.position,dx,dz,this.collidableMonsters.map(t=>({...t,radius:DUMMY_RADIUS})),PLAYER_RADIUS);
       else { this.position.x += dx; this.position.z += dz; }
       this.constrain();
       if (this.training === 'obstacles' && this.position.z <= this.course.finishZ) {

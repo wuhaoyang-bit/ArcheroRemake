@@ -15,7 +15,7 @@ type Dummy={walkFrom:Point;breath:SlimeWalkBreath;burst:SlimeBurstState;burstBas
 export class TrainingFeedback {
   private dummies:Dummy[]=[];
   onFilled?:(id:string)=>void;
-  onBurst?:(center:T.Vector3,feet:T.Vector3,settings:BurstSettings)=>void;
+  onBurst?:(center:T.Vector3,feet:T.Vector3,settings:BurstSettings,color?:T.Color)=>void;
   private worldRotation=new T.Quaternion();
   constructor(group:T.Group,targets:({id:string}&Point)[],width:number,length:number){
     for(const root of group.children.filter(o=>o.userData.practiceTarget)){
@@ -53,7 +53,7 @@ export class TrainingFeedback {
     const exploded=d.burst.update(dt,complete,remaining);
     if(wasWaiting&&d.burst.phase==='winding')d.burstBase={...c};
     this.apply(d,c);
-    if(exploded){const center=new T.Box3().setFromObject(d.visual).getCenter(new T.Vector3());const feet=new T.Vector3(d.response.position.x,.025,d.response.position.z);d.root.visible=false;this.onBurst?.(center,feet,d.burst.config!);}
+    if(exploded){const center=new T.Box3().setFromObject(d.visual).getCenter(new T.Vector3());const feet=new T.Vector3(d.response.position.x,.025,d.response.position.z);d.root.visible=false;this.onBurst?.(center,feet,d.burst.config!,d.monster?.inflation?.copyColor(new T.Color()));}
   }}
   pursue(dt:number,player:Point,speed:number,c:FeedbackSettings,resolveContacts?:()=>void){
     for(const d of this.dummies){
@@ -74,6 +74,7 @@ export class TrainingFeedback {
   animate(dt:number,c:FeedbackSettings){for(const d of this.dummies){const p=d.response.position,moved=Math.hypot(p.x-d.lastPosition.x,p.z-d.lastPosition.z)>1e-5;d.monster?.animation?.update(dt,moved&&!d.response.knockingBack);Object.assign(d.lastPosition,p);this.apply(d,c);}}
   aimHeight(id:string){const d=this.dummies.find(d=>d.root.userData.practiceTarget===id);return d?.monster ? d.monster.aimHeight*d.proxy.scale.y : 1.65;}
   /** Enemy foot anchor slightly above the ground plane for hit FX. */
+  currentColor(id:string,out:T.Color){return this.dummies.find(d=>d.root.userData.practiceTarget===id)?.monster?.inflation?.copyColor(out)??null;}
   feetOrigin(id:string,out:T.Vector3){const d=this.dummies.find(d=>d.root.userData.practiceTarget===id);if(!d)return null;const p=d.response.position;return out.set(p.x,.05,p.z);}
   /** World-space center of the visible model (for juice burst origin). */
   modelCenter(id:string,out:T.Vector3){

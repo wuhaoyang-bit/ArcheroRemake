@@ -127,7 +127,7 @@ test('HTTP save accepts five full curves without losing tuning; oversized writes
     const base=`http://127.0.0.1:${address.port}`;
     const post = (body:string) => fetch(`${base}/__save-params`,{method:'POST',headers:{'Content-Type':'application/json',Origin:base},body});
     assert.equal((await post(body)).status,200);assert.deepEqual(JSON.parse(await readFile(file,'utf8')),payload);
-    assert.equal((await post(' '.repeat(65537))).status,413);
+    assert.equal((await post(' '.repeat(131073))).status,413);
     assert.deepEqual(JSON.parse(await readFile(file,'utf8')),payload);
   } finally {
     if(server.listening) await new Promise<void>(resolve=>server.close(()=>resolve()));

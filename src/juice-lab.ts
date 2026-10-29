@@ -105,7 +105,7 @@ document.querySelector('#app')!.innerHTML = `
       <input id="color" type="color" value="#ffdd32"></label>
     <label class="inline"><input id="depthTest" type="checkbox" checked> 深度遮挡</label>
     <div class="tex">
-      <img id="texPreview" src="${import.meta.env.BASE_URL}juice-lab/juice.png" alt="mask" width="48" height="48">
+      <img id="texPreview" src="${import.meta.env.BASE_URL}juice-lab/juice-mask.png" alt="mask" width="48" height="48">
       <code class="mono">白膜 × 颜色染色 · 单波瞬时</code>
     </div>
   </aside>

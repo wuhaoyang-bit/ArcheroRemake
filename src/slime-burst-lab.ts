@@ -33,7 +33,7 @@ const keys=[...new Set(groups.flatMap(g=>g.rows.map(r=>r[0])))];
 let c:Settings={...DEFAULTS},frame=0,total=720,playing=false,ready=false,accumulator=0,last=0,seed=1,windFrame=0,burstFrame=0;
 const STEP=1/120;
 let feedback:TrainingFeedback,effects:LushBurstEffects,root:T.Group,renderer:T.WebGPURenderer,orbit:OrbitControls;
-let seekMode=false,event:{center:T.Vector3;feet:T.Vector3;frame:number}|undefined;
+let seekMode=false,event:{center:T.Vector3;feet:T.Vector3;color?:T.Color;frame:number}|undefined;
 const scene=new T.Scene(),camera=new T.PerspectiveCamera(38,1,.05,200);
 const views:Record<string,[number,number,number]>={perspective:[7,5,9],front:[0,2,11],side:[11,2,0],top:[0,12,.01]};
 const phaseNames={alive:'最后一箭 · 未触发撑爆',feedback:'最后一箭 · 受伤反馈 / 衔接',winding:'蓄爆 · 加速伸缩与鼓面增长',gone:'模型消失 · 爆开与液滩'};
@@ -59,7 +59,7 @@ function reset(){effects.clear();feedback.reset();prefill();frame=0;event=undefi
 function advance(){frame++;feedback.update(STEP,c);if(!seekMode)effects.update(STEP,c,24,24,camera);}
 function seek(to:number){if(!ready)return;stop();to=Math.max(0,Math.min(total,Math.round(to)));seekMode=true;reset();while(frame<to)advance();seekMode=false;
  // Replay the state machine at 120 Hz, then evaluate baked FX and springs directly at this age.
- if(event){effects.update((event.frame-1)*STEP,c,24,24,camera);effects.emit(event.center,event.feet,c,random());effects.update((frame-event.frame+1)*STEP,c,24,24,camera);}else effects.update(frame*STEP,c,24,24,camera);
+ if(event){effects.update((event.frame-1)*STEP,c,24,24,camera);effects.emit(event.center,event.feet,c,random(),event.color);effects.update((frame-event.frame+1)*STEP,c,24,24,camera);}else effects.update(frame*STEP,c,24,24,camera);
  updateReadout();}
 function measure(){
  const state=new SlimeInflationState();state.amount=Math.max(0,c.slimeCapacity-c.slimeInjectionAmount);state.colorFill=state.target=state.visual=state.amount/c.slimeCapacity;state.hit(c);
@@ -105,7 +105,7 @@ async function init(){try{
  const ground=new T.Mesh(new T.PlaneGeometry(24,24),new T.MeshStandardMaterial({color:0x344b3b,roughness:.85}));ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);const grid=new T.GridHelper(24,24,0x70816a,0x485e4c);grid.position.y=.005;scene.add(grid);
  camera.position.fromArray(views.perspective);orbit=new OrbitControls(camera,renderer.domElement);orbit.target.set(0,1,-.5);orbit.enableDamping=false;orbit.minDistance=2;orbit.maxDistance=50;orbit.update();
  root=createTrainingCube(environment);root.userData.practiceTarget='preview';const group=new T.Group();group.add(root);scene.add(group);feedback=new TrainingFeedback(group,[{id:'preview',x:0,z:0}],24,24);effects=await LushBurstEffects.load(scene,p=>report(.1+p*.55,'正在加载爆炸与液体资源'));
- feedback.onBurst=(center,feet)=>{event={center:center.clone(),feet:feet.clone(),frame};if(!seekMode)effects.emit(center,feet,c,random());};
+ feedback.onBurst=(center,feet,_settings,color)=>{event={center:center.clone(),feet:feet.clone(),color:color?.clone(),frame};if(!seekMode)effects.emit(center,feet,c,random(),color);};
  const resize=()=>{const r=$('view').getBoundingClientRect();renderer.setSize(r.width,r.height);camera.aspect=r.width/r.height;camera.updateProjectionMatrix();};new ResizeObserver(resize).observe($('view'));resize();
  report(.65,'正在准备爆炸与液体效果');await new Promise<void>(resolve=>setTimeout(resolve,0));
  try{effects.prepareWarmup(1,c,camera,24,24);await renderer.compileAsync(scene,camera,null,e=>{if(e.total)report(.65+.33*e.loaded/e.total,'正在准备爆炸与液体效果');});renderer.render(scene,camera);await finishGpuWarmup(renderer);}finally{effects.clear();}

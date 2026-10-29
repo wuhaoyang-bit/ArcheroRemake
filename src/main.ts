@@ -11,7 +11,7 @@ import { ARROW_TRAIL_CONTROLS, ARROW_PAINT_CONTROLS } from './arrow-trail-config
 import { DEFAULT_RECOIL_CURVE } from './shot-recoil.ts';
 import { validateJuiceSpeedCurve } from './juice-speed-curve.ts';
 import { JuiceCurveEditor } from './juice-curve-editor.ts';
-import { HIT_CONTROLS } from './hit-feedback-config.ts';
+import { HIT_CONTROLS,HIT_SPLASH_SHEET_CONTROLS,HIT_SPLASH_PARTICLE_CONTROLS } from './hit-feedback-config.ts';
 import { ProgressCurveEditor } from './progress-curve-editor.ts';
 import { AnchorCurveEditor } from './anchor-curve-editor.ts';
 import { TurnCurveEditor } from './turn-curve-editor.ts';
@@ -56,6 +56,8 @@ const settings: { title: string; items: [SettingKey, string, string, string][] }
   { title: '箭头 · 颜料球', items: ARROW_PAINT_CONTROLS },
   { title: '箭矢拖尾', items: ARROW_TRAIL_CONTROLS },
   { title: '射击后坐力', items: [['recoilEnabled','启用射击后坐力','0/1','每支箭射出时沿箭的反方向击退角色。'],['recoilDistance','后坐距离','u','默认 0.16；连射从当前位置重新触发，不叠加剩余距离。'],['recoilDuration','后坐时长','s','默认 0.12 秒；与怪物击退独立，修改后下一支箭生效。']] },
+  { title: '受伤 · 液片飞溅', items:HIT_SPLASH_SHEET_CONTROLS },
+  { title: '受伤 · 跟随汁滴', items:HIT_SPLASH_PARTICLE_CONTROLS },
   { title: '训练场 · 受击反馈', items: HIT_CONTROLS },
   { title: '史莱姆 · 注入与弹性鼓胀', items: SLIME_INFLATION_CONTROLS.filter(r=>!SLIME_FULLNESS_CONTROLS.some(f=>f[0]===r[0])) },
   { title: '史莱姆 · 充盈变色与行走', items: SLIME_FULLNESS_CONTROLS },

@@ -11,6 +11,9 @@ export const HIT_DEFAULTS = {
   hitSquashTime: 2, hitSquashAmount: .15, hitCompressTime: .06, hitReleaseTime: .2, hitSpringFrequency: 4, hitSpringDamping: .15,
   // Screenshot defaults, world units; independent delayed burst, additional to sparks.
   juiceSpeedCurve: DEFAULT_JUICE_SPEED_CURVE,
+  hitSplashSheetsEnabled:1,hitSplashSheetsScale:1,hitSplashSheetsSpeed:1,hitSplashSheetsDelay:0,hitSplashSheetsHeight:0,
+  hitSplashParticlesCount:33,hitSplashParticlesScale:1,hitSplashParticlesHeight:0,
+  hitSplashParticlesEnabled:1,
   juiceEnabled:1,juiceDelay:.13,juiceCount:16,juiceSpeed:4,juiceSpeedJitter:1,
   juiceRadius:.34,juiceLife:1.8,juiceSize:.6,juiceSizeJitter:.08,
   juiceColor:0xffdd32,juiceCurve:2,juiceDragRel:.55,juiceDepthTest:1,juiceHeight:.1,
@@ -22,6 +25,9 @@ export const HIT_LIMITS = {
   hitKnockTime:[.05,1,.01],hitKnockDistance:[0,3,.05],
   hitRimTime:[.04,5,.01],hitRimFadeStart:[0,5,.01],hitRimStrength:[0,1,.05],hitRimBrightness:[0,5,.1],hitRimWidth:[.1,1,.05],
   hitSquashTime:[.05,5,.01],hitSquashAmount:[.02,.65,.01],hitCompressTime:[.01,.5,.01],hitReleaseTime:[0,2,.01],hitSpringFrequency:[.5,12,.1],hitSpringDamping:[.05,2,.05],
+  hitSplashSheetsEnabled:[0,1,1],hitSplashSheetsScale:[.05,3,.05],hitSplashSheetsSpeed:[.1,5,.1],hitSplashSheetsDelay:[0,3,.01],hitSplashSheetsHeight:[-1,3,.05],
+  hitSplashParticlesCount:[1,33,1],hitSplashParticlesScale:[.1,3,.05],hitSplashParticlesHeight:[-1,3,.05],
+  hitSplashParticlesEnabled:[0,1,1],
   juiceEnabled:[0,1,1],juiceDelay:[0,3,.01],juiceCount:[1,64,1],juiceSpeed:[0,20,.1],juiceSpeedJitter:[0,10,.1],juiceRadius:[0,1.5,.01],
   juiceLife:[.05,5,.05],juiceSize:[.01,2,.01],juiceSizeJitter:[0,1,.01],juiceColor:[0,0xffffff,1],
   juiceCurve:[0,6,1],juiceDragRel:[.05,1,.05],juiceDepthTest:[0,1,1],juiceHeight:[-.5,1,.01],
@@ -46,6 +52,7 @@ export const HIT_CONTROLS: [Exclude<keyof HitSettings,'juiceSpeedCurve'>,string,
  ['hitReleaseTime','开始回弹时间','s','从最近一次命中开始计时；默认 0.20 秒。独立于击退时长，碰墙不会提前释放；修改后下次命中生效。汁液发射时间独立设置。'],
  ['hitSpringFrequency','弹簧频率','Hz','越大回弹越快。'],
  ['hitSpringDamping','弹簧阻尼','比例','越小弹得越久；最晚在缩放总持续时间结束时恢复原大小。'],
+
  ['juiceEnabled','黄色汁液迸发','0/1','每次命中单独产生一波黄色汁液。'],
  ['juiceDelay','汁液迸发时机','s','从命中计时，默认 0.13 秒；独立于缩放回弹。连击各自计时，出生后不跟随敌人。'],
  ['juiceCurve','汁液曲线','0–6','0 Linear，1 OutQuad，2 OutCubic（默认），3 OutExpo，4 smoothstep，5 指数阻力，6 自定义速度曲线（尺寸保持 OutCubic）。'],
@@ -60,4 +67,18 @@ export const HIT_CONTROLS: [Exclude<keyof HitSettings,'juiceSpeedCurve'>,string,
  ['juiceDragRel','汁液指数阻力 Drel','比例','默认 0.55，仅指数阻力曲线生效，OutCubic 不使用此参数。'],
  ['juiceColor','汁液颜色','色值','默认 #ffdd32，与黄色史莱姆身体同色。'],
  ['juiceDepthTest','汁液深度遮挡','0/1','1：保留与地面、人物的遮挡，和 lab 相同。'],
+];
+
+export const HIT_SPLASH_SHEET_CONTROLS: typeof HIT_CONTROLS = [
+ ['hitSplashSheetsEnabled','液片飞溅 · 开关','0/1','受伤时从脚底生成的大片液体，跟随敌人。'],
+ ['hitSplashSheetsScale','液片整体大小','倍','整体缩放液片和扩散范围。'],
+ ['hitSplashSheetsSpeed','液片播放速度','倍','加快或放慢运动、展开和消散。'],
+ ['hitSplashSheetsDelay','液片触发延迟','s','从命中开始计时。'],
+ ['hitSplashSheetsHeight','液片高度偏移','u','相对怪物脚底。'],
+];
+export const HIT_SPLASH_PARTICLE_CONTROLS: typeof HIT_CONTROLS = [
+ ['hitSplashParticlesEnabled','跟随汁滴 · 开关','0/1','独立控制新增颗粒，不受旧版黄色汁液迸发开关影响。'],
+ ['hitSplashParticlesCount','跟随汁滴数量','个','每次命中的颗粒数量。'],
+ ['hitSplashParticlesScale','跟随汁滴大小倍率','倍','乘以共用汁液尺寸，不改变贴图比例。'],
+ ['hitSplashParticlesHeight','跟随汁滴高度偏移','u','叠加在脚底和共用汁液高度之上；速度、曲线、寿命、延迟沿用下方汁液参数。'],
 ];

@@ -39,5 +39,6 @@ export class SlimeInflationVisual{
   this.model.root.scale.setScalar(this.size/2*scale);this.model.root.position.y=this.size/2*extent;
   this.model.face.children.forEach((eye,i)=>{inflatePoint(this.out,this.faceBase[i],'bulge',fill,bulge,3,this.radius);eye.position.copy(this.out);});
  }
+ copyColor(out:T.Color){return out.copy((this.model.body.material as T.MeshPhysicalMaterial).color);}
  snapshot(){return {color:(this.model.body.material as T.MeshPhysicalMaterial).color.getHex(),colorFill:this.state.colorFill,amount:this.state.amount,target:this.state.target,visual:this.state.visual,extent:this.extent,settledExtent:this.settledExtent};}
 }

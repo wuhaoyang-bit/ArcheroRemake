@@ -1,0 +1,842 @@
+[
+  {
+    "name": "Splash",
+    "modules": {
+      "Required": {
+        "Material": "MI_Splashes",
+        "bUseLegacyEmitterTime": false,
+        "SpawnRate": {
+          "Distribution": "RequiredDistributionSpawnRate"
+        },
+        "RandomImageTime": 1.0,
+        "EmitterLoops": 1,
+        "LODValidity": "01"
+      },
+      "Lifetime": {
+        "Lifetime": {
+          "MinValue": 0.20000000298023224,
+          "MaxValue": 0.5,
+          "Distribution": null,
+          "Table": {
+            "Values": [
+              0.20000000298023224,
+              0.5
+            ],
+            "Op": "02",
+            "EntryCount": "01",
+            "EntryStride": "02",
+            "SubEntryStride": "01"
+          }
+        },
+        "LODValidity": "01"
+      },
+      "Size": {
+        "StartSize": {
+          "MinValue": 22.0,
+          "MaxValue": 333.0,
+          "MinValueVec": [
+            33.0,
+            33.0,
+            22.0
+          ],
+          "MaxValueVec": [
+            333.0,
+            333.0,
+            69.0
+          ],
+          "Distribution": null,
+          "Table": {
+            "Values": [
+              33.0,
+              33.0,
+              22.0,
+              333.0,
+              333.0,
+              69.0
+            ],
+            "Op": "02",
+            "EntryCount": "01",
+            "EntryStride": "06",
+            "SubEntryStride": "03"
+          }
+        },
+        "LODValidity": "01"
+      },
+      "Velocity": {
+        "StartVelocity": {
+          "MinValue": -123.0,
+          "MaxValue": 555.0,
+          "MinValueVec": [
+            -123.0,
+            -123.0,
+            123.0
+          ],
+          "MaxValueVec": [
+            123.0,
+            123.0,
+            555.0
+          ],
+          "Distribution": null,
+          "Table": {
+            "Values": [
+              -123.0,
+              -123.0,
+              123.0,
+              123.0,
+              123.0,
+              555.0
+            ],
+            "Op": "02",
+            "EntryCount": "01",
+            "EntryStride": "06",
+            "SubEntryStride": "03"
+          }
+        },
+        "StartVelocityRadial": {
+          "Distribution": null,
+          "Table": {
+            "Values": [
+              0.0
+            ],
+            "Op": "01",
+            "EntryCount": "01",
+            "EntryStride": "01"
+          }
+        },
+        "LODValidity": "01"
+      },
+      "ColorOverLife": {
+        "ColorOverLife": {
+          "MinValue": 1.0,
+          "MaxValue": 1.0,
+          "MinValueVec": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "MaxValueVec": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "Distribution": null,
+          "Table": {
+            "Values": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "Op": "01",
+            "EntryCount": "01",
+            "EntryStride": "03"
+          }
+        },
+        "AlphaOverLife": {
+          "MaxValue": 1.0,
+          "Distribution": null,
+          "Table": {
+            "TimeScale": 1.0,
+            "Values": [
+              1.0,
+              0.0
+            ],
+            "Op": "01",
+            "EntryCount": "02",
+            "EntryStride": "01"
+          }
+        },
+        "LODValidity": "01"
+      },
+      "ParameterDynamic": {
+        "DynamicParams": [
+          {
+            "ParamName": "None",
+            "bUseEmitterTime": false,
+            "bSpawnTimeOnly": false,
+            "ValueMethod": "EDPV_UserSet",
+            "bScaleVelocityByParamValue": false,
+            "ParamValue": {
+              "MinValue": 0.0,
+              "MaxValue": 1.0,
+              "Distribution": null,
+              "Table": {
+                "TimeScale": 3.0,
+                "TimeBias": 0.0,
+                "Values": [
+                  0.0,
+                  0.2415459007024765,
+                  0.483091801404953,
+                  1.0
+                ],
+                "Op": "01",
+                "EntryCount": "04",
+                "EntryStride": "01",
+                "SubEntryStride": "00",
+                "LockFlag": "00"
+              }
+            }
+          },
+          {
+            "ParamName": "None",
+            "bUseEmitterTime": false,
+            "bSpawnTimeOnly": false,
+            "ValueMethod": "EDPV_UserSet",
+            "bScaleVelocityByParamValue": false,
+            "ParamValue": {
+              "MinValue": 1.0,
+              "MaxValue": 1.0,
+              "Distribution": null,
+              "Table": {
+                "TimeScale": 0.0,
+                "TimeBias": 0.0,
+                "Values": [
+                  1.0
+                ],
+                "Op": "01",
+                "EntryCount": "01",
+                "EntryStride": "01",
+                "SubEntryStride": "00",
+                "LockFlag": "00"
+              }
+            }
+          },
+          {
+            "ParamName": "None",
+            "bUseEmitterTime": false,
+            "bSpawnTimeOnly": false,
+            "ValueMethod": "EDPV_UserSet",
+            "bScaleVelocityByParamValue": false,
+            "ParamValue": {
+              "MinValue": 1.0,
+              "MaxValue": 1.0,
+              "Distribution": null,
+              "Table": {
+                "TimeScale": 0.0,
+                "TimeBias": 0.0,
+                "Values": [
+                  1.0
+                ],
+                "Op": "01",
+                "EntryCount": "01",
+                "EntryStride": "01",
+                "SubEntryStride": "00",
+                "LockFlag": "00"
+              }
+            }
+          },
+          {
+            "ParamName": "None",
+            "bUseEmitterTime": false,
+            "bSpawnTimeOnly": false,
+            "ValueMethod": "EDPV_UserSet",
+            "bScaleVelocityByParamValue": false,
+            "ParamValue": {
+              "MinValue": 1.0,
+              "MaxValue": 1.0,
+              "Distribution": null,
+              "Table": {
+                "TimeScale": 0.0,
+                "TimeBias": 0.0,
+                "Values": [
+                  1.0
+                ],
+                "Op": "01",
+                "EntryCount": "01",
+                "EntryStride": "01",
+                "SubEntryStride": "00",
+                "LockFlag": "00"
+              }
+            }
+          }
+        ],
+        "UpdateFlags": 15,
+        "LODValidity": "01"
+      },
+      "AccelerationConstant": {
+        "Acceleration": [
+          0.0,
+          0.0,
+          -980.0
+        ],
+        "bAlwaysInWorldSpace": true,
+        "LODValidity": "01"
+      },
+      "Rotation": {
+        "StartRotation": {
+          "MaxValue": 1.0,
+          "Distribution": null,
+          "Table": {
+            "Values": [
+              0.0,
+              1.0
+            ],
+            "Op": "02",
+            "EntryCount": "01",
+            "EntryStride": "02",
+            "SubEntryStride": "01"
+          }
+        },
+        "LODValidity": "01"
+      },
+      "RotationRate": {
+        "StartRotationRate": {
+          "MinValue": -0.10000000149011612,
+          "MaxValue": 0.10000000149011612,
+          "Distribution": null,
+          "Table": {
+            "Values": [
+              -0.10000000149011612,
+              0.10000000149011612
+            ],
+            "Op": "02",
+            "EntryCount": "01",
+            "EntryStride": "02",
+            "SubEntryStride": "01"
+          }
+        },
+        "LODValidity": "01"
+      },
+      "SizeMultiplyLife": {
+        "LifeMultiplier": {
+          "MaxValue": 1.0,
+          "MinValueVec": [
+            0.0,
+            0.0,
+            0.800000011920929
+          ],
+          "MaxValueVec": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "Distribution": null,
+          "Table": {
+            "TimeScale": 14.999999046325684,
+            "Values": [
+              0.0,
+              0.0,
+              1.0,
+              0.1066666692495346,
+              0.1066666692495346,
+              0.9733332991600037,
+              0.2133333384990692,
+              0.2133333384990692,
+              0.9466666579246521,
+              0.320000022649765,
+              0.320000022649765,
+              0.9200000166893005,
+              0.4266666769981384,
+              0.4266666769981384,
+              0.8933333158493042,
+              0.5333333611488342,
+              0.5333333611488342,
+              0.8666666746139526,
+              0.6399999856948853,
+              0.6399999856948853,
+              0.8399999737739563,
+              0.7466667294502258,
+              0.7466667294502258,
+              0.8133333325386047,
+              0.8133333325386047,
+              0.8133333325386047,
+              0.8133333325386047,
+              0.8400000333786011,
+              0.8400000333786011,
+              0.8400000333786011,
+              0.8666666746139526,
+              0.8666666746139526,
+              0.8666666746139526,
+              0.893333375453949,
+              0.893333375453949,
+              0.893333375453949,
+              0.9200000166893005,
+              0.9200000166893005,
+              0.9200000166893005,
+              0.9466666579246521,
+              0.9466666579246521,
+              0.9466666579246521,
+              0.9733333587646484,
+              0.9733333587646484,
+              0.9733333587646484,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "Op": "01",
+            "EntryCount": "10",
+            "EntryStride": "03"
+          }
+        },
+        "LODValidity": "01"
+      },
+      "LocationPrimitiveCylinder": {
+        "StartRadius": {
+          "MinValue": 123.0,
+          "MaxValue": 123.0,
+          "Distribution": null,
+          "Table": {
+            "Values": [
+              123.0
+            ],
+            "Op": "01",
+            "EntryCount": "01",
+            "EntryStride": "01"
+          }
+        },
+        "StartHeight": {
+          "MinValue": 50.0,
+          "MaxValue": 50.0,
+          "Distribution": null,
+          "Table": {
+            "Values": [
+              50.0
+            ],
+            "Op": "01",
+            "EntryCount": "01",
+            "EntryStride": "01"
+          }
+        },
+        "VelocityScale": {
+          "Distribution": "DistributionVelocityScale"
+        },
+        "StartLocation": {
+          "Distribution": null,
+          "Table": {
+            "Values": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Op": "01",
+            "EntryCount": "01",
+            "EntryStride": "03"
+          }
+        },
+        "LODValidity": "01"
+      },
+      "Spawn": {
+        "Rate": {
+          "MinValue": 33.0,
+          "MaxValue": 33.0,
+          "Distribution": null,
+          "Table": {
+            "Values": [
+              33.0
+            ],
+            "Op": "01",
+            "EntryCount": "01",
+            "EntryStride": "01"
+          }
+        },
+        "RateScale": {
+          "Distribution": null,
+          "Table": {
+            "Values": [
+              0.0
+            ],
+            "Op": "01",
+            "EntryCount": "01",
+            "EntryStride": "01"
+          }
+        },
+        "BurstList": [
+          {
+            "Count": 33,
+            "CountLow": -1,
+            "Time": 0.0
+          }
+        ],
+        "BurstScale": {
+          "MinValue": 1.0,
+          "MaxValue": 1.0,
+          "Distribution": null,
+          "Table": {
+            "Values": [
+              1.0
+            ],
+            "Op": "01",
+            "EntryCount": "01",
+            "EntryStride": "01"
+          }
+        },
+        "LODValidity": "01"
+      }
+    }
+  },
+  {
+    "name": "Particles_Paint",
+    "modules": {
+      "Required": {
+        "Material": "MI_Particles_Paint_Teams_01",
+        "bUseLegacyEmitterTime": false,
+        "SpawnRate": {
+          "Distribution": "RequiredDistributionSpawnRate"
+        },
+        "RandomImageTime": 1.0,
+        "EmitterLoops": 1,
+        "LODValidity": "01"
+      },
+      "Lifetime": {
+        "Lifetime": {
+          "MinValue": 2.0,
+          "MaxValue": 3.0,
+          "Distribution": null,
+          "Table": {
+            "Values": [
+              2.0,
+              3.0
+            ],
+            "Op": "02",
+            "EntryCount": "01",
+            "EntryStride": "02",
+            "SubEntryStride": "01"
+          }
+        },
+        "LODValidity": "01"
+      },
+      "Size": {
+        "StartSize": {
+          "MinValue": 25.0,
+          "MaxValue": 50.0,
+          "MinValueVec": [
+            25.0,
+            25.0,
+            25.0
+          ],
+          "MaxValueVec": [
+            50.0,
+            25.0,
+            25.0
+          ],
+          "Distribution": null,
+          "Table": {
+            "Values": [
+              25.0,
+              25.0,
+              25.0,
+              50.0,
+              25.0,
+              25.0
+            ],
+            "Op": "02",
+            "EntryCount": "01",
+            "EntryStride": "06",
+            "SubEntryStride": "03"
+          }
+        },
+        "LODValidity": "01"
+      },
+      "Velocity": {
+        "StartVelocity": {
+          "MinValue": -123.0,
+          "MaxValue": 555.0,
+          "MinValueVec": [
+            -123.0,
+            -123.0,
+            333.0
+          ],
+          "MaxValueVec": [
+            123.0,
+            123.0,
+            555.0
+          ],
+          "Distribution": null,
+          "Table": {
+            "Values": [
+              -123.0,
+              -123.0,
+              333.0,
+              123.0,
+              123.0,
+              555.0
+            ],
+            "Op": "02",
+            "EntryCount": "01",
+            "EntryStride": "06",
+            "SubEntryStride": "03"
+          }
+        },
+        "StartVelocityRadial": {
+          "Distribution": null,
+          "Table": {
+            "Values": [
+              0.0
+            ],
+            "Op": "01",
+            "EntryCount": "01",
+            "EntryStride": "01"
+          }
+        },
+        "LODValidity": "01"
+      },
+      "ColorOverLife": {
+        "ColorOverLife": {
+          "MinValue": 1.0,
+          "MaxValue": 1.0,
+          "MinValueVec": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "MaxValueVec": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "Distribution": null,
+          "Table": {
+            "Values": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "Op": "01",
+            "EntryCount": "01",
+            "EntryStride": "03"
+          }
+        },
+        "AlphaOverLife": {
+          "MaxValue": 1.0,
+          "Distribution": null,
+          "Table": {
+            "TimeScale": 1.0,
+            "Values": [
+              1.0,
+              0.0
+            ],
+            "Op": "01",
+            "EntryCount": "02",
+            "EntryStride": "01"
+          }
+        },
+        "LODValidity": "01"
+      },
+      "ParameterDynamic": {
+        "DynamicParams": [
+          {
+            "ParamName": "None",
+            "bUseEmitterTime": false,
+            "bSpawnTimeOnly": false,
+            "ValueMethod": "EDPV_UserSet",
+            "bScaleVelocityByParamValue": false,
+            "ParamValue": {
+              "MinValue": 0.0,
+              "MaxValue": 1.0,
+              "Distribution": null,
+              "Table": {
+                "TimeScale": 1.0,
+                "TimeBias": 0.0,
+                "Values": [
+                  1.0,
+                  0.0
+                ],
+                "Op": "01",
+                "EntryCount": "02",
+                "EntryStride": "01",
+                "SubEntryStride": "00",
+                "LockFlag": "00"
+              }
+            }
+          },
+          {
+            "ParamName": "None",
+            "bUseEmitterTime": false,
+            "bSpawnTimeOnly": false,
+            "ValueMethod": "EDPV_UserSet",
+            "bScaleVelocityByParamValue": false,
+            "ParamValue": {
+              "MinValue": 1.0,
+              "MaxValue": 1.0,
+              "Distribution": null,
+              "Table": {
+                "TimeScale": 0.0,
+                "TimeBias": 0.0,
+                "Values": [
+                  1.0
+                ],
+                "Op": "01",
+                "EntryCount": "01",
+                "EntryStride": "01",
+                "SubEntryStride": "00",
+                "LockFlag": "00"
+              }
+            }
+          },
+          {
+            "ParamName": "None",
+            "bUseEmitterTime": false,
+            "bSpawnTimeOnly": false,
+            "ValueMethod": "EDPV_UserSet",
+            "bScaleVelocityByParamValue": false,
+            "ParamValue": {
+              "MinValue": 1.0,
+              "MaxValue": 1.0,
+              "Distribution": null,
+              "Table": {
+                "TimeScale": 0.0,
+                "TimeBias": 0.0,
+                "Values": [
+                  1.0
+                ],
+                "Op": "01",
+                "EntryCount": "01",
+                "EntryStride": "01",
+                "SubEntryStride": "00",
+                "LockFlag": "00"
+              }
+            }
+          },
+          {
+            "ParamName": "None",
+            "bUseEmitterTime": false,
+            "bSpawnTimeOnly": false,
+            "ValueMethod": "EDPV_UserSet",
+            "bScaleVelocityByParamValue": false,
+            "ParamValue": {
+              "MinValue": 1.0,
+              "MaxValue": 1.0,
+              "Distribution": null,
+              "Table": {
+                "TimeScale": 0.0,
+                "TimeBias": 0.0,
+                "Values": [
+                  1.0
+                ],
+                "Op": "01",
+                "EntryCount": "01",
+                "EntryStride": "01",
+                "SubEntryStride": "00",
+                "LockFlag": "00"
+              }
+            }
+          }
+        ],
+        "UpdateFlags": 15,
+        "LODValidity": "01"
+      },
+      "AccelerationConstant": {
+        "Acceleration": [
+          0.0,
+          0.0,
+          -980.0
+        ],
+        "bAlwaysInWorldSpace": true,
+        "LODValidity": "01"
+      },
+      "LocationPrimitiveSphere": {
+        "StartRadius": {
+          "MinValue": 123.0,
+          "MaxValue": 123.0,
+          "Distribution": null,
+          "Table": {
+            "Values": [
+              123.0
+            ],
+            "Op": "01",
+            "EntryCount": "01",
+            "EntryStride": "01"
+          }
+        },
+        "VelocityScale": {
+          "Distribution": "DistributionVelocityScale"
+        },
+        "StartLocation": {
+          "Distribution": null,
+          "Table": {
+            "Values": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "Op": "01",
+            "EntryCount": "01",
+            "EntryStride": "03"
+          }
+        },
+        "LODValidity": "01"
+      },
+      "Rotation": {
+        "StartRotation": {
+          "MaxValue": 1.0,
+          "Distribution": null,
+          "Table": {
+            "Values": [
+              0.0,
+              1.0
+            ],
+            "Op": "02",
+            "EntryCount": "01",
+            "EntryStride": "02",
+            "SubEntryStride": "01"
+          }
+        },
+        "LODValidity": "01"
+      },
+      "RotationRate": {
+        "StartRotationRate": {
+          "MinValue": -0.10000000149011612,
+          "MaxValue": 0.10000000149011612,
+          "Distribution": null,
+          "Table": {
+            "Values": [
+              -0.10000000149011612,
+              0.10000000149011612
+            ],
+            "Op": "02",
+            "EntryCount": "01",
+            "EntryStride": "02",
+            "SubEntryStride": "01"
+          }
+        },
+        "LODValidity": "01"
+      },
+      "Spawn": {
+        "Rate": {
+          "Distribution": null,
+          "Table": {
+            "Values": [
+              0.0
+            ],
+            "Op": "01",
+            "EntryCount": "01",
+            "EntryStride": "01"
+          }
+        },
+        "RateScale": {
+          "MinValue": 1.0,
+          "MaxValue": 1.0,
+          "Distribution": null,
+          "Table": {
+            "Values": [
+              1.0
+            ],
+            "Op": "01",
+            "EntryCount": "01",
+            "EntryStride": "01"
+          }
+        },
+        "BurstList": [
+          {
+            "Count": 33,
+            "CountLow": -1,
+            "Time": 0.0
+          }
+        ],
+        "BurstScale": {
+          "MinValue": 1.0,
+          "MaxValue": 1.0,
+          "Distribution": null,
+          "Table": {
+            "Values": [
+              1.0
+            ],
+            "Op": "01",
+            "EntryCount": "01",
+            "EntryStride": "01"
+          }
+        },
+        "LODValidity": "01"
+      }
+    }
+  }
+]

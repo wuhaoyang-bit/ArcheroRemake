@@ -45,3 +45,18 @@ test('coincident dummies and wall contacts resolve deterministically',()=>{
  for(const a of targets){assert.ok(distance(a,p)>=DUMMY_RADIUS+PLAYER_RADIUS-1e-5);assert.ok(Math.abs(a.x)<=6.545&&Math.abs(a.z)<=17.545);}
  }
 });
+
+test('filled/exploded monsters no longer block walking over their remaining puddle',()=>{
+ const {c,t}=setup();t[0].x=2;t[0].z=0;t[1].x=-4;t[1].z=-4;
+ c.notifyTargetDeath(t[0].id);c.settings.moveSpeed=6;c.settings.moveModel=0;
+ c.press(1,0,0);c.move(1,100,0);for(let i=0;i<120;i++)c.update(1/120);
+ assert.ok(c.position.x>4,'must cross the vanished monster position');
+ assert.equal(t[0].x,2,'excluded target must not be pushed by contacts');
+});
+test('recoil ignores expired monster obstacles but still collides after reset',()=>{
+ const {c,t}=setup();t[0].x=2;t[0].z=0;t[1].x=-4;t[1].z=-4;
+ c.settings.recoilDistance=4;c.notifyTargetDeath(t[0].id);
+ c.triggerShotRecoil({x:-1,z:0});c.advanceRecoil(1);assert.ok(Math.abs(c.position.x-4)<1e-8);
+ c.position={x:0,z:0};c.resetTargetExclusions();c.triggerShotRecoil({x:-1,z:0});c.advanceRecoil(1);
+ assert.ok(c.position.x<2,'live monster must still block recoil');
+});

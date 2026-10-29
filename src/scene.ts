@@ -1,3 +1,4 @@
+import {HitSplashEffects} from './hit-splash-effects.ts';
 import { finishGpuWarmup } from './gpu-warmup.ts';
 import { LushBurstEffects } from './lush-burst-effects.ts';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
@@ -149,6 +150,7 @@ export class GameScene {
   private deferredDebugHits:ArrowHit[]=[];
   private applyArrowHit?:(hit:ArrowHit)=>void;
   juice?: JuiceParticles;
+  hitSplash?: HitSplashEffects;
   burstEffects?: LushBurstEffects;
   private practiceRevision=-1;
   private monsterRosterSignature='';
@@ -208,11 +210,12 @@ export class GameScene {
     const progress=[0,0,0,0,0,0],weights=[.06,.5,.2,.08,.1,.06];
     const loaded=(i:number,value=1)=>{progress[i]=value;report(.08+.52*progress.reduce((n,p,j)=>n+p*weights[j],0),'正在加载角色、箭矢与特效资源');};
     const track=<V,>(i:number,promise:Promise<V>)=>promise.then(value=>{loaded(i);return value;});
-    const [juice,burstEffects,character,arrows,monsters,bowRelease]=await Promise.all([
+    const [juice,burstEffects,character,arrows,monsters,bowRelease,hitSplash]=await Promise.all([
       track(0,JuiceParticles.load(this.scene)),track(1,LushBurstEffects.load(this.scene,p=>loaded(1,p))),
-      track(2,loadCharacter()),track(3,ArrowProjectiles.load(this.scene)),track(4,TrainingMonsterFactory.load()),track(5,BowReleaseEffects.load(this.scene)),
+      track(2,loadCharacter()),track(3,ArrowProjectiles.load(this.scene)),track(4,TrainingMonsterFactory.load()),track(5,BowReleaseEffects.load(this.scene)),HitSplashEffects.load(this.scene),
     ]);
-    this.juice=juice;this.burstEffects=burstEffects;this.monsterFactory=monsters;
+    this.hitSplash=hitSplash;this.juice=juice;
+    juice.resolveColor=hitSplash.resolveColor=(id,out)=>this.feedback?.currentColor(id,out)??null;this.burstEffects=burstEffects;this.monsterFactory=monsters;
     report(.6,'正在准备场景');await breathe();
     this.setRoom();
     const halo = groundCircle(1.05, 0x63e5d6, 0.15); halo.position.y = 0.025; this.player.add(halo);
@@ -258,6 +261,7 @@ export class GameScene {
       if(!this.feedback.hit(hit.id,hit.direction,this.controller.settings))return;
       const settings=this.controller.settings;
       this.cameraZoom.trigger('hit',settings);
+      const feet=this.feedback.feetOrigin(hit.id,this.juiceScratch);if(feet)this.hitSplash?.emit(hit.id,feet,settings);
       this.juice?.schedule(hit.id,settings,id=>this.juiceOriginFor(id));
     };
     this.arrows.onHit=hit=>{
@@ -283,9 +287,9 @@ export class GameScene {
       // Warm actual pooled objects, including effects disabled in the current settings.
       // The loading overlay stays opaque until GPU work has completed and these are cleared.
       report(.7,'正在准备射箭与命中特效');await breathe();
-      this.arrows.prepareWarmup(32,this.camera);this.bowRelease.prepareWarmup(16);this.juice.prepareWarmup(16,this.controller.settings,this.camera);
+      this.hitSplash.warmup(this.camera,this.controller.settings);this.arrows.prepareWarmup(32,this.camera);this.bowRelease.prepareWarmup(16);this.juice.prepareWarmup(16,this.controller.settings,this.camera);
       await compile(.7,.82,'正在准备射箭与命中特效');
-    }finally{this.arrows.clear();this.bowRelease.finishWarmup();this.juice.finishWarmup();}
+    }finally{this.arrows.clear();this.bowRelease.finishWarmup();this.juice.finishWarmup();this.hitSplash.clear();}
     try{
       report(.82,'正在准备爆炸与地面液体');await breathe();
       this.burstEffects.prepareWarmup(LIMITS.monsterCount[1],this.controller.settings,this.camera,this.roomSize,this.roomLength);
@@ -320,7 +324,7 @@ export class GameScene {
   private setRoom() {
     this.controller.resetTargetExclusions();
     this.hitDebug.clear();this.deferredDebugHits=[];
-    this.juice?.clear();this.burstEffects?.clear();
+    this.hitSplash?.clear();this.juice?.clear();this.burstEffects?.clear();
     this.bowRelease?.clear();
     this.cameraZoom.reset();this.applyCameraZoom();
     this.pendingShots.length=0;
@@ -339,7 +343,7 @@ export class GameScene {
     if(this.controller.combatTraining&&this.trainingVisual)this.feedback=new TrainingFeedback(this.trainingVisual,this.controller.getPracticeTargets(),this.roomSize,this.roomLength);
     if(this.feedback){
       this.feedback.onFilled=id=>{this.controller.notifyTargetDeath(id);this.arrows?.setTargets(this.feedback?.proxies??[]);};
-      this.feedback.onBurst=(center,feet,c)=>this.burstEffects?.emit(center,feet,c);
+      this.feedback.onBurst=(center,feet,c,color)=>this.burstEffects?.emit(center,feet,c,Math.random,color);
     }
     this.scene.add(this.room);
     this.arrows?.clear();
@@ -352,7 +356,7 @@ export class GameScene {
     this.controller.cancel();
     this.pendingShots.length=0;
     this.arrows?.clear();
-    this.juice?.clear();this.burstEffects?.clear();
+    this.hitSplash?.clear();this.juice?.clear();this.burstEffects?.clear();
     this.bowRelease?.clear();
     this.cameraZoom.reset();this.applyCameraZoom();
     if(this.controller.training==='monsters'){
@@ -370,6 +374,7 @@ export class GameScene {
     for(const hit of this.deferredDebugHits.splice(0))this.applyArrowHit?.(hit);
     this.feedback?.update(dt,this.controller.settings);
     if(this.controller.training==='monsters'){this.feedback?.pursue(dt,this.controller.position,this.controller.settings.monsterSpeed,this.controller.settings,()=>this.controller.resolveMonsterContacts());}
+    this.hitSplash?.update(dt,this.camera,(id,out)=>this.feedback?.feetOrigin(id,out)??null,this.controller.settings);
     this.juice?.update(dt,id=>this.juiceOriginFor(id));
     this.burstEffects?.update(dt,this.controller.settings,this.roomSize,this.roomLength,this.camera);
   }

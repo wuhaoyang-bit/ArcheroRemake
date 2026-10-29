@@ -18,18 +18,21 @@ export class LushBurstEffects{
  private pool:Burst[]=[];private bursts:Burst[]=[];private puddles:Puddle[]=[];private clock=0;private width=16;private length=38;private dirty=false;
  private canvas=document.createElement('canvas');private ctx:CanvasRenderingContext2D;private mask:T.CanvasTexture;private floor:T.Mesh;private floorU:any;private globalC?:BurstSettings;
  private shadeCanvas=document.createElement('canvas');private shadeCtx:CanvasRenderingContext2D;private shade:T.CanvasTexture;private stamp=document.createElement('canvas');private shadow:T.Mesh;private shadeSignature='';
+ private colorCanvas=document.createElement('canvas');private colorTexture:T.CanvasTexture;
  private sourceCamera:T.Quaternion;
  private constructor(private scene:T.Scene,private data:Asset,private bytes:ArrayBuffer,private textures:Record<string,T.Texture>){
   this.sourceCamera=new T.Quaternion().fromArray(data.camera.quaternion);this.canvas.width=this.canvas.height=1024;this.ctx=this.canvas.getContext('2d')!;this.mask=new T.CanvasTexture(this.canvas);this.mask.colorSpace=T.NoColorSpace;this.mask.generateMipmaps=false;this.mask.minFilter=T.LinearFilter;
   this.shadeCanvas.width=this.shadeCanvas.height=1024;this.shadeCtx=this.shadeCanvas.getContext('2d')!;this.shade=new T.CanvasTexture(this.shadeCanvas);this.shade.colorSpace=T.NoColorSpace;this.shade.generateMipmaps=false;this.shade.minFilter=T.LinearFilter;this.stamp.width=this.stamp.height=128;
+  this.colorCanvas.width=this.colorCanvas.height=1024;this.colorTexture=new T.CanvasTexture(this.colorCanvas);this.colorTexture.colorSpace=T.SRGBColorSpace;
   this.floorU={highlight:uniform(.3),gradient:uniform(.12),shadow:uniform(.18),shadowSoft:uniform(.06),shadowOffset:uniform(new T.Vector2(.03,.05)),room:uniform(new T.Vector2(16,38)),time:uniform(0),color:uniform(new T.Color(1,.87,0)),noiseScale:uniform(13),range:uniform(1),power:uniform(10),distortion:uniform(.05),speed:uniform(.3),normal:uniform(1),center:uniform(.03),roughness:uniform(.05)};
   const a=this.floorU,u=uv(),w=warp(textures.T_Lush_Noise_01,u,a.time,vec2(10),a.speed,a.distortion),nu=u.mul(a.noiseScale).add(w),rt=texture(this.mask,u.add(w.div(a.noiseScale.mul(10)))).a,n=sample(textures.T_Lush_Noise_01,nu).r;
   // Preserve coverage/outline, but shade the entire puddle like its smooth center.
   const outer=rt.mul(n.mul(a.range).add(1)).max(0).pow(a.power).min(1);
   const bump=a.center.mul(a.normal),pn=decode(sample(textures.T_Lush_Noise_01_Normal,nu).rg).mul(vec3(bump,bump,1));
   const field=texture(this.shade,u);
-  const base=a.color.mul(float(1).add(field.g.sub(.5).mul(2).mul(a.gradient)));
-  const color=mix(base,a.color.mul(.35).add(vec3(.65,.65,.55)).min(1),field.r.mul(a.highlight));
+  const puddleColor=texture(this.colorTexture,u).rgb;
+  const base=puddleColor.mul(float(1).add(field.g.sub(.5).mul(2).mul(a.gradient)));
+  const color=mix(base,puddleColor.mul(.35).add(vec3(.65,.65,.55)).min(1),field.r.mul(a.highlight));
   const mat=new T.MeshPhysicalNodeMaterial({transparent:true,depthWrite:false,side:T.DoubleSide,roughness:.05,specularIntensity:2});mat.colorNode=color;mat.opacityNode=outer;mat.normalNode=normalMap(pn.normalize().mul(.5).add(.5));mat.roughnessNode=a.roughness;
   // Nine taps soften the footprint beneath the unchanged paint silhouette.
   const su=u.sub(a.shadowOffset.div(a.room)),spread=a.shadowSoft.div(a.room);
@@ -37,7 +40,7 @@ export class LushBurstEffects{
   for(const [x,y] of [[1,0],[-1,0],[0,1],[0,-1],[.707,.707],[-.707,.707],[.707,-.707],[-.707,-.707]])shadowAlpha=shadowAlpha.add(texture(this.mask,su.add(spread.mul(vec2(x,y)))).a);
   const shadowMat=new T.MeshBasicNodeMaterial({color:0x302b1b,transparent:true,depthWrite:false,side:T.DoubleSide});shadowMat.opacityNode=shadowAlpha.div(12).mul(a.shadow);
   this.shadow=new T.Mesh(new T.PlaneGeometry(1,1),shadowMat);this.shadow.name='PuddleContactShadow';this.shadow.rotation.x=-Math.PI/2;this.shadow.position.y=.018;this.shadow.renderOrder=1;this.shadow.visible=false;scene.add(this.shadow);
-  this.floor=new T.Mesh(new T.PlaneGeometry(1,1),mat);this.floor.name='LushPersistentYellowPaint';this.floor.rotation.x=-Math.PI/2;this.floor.position.y=.035;this.floor.renderOrder=2;this.floor.visible=false;scene.add(this.floor);
+  this.floor=new T.Mesh(new T.PlaneGeometry(1,1),mat);this.floor.name='LushPersistentYellowPaint';this.floor.receiveShadow=true;this.floor.rotation.x=-Math.PI/2;this.floor.position.y=.035;this.floor.renderOrder=2;this.floor.visible=false;scene.add(this.floor);
  }
  static async load(scene:T.Scene,onProgress:(fraction:number)=>void=()=>{}){const [json,bin]=await Promise.all([fetch(ROOT+'scene.json'),fetch(ROOT+'scene.bin')]);if(!json.ok||!bin.ok)throw Error('Lush 特效动画资源加载失败');const data=await json.json() as Asset,bytes=await bin.arrayBuffer(),loader=new T.TextureLoader();onProgress(.1);const names=[...new Set([...Object.keys(data.textures).filter(n=>n!=='T_Lush_Dummy_Dif'),...[1,2,3].map(i=>`T_VFX_Lush_Splat_0${i}`)])];let complete=0;const textures=Object.fromEntries(await Promise.all(names.map(async n=>{const t=await loader.loadAsync(ROOT+n+'.png');t.colorSpace=T.NoColorSpace;t.wrapS=t.wrapT=T.RepeatWrapping;t.generateMipmaps=false;t.minFilter=T.LinearFilter;onProgress(.1+.65*++complete/names.length);return[n,t] as const})));onProgress(1);return new LushBurstEffects(scene,data,bytes,textures);}
  private view(s:Span){return new Float32Array(this.bytes,s.offset,s.length);}
@@ -60,7 +63,8 @@ export class LushBurstEffects{
    root.add(mesh);particles.push({enabled:true,index:indices[o.layer]++,mesh,u,source:o,tr:this.view(o.transforms),inputs:this.view(o.inputs),pos:o.positions?this.view(o.positions):undefined,norm:o.normals?this.view(o.normals):undefined});}
   const b={root,age:0,c:{...c},particles};this.pool.push(b);return b;
  }
- emit(center:T.Vector3,feet:T.Vector3,c:BurstSettings,random:()=>number=Math.random){
+ emit(center:T.Vector3,feet:T.Vector3,c:BurstSettings,random:()=>number=Math.random,bodyColor?:T.Color){
+  if(bodyColor)c={...c,burstColorR:bodyColor.r,burstColorG:bodyColor.g,burstColorB:bodyColor.b,puddleColorR:bodyColor.r,puddleColorG:bodyColor.g,puddleColorB:bodyColor.b};
   const b=this.pool.find(b=>!b.root.visible)??this.allocate(c);b.age=0;b.c={...c};b.root.visible=true;b.root.position.copy(center).add(new T.Vector3(c.burstFxX,c.burstFxY,c.burstFxZ));b.root.scale.setScalar(c.burstFxScale);
   const totals=[13,1,1,5,13,1];for(const p of b.particles){const l=p.source.layer;p.enabled=!!(c as any)[`burstLayer${l}Enabled`]&&p.index<Math.ceil(totals[l]*(c as any)[`burstLayer${l}Count`]);p.mesh.visible=false;p.u.team.value.set(c.burstColorR,c.burstColorG,c.burstColorB);p.u.opacity.value=(c as any)[`burstLayer${l}Opacity`];}
   this.bursts.push(b);if(c.puddleEnabled){const shape=c.puddleShape?Math.round(c.puddleShape)-1:Math.floor(random()*3);this.puddles.push({age:-c.puddleDelay,c:{...c},x:feet.x+c.puddleX,z:feet.z+c.puddleZ,shape,angle:(c.puddleRotation+(random()*2-1)*c.puddleRotationRange)*Math.PI/180,size:c.puddleSize*(1+(random()*2-1)*c.puddleSizeRange),scale:0,settled:false,opacity:1});this.dirty=true;}
@@ -86,6 +90,7 @@ export class LushBurstEffects{
  }
  private drawPuddles(){
   const ctx=this.ctx,n=this.canvas.width,shade=this.shadeCtx,stamp=this.stamp,sc=stamp.getContext('2d')!,m=stamp.width,c=this.globalC!;
+  const tint=this.colorCanvas.getContext('2d')!;tint.clearRect(0,0,n,n);
   ctx.clearRect(0,0,n,n);shade.clearRect(0,0,n,n);
   for(const p of this.puddles){if(p.age<0||p.scale<1e-6)continue;
    const image=this.textures[`T_VFX_Lush_Splat_0${p.shape+1}`].image as CanvasImageSource,size=p.size*p.scale,x=(p.x/this.width+.5)*n,z=(p.z/this.length+.5)*n;
@@ -96,8 +101,9 @@ export class LushBurstEffects{
    sc.globalCompositeOperation='lighter';const hx=m/2+c.puddleHighlightX*unit,hz=m/2+c.puddleHighlightZ*unit,r=c.puddleHighlightSize*unit,light=sc.createRadialGradient(hx,hz,r*.25,hx,hz,r);light.addColorStop(0,'rgba(255,0,0,1)');light.addColorStop(1,'rgba(255,0,0,0)');sc.fillStyle=light;sc.fillRect(0,0,m,m);
    sc.globalCompositeOperation='destination-in';sc.save();sc.translate(m/2,m/2);sc.rotate(p.angle);sc.drawImage(image,-unit/2,-unit/2,unit,unit);sc.restore();sc.globalCompositeOperation='source-over';
    shade.save();shade.globalAlpha=p.opacity;shade.drawImage(stamp,x-size*extent*n/this.width/2,z-size*extent*n/this.length/2,size*extent*n/this.width,size*extent*n/this.length);shade.restore();
+   sc.clearRect(0,0,m,m);sc.save();sc.translate(m/2,m/2);sc.rotate(p.angle);sc.drawImage(image,-unit/2,-unit/2,unit,unit);sc.restore();sc.globalCompositeOperation='source-in';sc.fillStyle=new T.Color(p.c.puddleColorR,p.c.puddleColorG,p.c.puddleColorB).getStyle();sc.fillRect(0,0,m,m);sc.globalCompositeOperation='source-over';tint.save();tint.globalAlpha=p.opacity;tint.drawImage(stamp,x-size*extent*n/this.width/2,z-size*extent*n/this.length/2,size*extent*n/this.width,size*extent*n/this.length);tint.restore();
   }
-  this.mask.needsUpdate=true;this.shade.needsUpdate=true;this.floor.visible=this.puddles.some(p=>p.age>=0);this.shadow.visible=this.floor.visible;this.dirty=false;
+  this.colorTexture.needsUpdate=true;this.mask.needsUpdate=true;this.shade.needsUpdate=true;this.floor.visible=this.puddles.some(p=>p.age>=0);this.shadow.visible=this.floor.visible;this.dirty=false;
  }
  private removeBurst(b:Burst){b.root.visible=false;for(const p of b.particles)p.mesh.visible=false;this.bursts=this.bursts.filter(x=>x!==b);}
  clear(){this.clock=0;for(const b of [...this.bursts])this.removeBurst(b);this.puddles=[];this.ctx.clearRect(0,0,1024,1024);this.shadeCtx.clearRect(0,0,1024,1024);this.mask.needsUpdate=true;this.shade.needsUpdate=true;this.floor.visible=false;this.shadow.visible=false;this.dirty=false;}

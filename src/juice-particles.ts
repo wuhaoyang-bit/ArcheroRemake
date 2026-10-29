@@ -105,24 +105,26 @@ export function sampleJuice(p:JuiceSpawn,age:number,curve:JuiceCurveId,drag:numb
  const u=age/p.life,remain=juiceRemain(curve,u,drag,points),sizeRemain=juiceRemain(curve==='custom'?'easeOutCubic':curve,u,drag),travel=p.speed0*juiceIntegrateRemain(curve,u,p.life,drag,points);
  return {position:[p.ox+p.dirX*travel,p.oy,p.oz+p.dirZ*travel],size:Math.max(.01,p.s0*sizeRemain),speed:p.speed0*remain,remain};
 }
-type Wave={mesh:T.InstancedMesh;spawns:JuiceSpawn[];age:number;settings:HitSettings};
+type Wave={owner?:string;mesh:T.InstancedMesh;spawns:JuiceSpawn[];age:number;settings:HitSettings};
 type Pending={id:string;remaining:number;settings:HitSettings};
 /** Reusable wave pool: each hit retains its own settings; rapid hits never postpone earlier bursts. */
 export class JuiceParticles{
+ resolveColor?:(id:string,out:T.Color)=>T.Color|null;
+ private tint=new T.Color();
  private waves:Wave[]=[];private pending:Pending[]=[];private dummy=new T.Object3D();emitted=0;
  private constructor(private scene:T.Scene,private texture:T.Texture){texture.colorSpace=T.SRGBColorSpace;}
- static async load(scene:T.Scene,baseUrl=import.meta.env.BASE_URL){return new JuiceParticles(scene,await new T.TextureLoader().loadAsync(`${baseUrl}juice-lab/juice.png`));}
+ static async load(scene:T.Scene,baseUrl=import.meta.env.BASE_URL){return new JuiceParticles(scene,await new T.TextureLoader().loadAsync(`${baseUrl}juice-lab/juice-mask.png`));}
  static createForTest(scene:T.Scene){const tex=new T.DataTexture(new Uint8Array([255,255,255,255]),1,1);tex.needsUpdate=true;return new JuiceParticles(scene,tex);}
  schedule(id:string,c:HitSettings,resolve:(id:string)=>T.Vector3|null){
   if(!c.juiceEnabled)return;
-  if(c.juiceDelay<=0){const p=resolve(id);if(p)this.emit(p.clone().add(new T.Vector3(0,c.juiceHeight,0)),c);}
+  if(c.juiceDelay<=0){const p=resolve(id);if(p)this.emit(p.clone().add(new T.Vector3(0,c.juiceHeight,0)),c,0,newJuiceSeed(),id);}
   else this.pending.push({id,remaining:c.juiceDelay,settings:{...c,juiceSpeedCurve:c.juiceSpeedCurve.map(p=>({...p}))}});
  }
- emit(origin:T.Vector3,c:HitSettings,age=0,seed=newJuiceSeed()){
+ emit(origin:T.Vector3,c:HitSettings,age=0,seed=newJuiceSeed(),owner?:string){
   if(!c.juiceEnabled)return;
   let wave=this.waves.find(w=>w.spawns.every(p=>w.age>=p.life));
   if(!wave){const material=new T.MeshBasicMaterial({map:this.texture,transparent:true,depthWrite:false,side:T.DoubleSide});const mesh=new T.InstancedMesh(new T.PlaneGeometry(1,1),material,JUICE_MAX);mesh.name='Green juice burst';mesh.frustumCulled=false;mesh.renderOrder=9;mesh.count=0;this.scene.add(mesh);wave={mesh,spawns:[],age:0,settings:{...c,juiceSpeedCurve:c.juiceSpeedCurve.map(p=>({...p}))}};this.waves.push(wave);}
-  wave.age=age;wave.settings={...c,juiceSpeedCurve:c.juiceSpeedCurve.map(p=>({...p}))};wave.spawns=buildJuiceSpawns(origin,juiceParams(c,seed));
+  wave.owner=owner;wave.age=age;wave.settings={...c,juiceSpeedCurve:c.juiceSpeedCurve.map(p=>({...p}))};wave.spawns=buildJuiceSpawns(origin,juiceParams(c,seed));
   const material=wave.mesh.material as T.MeshBasicMaterial;material.color.set(c.juiceColor);material.depthTest=!!c.juiceDepthTest;
   this.emitted+=wave.spawns.length;
  }
@@ -130,10 +132,10 @@ export class JuiceParticles{
   for(const w of this.waves)w.age+=dt;
   const ready:Pending[]=[];for(const p of this.pending){p.remaining-=dt;if(p.remaining<=1e-9)ready.push(p);}
   this.pending=this.pending.filter(p=>p.remaining>1e-9);
-  for(const p of ready){const origin=resolve?.(p.id);if(origin)this.emit(origin.clone().add(new T.Vector3(0,p.settings.juiceHeight,0)),p.settings,Math.max(0,-p.remaining));}
+  for(const p of ready){const origin=resolve?.(p.id);if(origin)this.emit(origin.clone().add(new T.Vector3(0,p.settings.juiceHeight,0)),p.settings,Math.max(0,-p.remaining),newJuiceSeed(),p.id);}
  }
  prepare(camera:T.Camera,c:HitSettings){
-  for(const w of this.waves){let count=0;if(c.juiceEnabled)for(const p of w.spawns){if(w.age>=p.life)continue;const sample=sampleJuice(p,w.age,juiceCurveFromSettings(w.settings),w.settings.juiceDragRel,w.settings.juiceSpeedCurve);this.dummy.position.fromArray(sample.position);this.dummy.quaternion.copy(camera.quaternion);this.dummy.scale.setScalar(sample.size);this.dummy.updateMatrix();w.mesh.setMatrixAt(count++,this.dummy.matrix);}w.mesh.count=count;w.mesh.instanceMatrix.needsUpdate=true;}
+  for(const w of this.waves){const tint=w.owner?this.resolveColor?.(w.owner,this.tint):null;if(tint)(w.mesh.material as T.MeshBasicMaterial).color.copy(tint);let count=0;if(c.juiceEnabled)for(const p of w.spawns){if(w.age>=p.life)continue;const sample=sampleJuice(p,w.age,juiceCurveFromSettings(w.settings),w.settings.juiceDragRel,w.settings.juiceSpeedCurve);this.dummy.position.fromArray(sample.position);this.dummy.quaternion.copy(camera.quaternion);this.dummy.scale.setScalar(sample.size);this.dummy.updateMatrix();w.mesh.setMatrixAt(count++,this.dummy.matrix);}w.mesh.count=count;w.mesh.instanceMatrix.needsUpdate=true;}
  }
  clear(){this.pending=[];for(const w of this.waves){w.spawns=[];w.mesh.count=0;}}
  prepareWarmup(count:number,c:HitSettings,camera:T.Camera){const warm={...c,juiceEnabled:1,juiceCount:64,juiceLife:1.8};for(let i=0;i<count;i++)this.emit(new T.Vector3(),warm,.1,i);this.prepare(camera,warm);}

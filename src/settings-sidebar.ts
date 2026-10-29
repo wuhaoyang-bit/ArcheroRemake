@@ -7,7 +7,7 @@ export const GAME_SIDEBAR_CATEGORIES:SidebarCategory[]=[
  {id:'puddle',label:'地面液体 · 外观与展开',sections:['撑爆 · 液体残留']},
  {id:'burst',label:'怪物爆炸 · 动画与特效',sections:['史莱姆 · 蓄爆','撑爆 · 六层特效']},
  {id:'camera-zoom',label:'屏幕伸缩',sections:['屏幕伸缩 · Out → 阻尼弹簧']},
- {id:'hit',label:'受击 · 反馈与调试',sections:['训练场 · 受击反馈','箭矢命中调试']},
+ {id:'hit',label:'受击 · 反馈与调试',sections:['受伤 · 液片飞溅','受伤 · 跟随汁滴','训练场 · 受击反馈','箭矢命中调试']},
  {id:'locking',label:'锁定 · 选敌、转向与圆环',sections:['锁定圆环 UI','旋转角速度－锁定','目标锁定']},
  {id:'movement',label:'移动 · 角色、轮盘与锚点',sections:['轮盘与锚点','锚点防抖','角色','移动速度模型','朝向调试']},
  {id:'scene',label:'场景 · 房间与镜头',sections:['房间与镜头']},
