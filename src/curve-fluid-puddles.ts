@@ -1,5 +1,5 @@
 import * as T from 'three/webgpu';
-import {attribute} from 'three/tsl';
+import {attribute,mix,normalViewGeometry,smoothstep,transformNormalToView,vec3} from 'three/tsl';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {puddleRenderKey,type PuddleState} from './puddle-live-settings.ts';
 import type {BurstSettings} from './slime-burst-config.ts';
@@ -18,7 +18,15 @@ export class CurveFluidPuddles {
  private constructor(scene:T.Scene,geometries:T.BufferGeometry[],environment:T.Texture|null){
   for(const [i,geometry] of geometries.entries()){
    geometry.setAttribute('puddleOpacity',new T.InstancedBufferAttribute(new Float32Array(MAX_CURVE_PUDDLES).fill(1),1));
-   const material=new T.MeshPhysicalNodeMaterial({color:0xffffff,roughness:.08,metalness:0,ior:1.45,envMap:environment,envMapIntensity:1,alphaHash:true});
+   // Match the original puddle's lighting baseline; studio illumination washed out body colours.
+   // Scene lights still produce highlights on the actual curved surface.
+   const material=new T.MeshPhysicalNodeMaterial({color:0xffffff,roughness:.08,metalness:0,ior:1.45,envMap:environment,envMapIntensity:0,alphaHash:true});
+   // The flattened mesh has steep, smoothly shaded rims. Lift only those shading
+   // normals toward the floor normal; keep the upper surface's curved highlights.
+   // Use the morphed view-space normal so this also follows the spreading animation.
+   const up=transformNormalToView(vec3(0,1,0)).normalize();
+   const rim=smoothstep(.35,.95,normalViewGeometry.dot(up)).oneMinus();
+   material.normalNode=mix(normalViewGeometry,up,rim.mul(.7)).normalize();
    material.opacityNode=attribute('puddleOpacity','float');
    const batch=new T.InstancedMesh(geometry,material,MAX_CURVE_PUDDLES);
    batch.name=`CurveFluidPuddle${i+1}`;batch.frustumCulled=false;

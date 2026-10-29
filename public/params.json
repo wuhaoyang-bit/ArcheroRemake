@@ -127,7 +127,7 @@
     "puddleShadowX": 0.03,
     "puddleShadowZ": 0.05,
     "puddleDelay": 0,
-    "puddleSize": 6.5,
+    "puddleSize": 8,
     "puddleStart": 0,
     "puddleFrequency": 5.5,
     "puddleDamping": 0.55,

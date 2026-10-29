@@ -1,7 +1,7 @@
 import {chromium} from '@playwright/test';
 import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
-const out='analysis/puddle-live';await mkdir(out,{recursive:true});
+const out='analysis/puddle-color-fix';await mkdir(out,{recursive:true});
 const browser=await chromium.launch({headless:false,executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',args:['--enable-unsafe-webgpu']});
 try{
  const page=await browser.newPage({viewport:{width:1000,height:720}}),errors=[];
@@ -36,10 +36,11 @@ try{
   renderer.setAnimationLoop(()=>renderer.render(scene,camera));
   return {initial,edited,unchanged,retimed,sourceColor:color.toArray(),meshMaterial:{envMap:!!batch.material.envMap,envMapIntensity:batch.material.envMapIntensity,specularIntensity:batch.material.specularIntensity,ior:batch.material.ior},oldMaterial:{envMap:!!floor.material.envMap,specularIntensity:floor.material.specularIntensity,ior:floor.material.ior}};
  });
+ assert.equal(result.meshMaterial.envMapIntensity,0);
  result.sourceColor.forEach((v,i)=>assert.ok(Math.abs(v-result.initial.color[i])<1e-6));
  assert.ok(Math.abs(result.edited.scale[0]/result.initial.scale[0]-2)<1e-6);assert.deepEqual(result.edited.position,[2,.00800000037997961,-1]);assert.equal(result.edited.age,result.initial.age);assert.deepEqual(result.edited.color,result.initial.color);assert.equal(result.unchanged.version,result.edited.version);assert.equal(result.retimed.settled,false);
- for(const mode of ['old','mesh','mesh-no-environment','mesh-matched-lighting']){
-  await page.evaluate(mode=>{const {fx,c,camera,batch}=window.puddleCheck;fx.update(0,{...c,puddleRenderer:mode==='old'?0:1},24,24,camera);batch.material.envMapIntensity=mode==='old'||mode==='mesh'?1:0;batch.material.specularIntensity=mode==='mesh-matched-lighting'?2:1;},mode);
+ for(const mode of ['old','mesh','mesh-previous-environment']){
+  await page.evaluate(mode=>{const {fx,c,camera,batch}=window.puddleCheck;fx.update(0,{...c,puddleRenderer:mode==='old'?0:1},24,24,camera);batch.material.envMapIntensity=mode==='mesh-previous-environment'?1:0;},mode);
   await page.waitForTimeout(250);await page.screenshot({path:`${out}/${mode}.png`});
  }
  assert.deepEqual(errors,[]);await writeFile(`${out}/results.json`,JSON.stringify({result,errors},null,2));console.log(JSON.stringify(result));console.log('PASS: live GPU scale/position, stable body colour, no idle uploads, spring retuning; controlled lighting comparison captured.');
