@@ -1,6 +1,11 @@
+import {LIQUID_FLIGHT_DEFAULTS,LIQUID_FLIGHT_LIMITS,LIQUID_FLIGHT_CONTROLS} from './slime-liquid-flight-config.ts';
 // Legacy puddleInnerPower / puddleEdgeColor / puddleReflection keys are retained for saved-file compatibility only.
 export const BURST_DEFAULTS={
- puddleRenderer:0,
+ ...LIQUID_FLIGHT_DEFAULTS,
+ puddleRenderer:2,
+ liquidDropCount:24,
+ liquidRippleStrength:1,
+ liquidFootsteps:1,
  puddleCanvasShapes:7,
  puddleCurveShapes:7,
  burstEnabled:1,
@@ -114,7 +119,11 @@ export const BURST_DEFAULTS={
 };
 export type BurstSettings=typeof BURST_DEFAULTS;
 export const BURST_LIMITS:Record<keyof BurstSettings,[number,number,number]>={
- puddleRenderer:[0,1,1],
+ ...LIQUID_FLIGHT_LIMITS,
+ puddleRenderer:[0,2,1],
+ liquidDropCount:[0,64,1],
+ liquidRippleStrength:[0,3,.05],
+ liquidFootsteps:[0,1,1],
  puddleCanvasShapes:[1,7,1],
  puddleCurveShapes:[1,7,1],
  burstEyeEnabled:[0,1,1],
@@ -260,7 +269,11 @@ export const BURST_CONTROLS:[keyof BurstSettings,string,string,string][]=[
  ['burstColorR','特效红通道','','线性颜色。'],
  ['burstColorG','特效绿通道','','默认黄色。'],
  ['burstColorB','特效蓝通道','','所有六层共用。'],
- ['puddleRenderer','液体渲染方式','','可随时切换：旧版平面粘液 / CurveFluid 三维粘液。'],
+ ['liquidDropCount','融合液面 · 爆开液滴数量','个','基准数量，随怪物爆开时体型增长。只用于融合液面模式。'],
+ ...LIQUID_FLIGHT_CONTROLS,
+ ['liquidRippleStrength','融合液面 · 涟漪力度','倍','落滴与踩踏共用的涟漪力度，0 关闭。'],
+ ['liquidFootsteps','融合液面 · 踩踏反馈','0/1','玩家移动踩入液面时产生涟漪和小飞溅。'],
+ ['puddleRenderer','液体渲染方式','','可随时切换：旧版平面粘液 / CurveFluid 三维粘液 / 融合液面与交互。'],
  ['puddleHighlightEnabled','柔和大高光开关','0/1','独立控制浅色圆润亮斑。'],
  ['puddleHighlightStrength','大高光强度','','向浅色提亮，不使用边缘反光。'],
  ['puddleHighlightSize','大高光大小','比例','相对液滩尺寸的半径。'],
@@ -276,7 +289,7 @@ export const BURST_CONTROLS:[keyof BurstSettings,string,string,string][]=[
  ['puddleShadowZ','阴影纵向偏移','u','与液滩动画同步。'],
  ['puddleEnabled','生成液体残留','0/1','独立于空中特效。'],
  ['puddleDelay','液滩生成延迟','s','相对模型消失。'],
- ['puddleSize','液滩目标直径','u','原始笔刷外接尺寸。'],
+ ['puddleSize','液滩目标直径','u','旧模式为笔刷外接尺寸；融合模式为主体基准直径，并随爆开体型适度增长，也影响落滴残留尺寸。'],
  ['puddleStart','液滩起始尺寸比例','','0从无展开。'],
  ['puddleFrequency','液滩弹簧频率','Hz','复用受击弹簧。'],
  ['puddleDamping','液滩弹簧阻尼','','小于1超调。'],

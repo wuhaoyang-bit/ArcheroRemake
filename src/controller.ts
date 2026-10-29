@@ -295,6 +295,7 @@ export class MovementController {
   setRecoilSpeedCurve(points:JuiceSpeedPoint[]){this.settings.recoilSpeedCurve=validateJuiceSpeedCurve(points);}
   setEyeHitCurve(key:EyeHitCurveKey,points:JuiceSpeedPoint[]){this.settings[key]=validateEyeHitCurve(points);}
   setEyeSpeedCurve(points:JuiceSpeedPoint[]){this.settings.slimeEyeSpeedCurve=validateJuiceSpeedCurve(points);}
+  setLiquidSpeedCurve(points:JuiceSpeedPoint[]){this.settings.liquidSpeedCurve=validateJuiceSpeedCurve(points);}
   setJuiceSpeedCurve(points:JuiceSpeedPoint[]){this.settings.juiceSpeedCurve=validateJuiceSpeedCurve(points);}
   setCurve(points: TurnCurvePoint[]) { this.settings.turnCurve = validateCurve(points); }
   setLockCurve(points: TurnCurvePoint[]) { this.settings.lockTurnCurve = validateCurve(points); }

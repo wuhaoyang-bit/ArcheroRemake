@@ -1,8 +1,10 @@
 import {eyeDeformation,directionalScale,eyeSupport,type EyeImpact,type EyeApproach} from './eye-deformation.ts';
 import {eyeContact,eyePlayerContact,type EyeObstacle,type EyePlayer} from './eye-collision.ts';
-import {sampleJuiceSpeedCurve,type JuiceSpeedPoint} from './juice-speed-curve.ts';
+import {type JuiceSpeedPoint} from './juice-speed-curve.ts';
 import {DEFAULT_EYE_SPEED_CURVE} from './slime-eyes-config.ts';
 import * as T from 'three/webgpu';
+import {slimeFlight as eyeFlight} from './slime-flight-motion.ts';
+export {slimeFlight as eyeFlight} from './slime-flight-motion.ts';
 import type {SlimeEyesSettings} from './slime-eyes-config.ts';
 type EyeMotionSettings=SlimeEyesSettings&{slimeEyeSpeedCurve?:JuiceSpeedPoint[]};
 type Fragment={impact?:EyeImpact;sourceId?:string;ballistic:boolean;age:number;origin:T.Vector3;direction:T.Vector3;landed:boolean;grounded:boolean;object:T.Object3D;velocity:T.Vector3;spin:T.Vector3;radius:number;settled:boolean;settings:EyeMotionSettings};
@@ -124,6 +126,3 @@ export class SlimeEyeDebris{
  clear(){for(const f of this.fragments){f.object.removeFromParent();f.object.traverse(o=>{if(o instanceof T.Mesh)(o.material as T.Material).dispose();});}this.fragments=[];}
  snapshot(){return this.fragments.map(f=>({position:f.object.position.toArray(),velocity:f.velocity.toArray(),settled:f.settled,landed:f.landed,grounded:f.grounded}));}
 }
-
-/** Integrate the editable radial curve exactly; gravity is independent from launch timing. */
-export function eyeFlight(age:number,c:EyeMotionSettings){const t=Math.max(0,age),duration=c.slimeEyeCurveTime,curve=c.slimeEyeSpeedCurve??DEFAULT_EYE_SPEED_CURVE,sample=sampleJuiceSpeedCurve(curve,t/duration);return {speed:c.slimeEyeEjectSpeed*sample.speed,distance:c.slimeEyeEjectSpeed*(duration*sample.integral+Math.max(0,t-duration)*curve.at(-1)!.progress/100),drop:.5*c.slimeEyeEjectGravity*t*t,fallSpeed:c.slimeEyeEjectGravity*t};}

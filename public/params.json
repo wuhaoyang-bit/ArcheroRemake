@@ -77,7 +77,14 @@
     "slimeBulge": 0.65,
     "slimeInflationFrequency": 5.5,
     "slimeInflationDamping": 0.55,
-    "puddleRenderer": 1,
+    "liquidEjectSpeed": 13,
+    "liquidSpeedJitter": 3,
+    "liquidGravity": 30,
+    "liquidCurveTime": 0.9,
+    "puddleRenderer": 2,
+    "liquidDropCount": 8,
+    "liquidRippleStrength": 1,
+    "liquidFootsteps": 1,
     "puddleCanvasShapes": 7,
     "puddleCurveShapes": 1,
     "burstEnabled": 1,
@@ -128,7 +135,7 @@
     "puddleShadowX": 0.03,
     "puddleShadowZ": 0.05,
     "puddleDelay": 0,
-    "puddleSize": 8,
+    "puddleSize": 4,
     "puddleStart": 0,
     "puddleFrequency": 5.5,
     "puddleDamping": 0.55,
@@ -255,6 +262,16 @@
     "hitSpringFrequency": 5.2,
     "hitSpringDamping": 0.25,
     "slimeEyeSpeedCurve": [
+      {
+        "time": 0,
+        "progress": 120
+      },
+      {
+        "time": 100,
+        "progress": 8
+      }
+    ],
+    "liquidSpeedCurve": [
       {
         "time": 0,
         "progress": 120

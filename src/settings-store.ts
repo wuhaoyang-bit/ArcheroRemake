@@ -37,6 +37,10 @@ export function parseSettingsDocument(raw: unknown, strict = false): Settings {
     if (strict && (value < LIMITS[key][0] || value > LIMITS[key][1])) throw new Error(`参数 ${key} 超出范围`);
     settings[key] = sanitize(key, value);
   }
+  // Old files shared eye flight. Copy saved eye values once; explicit liquid values win thereafter.
+  for(const [liquid,eye] of [['liquidEjectSpeed','slimeEyeEjectSpeed'],['liquidGravity','slimeEyeEjectGravity'],['liquidCurveTime','slimeEyeCurveTime']] as const){
+    if(source[liquid]===undefined&&source[eye]!==undefined)settings[liquid]=settings[eye];
+  }
   // Preserve the actual release time in files saved before the direct timing control.
   if (source.hitReleaseTime === undefined && (source.hitReleaseOffset !== undefined || source.hitKnockTime !== undefined)) {
     const offset = source.hitReleaseOffset ?? 0;
@@ -58,6 +62,7 @@ export function parseSettingsDocument(raw: unknown, strict = false): Settings {
   settings.ringCurve = validateProgressCurve(source.ringCurve === undefined ? DEFAULTS.ringCurve : source.ringCurve);
   for(const key of EYE_HIT_CURVE_KEYS)settings[key]=validateEyeHitCurve(source[key]??DEFAULTS[key]);
   settings.slimeEyeSpeedCurve=validateJuiceSpeedCurve(source.slimeEyeSpeedCurve ?? DEFAULTS.slimeEyeSpeedCurve);
+  settings.liquidSpeedCurve=validateJuiceSpeedCurve(source.liquidSpeedCurve ?? source.slimeEyeSpeedCurve ?? DEFAULTS.liquidSpeedCurve);
   settings.juiceSpeedCurve=validateJuiceSpeedCurve(source.juiceSpeedCurve ?? DEFAULTS.juiceSpeedCurve);
   settings.recoilSpeedCurve=validateJuiceSpeedCurve(source.recoilSpeedCurve ?? DEFAULTS.recoilSpeedCurve);
   return settings;

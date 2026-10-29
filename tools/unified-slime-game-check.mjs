@@ -1,0 +1,30 @@
+import {chromium} from '@playwright/test';import assert from 'node:assert/strict';import {mkdir,writeFile} from 'node:fs/promises';
+const liquidTuning={liquidEjectSpeed:12,liquidSpeedJitter:3,liquidGravity:18,liquidCurveTime:.4,liquidSpeedCurve:[{time:0,progress:100},{time:100,progress:10}]};
+const out='analysis/unified-slime-game';await mkdir(out,{recursive:true});const b=await chromium.launch({headless:false,executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',args:['--enable-unsafe-webgpu']});
+try{const p=await b.newPage({viewport:{width:1440,height:1000}}),errors=[];p.on('pageerror',e=>errors.push(e.message));p.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
+await p.route('**/assets/lush-burst/scene.bin',r=>r.fulfill({path:'public/assets/lush-burst/scene.bin',contentType:'application/octet-stream'}));
+await p.route('**/params.json',async r=>{const response=await r.fetch(),j=await response.json();Object.assign(j.settings,{puddleRenderer:2,monsterCount:2,monsterSpeed:0,slimeInjectionAmount:100,slimeCapacity:100,puddleLifetime:0,...liquidTuning});await r.fulfill({json:j});});
+// Expose existing instances only in this test response; no game source/debug API is changed.
+await p.route(/\/src\/main\.ts(?:\?.*)?$/,async r=>{const response=await r.fetch(),s=await response.text();assert.match(s,/__ARCHERO__:\s*\{/);await r.fulfill({response,body:s.replace(/__ARCHERO__:\s*\{/, '__ARCHERO__: { testGame: game, testController: controller,')});});
+await p.goto('http://127.0.0.1:5187');await p.waitForFunction(()=>window.__ARCHERO__?.snapshot().ready,{},{timeout:240000});await p.locator('#switch-monster-training').click();await p.evaluate(()=>window.__ARCHERO__.pauseForInspection(true));
+const initial=await p.evaluate(()=>structuredClone(window.__ARCHERO__.testController.settings));
+await p.locator('#settings-category').selectOption('puddle');
+await p.locator('#value-liquidSpeedJitter').fill('5');await p.locator('#value-liquidSpeedJitter').press('Tab');
+assert.equal(await p.evaluate(()=>window.__ARCHERO__.testController.settings.liquidSpeedJitter),5);
+await p.locator('#undo-settings').click();assert.equal(await p.evaluate(()=>window.__ARCHERO__.testController.settings.liquidSpeedJitter),3);
+await p.locator('#value-liquidEjectSpeed').fill('9');await p.locator('#value-liquidEjectSpeed').press('Tab');
+assert.equal(await p.evaluate(()=>window.__ARCHERO__.testController.settings.liquidEjectSpeed),9);
+await p.locator('#liquid-speed-curve-editor [data-curve="edit"]').click();
+await p.locator('dialog[open] [name="progress"]').fill('22');await p.locator('dialog[open] button[type="submit"]').click();
+assert.equal(await p.evaluate(()=>window.__ARCHERO__.testController.settings.liquidSpeedCurve.at(-1).progress),22);
+await p.locator('#undo-settings').click();
+assert.deepEqual(await p.evaluate(()=>window.__ARCHERO__.testController.settings.liquidSpeedCurve),liquidTuning.liquidSpeedCurve);
+await p.locator('#undo-settings').click();
+assert.equal(await p.evaluate(()=>window.__ARCHERO__.testController.settings.liquidEjectSpeed),liquidTuning.liquidEjectSpeed);
+assert.deepEqual(await p.evaluate(()=>window.__ARCHERO__.testController.settings.slimeEyeSpeedCurve),initial.slimeEyeSpeedCurve);
+const result=await p.evaluate(()=>{const a=window.__ARCHERO__,id=a.snapshot().feedback[0].id;a.testSlimeHit(id);for(let i=0;i<1200&&a.snapshot().feedback[0].burst.phase!=='gone';i++)a.stepInspection(1/120);const burst=a.snapshot();const motion={speeds:a.testGame.burstEffects.liquid.drops.filter(d=>d.paint).map(d=>d.settings.slimeEyeEjectSpeed),drop:a.testGame.burstEffects.liquid.drops.find(d=>d.paint).settings,eye:a.testGame.feedback.eyeDebris.fragments[0].settings};for(let i=0;i<240;i++)a.stepInspection(1/120);const settled=a.snapshot();
+const game=a.testGame,ctl=a.testController,liquid=game.burstEffects.liquid,puddle=game.burstEffects.puddles[0];ctl.mode='moving';ctl.position={x:puddle.x,z:puddle.z};game.interactPlayerEyes({x:puddle.x-.7,z:puddle.z},.1);game.sync(0);game.render();const wet=a.snapshot();
+ctl.settings.puddleRenderer=1;game.advanceFeedback(0);const old=a.snapshot();ctl.settings.puddleRenderer=2;game.advanceFeedback(0);const restored=a.snapshot();
+return {motion,burst:burst.burstEffects.ground,settled:settled.burstEffects.ground,wet:wet.burstEffects.ground,old:old.burstEffects.ground,restored:restored.burstEffects.ground};});
+for(const [liquid,eye] of [['liquidEjectSpeed','slimeEyeEjectSpeed'],['liquidGravity','slimeEyeEjectGravity'],['liquidCurveTime','slimeEyeCurveTime'],['liquidSpeedCurve','slimeEyeSpeedCurve']]){if(liquid==='liquidEjectSpeed'){assert.ok(new Set(result.motion.speeds).size>1);assert.ok(result.motion.speeds.every(v=>v>=9&&v<=15));}else assert.deepEqual(result.motion.drop[eye],liquidTuning[liquid]);assert.deepEqual(result.motion.eye[eye],initial[eye]);}assert.equal(result.burst.renderer,'unified-slime');assert.ok(result.burst.drops>0);assert.ok(result.settled.deposits>0);assert.equal(result.wet.footsteps,1);assert.equal(result.old.renderer,'curve-fluid-mesh');assert.equal(result.restored.deposits,result.settled.deposits);await p.locator('#viewport').screenshot({path:out+'/game.png'});await p.locator('#reset-dummies').click();const reset=await p.evaluate(()=>window.__ARCHERO__.snapshot().burstEffects.ground);assert.equal(reset.drops,0);assert.equal(reset.deposits,0);assert.deepEqual(errors,[]);await writeFile(out+'/results.json',JSON.stringify({result,reset,errors},null,2));console.log('PASS: actual monster burst → drops → merged deposits → player footstep; independent liquid/eye settings, main controls and undo; renderer switch and reset.');
+}finally{await b.close();}

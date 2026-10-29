@@ -1,6 +1,6 @@
 import type {BurstSettings} from './slime-burst-config.ts';
 
-export type PuddleOrigin={x:number;z:number;shape:number;angleRandom:number;sizeRandom:number;bodyColor?:[number,number,number]};
+export type PuddleOrigin={liquidScale?:number;x:number;z:number;shape:number;angleRandom:number;sizeRandom:number;bodyColor?:[number,number,number]};
 export type PuddleState={age:number;c:BurstSettings;x:number;z:number;shape:number;angle:number;size:number;scale:number;settled:boolean;opacity:number;origin:PuddleOrigin};
 const motionKeys=['puddleStart','puddleVelocity','puddleSpeed','puddleFrequency','puddleDamping','puddleDelay'] as const;
 

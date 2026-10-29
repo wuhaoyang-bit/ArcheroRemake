@@ -76,7 +76,7 @@ export const DEFAULTS = {
   viewWidth: 18,
 };
 export type Settings = typeof DEFAULTS;
-export type SettingKey = Exclude<keyof Settings, EyeHitCurveKey | 'slimeEyeSpeedCurve' | 'recoilSpeedCurve' | 'juiceSpeedCurve' | 'turnCurve' | 'lockTurnCurve' | 'anchorCurve' | 'moveCurve' | 'ringCurve' | 'ringStrokeCurve' | 'ringLinkAttackCurve' | 'ringSwitchCurve' | 'ringWaveCurve'>;
+export type SettingKey = Exclude<keyof Settings, EyeHitCurveKey | 'liquidSpeedCurve' | 'slimeEyeSpeedCurve' | 'recoilSpeedCurve' | 'juiceSpeedCurve' | 'turnCurve' | 'lockTurnCurve' | 'anchorCurve' | 'moveCurve' | 'ringCurve' | 'ringStrokeCurve' | 'ringLinkAttackCurve' | 'ringSwitchCurve' | 'ringWaveCurve'>;
 /** Missing lock values inherit the corresponding ordinary tuning once, on load. */
 export const LOCK_TURN_KEYS = {
   lockTurnModel: 'turnModel', lockTurnSpeed: 'turnSpeed', lockCurveSnapAngle: 'curveSnapAngle',

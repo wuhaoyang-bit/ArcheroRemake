@@ -1,3 +1,4 @@
+import {UnifiedSlimeLiquid,type LiquidSettings} from './unified-slime-liquid.ts';
 import * as T from 'three/webgpu';
 import {texture,uv,uniform,vec2,vec3,float,normalMap,mix} from 'three/tsl';
 import {CurveFluidPuddles,MAX_CURVE_PUDDLES} from './curve-fluid-puddles.ts';
@@ -19,11 +20,13 @@ type Puddle=PuddleState;
 /** Original Lush baked geometry, recovered material kernels; WebGPU node implementation. */
 export class LushBurstEffects{
  private pool:Burst[]=[];private bursts:Burst[]=[];private puddles:Puddle[]=[];private clock=0;private width=16;private length=38;private dirty=false;
- private canvas=document.createElement('canvas');private ctx:CanvasRenderingContext2D;private mask:T.CanvasTexture;private floor:T.Mesh;private floorU:any;private globalC?:BurstSettings;
+ private canvas=document.createElement('canvas');private ctx:CanvasRenderingContext2D;private mask:T.CanvasTexture;private floor:T.Mesh;private floorU:any;private globalC?:LiquidSettings;
  private shadeCanvas=document.createElement('canvas');private shadeCtx:CanvasRenderingContext2D;private shade:T.CanvasTexture;private stamp=document.createElement('canvas');private shadow:T.Mesh;private shadeSignature='';
  private colorCanvas=document.createElement('canvas');private colorTexture:T.CanvasTexture;
+ private liquid:UnifiedSlimeLiquid;
  private sourceCamera:T.Quaternion;private rendererMode=0;
  private constructor(private scene:T.Scene,private data:Asset,private bytes:ArrayBuffer,private textures:Record<string,T.Texture>,private ground:CurveFluidPuddles){
+  this.liquid=new UnifiedSlimeLiquid(scene);
   this.sourceCamera=new T.Quaternion().fromArray(data.camera.quaternion);this.canvas.width=this.canvas.height=1024;this.ctx=this.canvas.getContext('2d')!;this.mask=new T.CanvasTexture(this.canvas);this.mask.colorSpace=T.NoColorSpace;this.mask.generateMipmaps=false;this.mask.minFilter=T.LinearFilter;
   this.shadeCanvas.width=this.shadeCanvas.height=1024;this.shadeCtx=this.shadeCanvas.getContext('2d')!;this.shade=new T.CanvasTexture(this.shadeCanvas);this.shade.colorSpace=T.NoColorSpace;this.shade.generateMipmaps=false;this.shade.minFilter=T.LinearFilter;this.stamp.width=this.stamp.height=128;
   this.colorCanvas.width=this.colorCanvas.height=1024;this.colorTexture=new T.CanvasTexture(this.colorCanvas);this.colorTexture.colorSpace=T.SRGBColorSpace;
@@ -66,22 +69,24 @@ export class LushBurstEffects{
    root.add(mesh);particles.push({enabled:true,index:indices[o.layer]++,mesh,u,source:o,tr:this.view(o.transforms),inputs:this.view(o.inputs),pos:o.positions?this.view(o.positions):undefined,norm:o.normals?this.view(o.normals):undefined});}
   const b={root,age:0,c:{...c},particles};this.pool.push(b);return b;
  }
- emit(center:T.Vector3,feet:T.Vector3,c:BurstSettings,random:()=>number=Math.random,bodyColor?:T.Color){
+ emit(center:T.Vector3,feet:T.Vector3,c:LiquidSettings,random:()=>number=Math.random,bodyColor?:T.Color){
   if(bodyColor)c={...c,burstColorR:bodyColor.r,burstColorG:bodyColor.g,burstColorB:bodyColor.b,puddleColorR:bodyColor.r,puddleColorG:bodyColor.g,puddleColorB:bodyColor.b};
+  const liquidSettings={...c,...this.globalC};
+  if(liquidSettings.puddleRenderer===2&&liquidSettings.puddleEnabled)this.liquid.emit(center,liquidSettings,random,bodyColor);
   const b=this.pool.find(b=>!b.root.visible)??this.allocate(c);b.age=0;b.c={...c};b.root.visible=true;b.root.position.copy(center).add(new T.Vector3(c.burstFxX,c.burstFxY,c.burstFxZ));b.root.scale.setScalar(c.burstFxScale);
   const totals=[13,1,1,5,13,1];for(const p of b.particles){const l=p.source.layer;p.enabled=!!(c as any)[`burstLayer${l}Enabled`]&&p.index<Math.ceil(totals[l]*(c as any)[`burstLayer${l}Count`]);p.mesh.visible=false;p.u.team.value.set(c.burstColorR,c.burstColorG,c.burstColorB);p.u.opacity.value=(c as any)[`burstLayer${l}Opacity`];}
-  this.bursts.push(b);if(c.puddleEnabled){const shape=pickPuddleShape({...c,...(this.globalC?{puddleRenderer:this.globalC.puddleRenderer,puddleCanvasShapes:this.globalC.puddleCanvasShapes,puddleCurveShapes:this.globalC.puddleCurveShapes}: {})},c.puddleShape?0:random());const angleRandom=random()*2-1,sizeRandom=random()*2-1;this.puddles.push({origin:{x:feet.x,z:feet.z,shape,angleRandom,sizeRandom,bodyColor:bodyColor?[bodyColor.r,bodyColor.g,bodyColor.b]:undefined},age:-c.puddleDelay,c:{...c},x:feet.x+c.puddleX,z:feet.z+c.puddleZ,shape,angle:(c.puddleRotation+angleRandom*c.puddleRotationRange)*Math.PI/180,size:c.puddleSize*(1+sizeRandom*c.puddleSizeRange),scale:0,settled:false,opacity:1});this.dirty=true;}
+  this.bursts.push(b);if(c.puddleEnabled){const shape=pickPuddleShape({...c,...(this.globalC?{puddleRenderer:this.globalC.puddleRenderer,puddleCanvasShapes:this.globalC.puddleCanvasShapes,puddleCurveShapes:this.globalC.puddleCurveShapes}: {})},c.puddleShape?0:random());const angleRandom=random()*2-1,sizeRandom=random()*2-1;this.puddles.push({origin:{x:feet.x,z:feet.z,liquidScale:T.MathUtils.clamp(center.y/1.1,.65,2.8),shape,angleRandom,sizeRandom,bodyColor:bodyColor?[bodyColor.r,bodyColor.g,bodyColor.b]:undefined},age:-c.puddleDelay,c:{...c},x:feet.x+c.puddleX,z:feet.z+c.puddleZ,shape,angle:(c.puddleRotation+angleRandom*c.puddleRotationRange)*Math.PI/180,size:c.puddleSize*(1+sizeRandom*c.puddleSizeRange),scale:0,settled:false,opacity:1});this.dirty=true;}
  }
  /** Keep the exact meshes/materials that will be reused by gameplay visible for GPU warmup. */
  prepareWarmup(count:number,c:BurstSettings,camera:T.Camera,width:number,length:number){
   const warm={...c,...BURST_DEFAULTS};for(let i=0;i<count;i++)this.emit(new T.Vector3(0,1,0),new T.Vector3(),{...warm,puddleShape:i%3+1},()=>.5);
   this.update(.08,warm,width,length,camera);
  }
- update(dt:number,c:BurstSettings,width:number,length:number,camera:T.Camera){this.clock+=dt;this.globalC=c;const a=this.floorU;a.time.value=this.clock;a.color.value.setRGB(c.puddleColorR,c.puddleColorG,c.puddleColorB);for(const [key,setting] of Object.entries({noiseScale:'puddleNoiseScale',range:'puddleNoiseRange',power:'puddleOuterPower',distortion:'puddleDistortion',speed:'puddleFlowSpeed',normal:'puddleNormal',center:'puddleCenterNormal',roughness:'puddleRoughness'}))a[key].value=(c as any)[setting];
+ update(dt:number,c:LiquidSettings,width:number,length:number,camera:T.Camera){this.clock+=dt;this.globalC=c;const a=this.floorU;a.time.value=this.clock;a.color.value.setRGB(c.puddleColorR,c.puddleColorG,c.puddleColorB);for(const [key,setting] of Object.entries({noiseScale:'puddleNoiseScale',range:'puddleNoiseRange',power:'puddleOuterPower',distortion:'puddleDistortion',speed:'puddleFlowSpeed',normal:'puddleNormal',center:'puddleCenterNormal',roughness:'puddleRoughness'}))a[key].value=(c as any)[setting];
   a.highlight.value=c.puddleHighlightEnabled?c.puddleHighlightStrength:0;a.gradient.value=c.puddleGradientEnabled?c.puddleGradientStrength:0;a.shadow.value=c.puddleShadowEnabled?c.puddleShadowStrength:0;a.shadowSoft.value=c.puddleShadowSoftness;a.shadowOffset.value.set(c.puddleShadowX,c.puddleShadowZ);a.room.value.set(width,length);this.shadow.scale.set(width,length,1);
   const signature=[c.puddleHighlightSize,c.puddleHighlightX,c.puddleHighlightZ,c.puddleGradientAngle].join('/');if(signature!==this.shadeSignature){this.shadeSignature=signature;this.dirty=true;}
   if(width!==this.width||length!==this.length){this.width=width;this.length=length;this.dirty=true;}this.floor.scale.set(width,length,1);
-  const mode=c.puddleRenderer===1?1:0;if(mode!==this.rendererMode){this.rendererMode=mode;this.dirty=true;this.ground.clear();}
+  const mode=c.puddleRenderer===2?2:c.puddleRenderer===1?1:0;if(mode!==this.rendererMode){this.rendererMode=mode;this.dirty=true;this.ground.clear();}
   const inverseRoot=new T.Quaternion().setFromAxisAngle(new T.Vector3(1,0,0),Math.PI/2),billboard=inverseRoot.multiply(camera.quaternion),q1=new T.Quaternion(),q2=new T.Quaternion();
   for(const b of this.bursts){b.age+=dt;let visible=0;for(const p of b.particles){const layer=p.source.layer,t=(b.age-b.c.burstFxDelay)*b.c.burstFxSpeed*(b.c as any)[`burstLayer${layer}Speed`];p.mesh.visible=p.enabled&&t>=0&&t<p.source.life;if(!p.mesh.visible)continue;visible++;const frame=Math.min(this.data.frames-1,t*this.data.fps),i=Math.floor(frame),j=Math.min(i+1,this.data.frames-1),mix=frame-i,at=(arr:Float32Array,n:number,k:number)=>T.MathUtils.lerp(arr[i*n+k],arr[j*n+k],mix);
    p.mesh.position.set(at(p.tr,10,0),at(p.tr,10,1),at(p.tr,10,2)-1);q1.fromArray(p.tr,i*10+3);q2.fromArray(p.tr,j*10+3);p.mesh.quaternion.copy(q1.slerp(q2,mix));if(layer!==3)p.mesh.quaternion.premultiply(this.sourceCamera.clone().invert()).premultiply(billboard);const size=(b.c as any)[`burstLayer${layer}Size`];p.mesh.scale.set(at(p.tr,10,7)*size,at(p.tr,10,8)*size,at(p.tr,10,9)*size);
@@ -89,8 +94,9 @@ export class LushBurstEffects{
    if(p.pos&&p.norm)for(const [key,arr] of [['position',p.pos],['normal',p.norm]] as const){const attr=p.mesh.geometry.getAttribute(key) as T.BufferAttribute,n=attr.array.length;for(let k=0;k<n;k++)attr.array[k]=at(arr,n,k);attr.needsUpdate=true;}}
    if(!visible&&b.age>=b.c.burstFxDelay+Math.max(0,...b.particles.filter(p=>p.enabled).map(p=>p.source.life/(b.c.burstFxSpeed*(b.c as any)[`burstLayer${p.source.layer}Speed`]))))this.removeBurst(b);
   }
-  for(const p of this.puddles){if(this.rendererMode===1)applyLivePuddleSettings(p,c);p.age+=dt;if(p.age<0)continue;if(!p.settled){const st=spring(p.c.puddleStart-1,p.c.puddleVelocity,p.age*p.c.puddleSpeed,p.c.puddleFrequency,p.c.puddleDamping);p.settled=Math.abs(st.x)<1e-5&&Math.abs(st.v)<1e-4;p.scale=p.settled?1:Math.max(0,1+st.x);this.dirty=true;}if(p.c.puddleLifetime>0&&p.age>p.c.puddleLifetime){p.opacity=p.c.puddleFade>0?Math.max(0,1-(p.age-p.c.puddleLifetime)/p.c.puddleFade):0;this.dirty=true;}}
-  this.puddles=this.puddles.filter(p=>p.opacity>0);if(this.rendererMode===1){this.floor.visible=false;this.shadow.visible=false;this.ground.update(this.puddles.slice(-MAX_CURVE_PUDDLES),c);}else if(this.dirty)this.drawPuddles();
+  for(const p of this.puddles){if(this.rendererMode!==0)applyLivePuddleSettings(p,c);p.age+=dt;if(p.age<0)continue;if(!p.settled){const st=spring(p.c.puddleStart-1,p.c.puddleVelocity,p.age*p.c.puddleSpeed,p.c.puddleFrequency,p.c.puddleDamping);p.settled=Math.abs(st.x)<1e-5&&Math.abs(st.v)<1e-4;p.scale=p.settled?1:Math.max(0,1+st.x);this.dirty=true;}if(p.c.puddleLifetime>0&&p.age>p.c.puddleLifetime){p.opacity=p.c.puddleFade>0?Math.max(0,1-(p.age-p.c.puddleLifetime)/p.c.puddleFade):0;this.dirty=true;}}
+  this.puddles=this.puddles.filter(p=>p.opacity>0);if(this.rendererMode===1){this.floor.visible=false;this.shadow.visible=false;this.ground.update(this.puddles.slice(-MAX_CURVE_PUDDLES),c);}else if(this.rendererMode===2){this.floor.visible=false;this.shadow.visible=false;}else if(this.dirty)this.drawPuddles();
+  this.liquid.update(dt,this.puddles,c,width,length);
  }
  private drawPuddles(){
   const ctx=this.ctx,n=this.canvas.width,shade=this.shadeCtx,stamp=this.stamp,sc=stamp.getContext('2d')!,m=stamp.width,c=this.globalC!;
@@ -110,6 +116,7 @@ export class LushBurstEffects{
   this.colorTexture.needsUpdate=true;this.mask.needsUpdate=true;this.shade.needsUpdate=true;this.floor.visible=this.puddles.some(p=>p.age>=0);this.shadow.visible=this.floor.visible;this.dirty=false;
  }
  private removeBurst(b:Burst){b.root.visible=false;for(const p of b.particles)p.mesh.visible=false;this.bursts=this.bursts.filter(x=>x!==b);}
- clear(){this.ground.clear();this.clock=0;for(const b of [...this.bursts])this.removeBurst(b);this.puddles=[];this.ctx.clearRect(0,0,1024,1024);this.shadeCtx.clearRect(0,0,1024,1024);this.mask.needsUpdate=true;this.shade.needsUpdate=true;this.floor.visible=false;this.shadow.visible=false;this.dirty=false;}
- snapshot(){return {ground:this.rendererMode===1?this.ground.snapshot():{renderer:'canvas-puddle',instances:this.puddles.filter(p=>p.age>=0&&p.opacity>0&&p.scale>0).length},allocated:this.pool.length,bursts:this.bursts.map(b=>({age:b.age,visible:b.particles.filter(p=>p.mesh.visible).length})),puddles:this.puddles.map(p=>({age:p.age,scale:p.scale,settled:p.settled,shape:p.shape,opacity:p.opacity,x:p.x,z:p.z})),color:this.globalC?[this.globalC.puddleColorR,this.globalC.puddleColorG,this.globalC.puddleColorB]:null};}
+ playerStep(from:{x:number;z:number},to:{x:number;z:number},dt:number,c:LiquidSettings){this.liquid.playerStep(from,to,dt,c);}
+ clear(){this.liquid.clear();this.ground.clear();this.clock=0;for(const b of [...this.bursts])this.removeBurst(b);this.puddles=[];this.ctx.clearRect(0,0,1024,1024);this.shadeCtx.clearRect(0,0,1024,1024);this.mask.needsUpdate=true;this.shade.needsUpdate=true;this.floor.visible=false;this.shadow.visible=false;this.dirty=false;}
+ snapshot(){return {ground:this.rendererMode===2?this.liquid.snapshot():this.rendererMode===1?this.ground.snapshot():{renderer:'canvas-puddle',instances:this.puddles.filter(p=>p.age>=0&&p.opacity>0&&p.scale>0).length},allocated:this.pool.length,bursts:this.bursts.map(b=>({age:b.age,visible:b.particles.filter(p=>p.mesh.visible).length})),puddles:this.puddles.map(p=>({age:p.age,scale:p.scale,settled:p.settled,shape:p.shape,opacity:p.opacity,x:p.x,z:p.z})),color:this.globalC?[this.globalC.puddleColorR,this.globalC.puddleColorG,this.globalC.puddleColorB]:null};}
 }

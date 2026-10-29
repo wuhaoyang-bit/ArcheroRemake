@@ -1,5 +1,6 @@
 import {EYE_HIT_CURVES,type EyeHitCurveKey} from './eye-hit-config.ts';
 import {DEFAULT_EYE_SPEED_CURVE} from './slime-eyes-config.ts';
+import {DEFAULT_LIQUID_SPEED_CURVE} from './slime-liquid-flight-config.ts';
 import { BURST_DEFAULTS, BURST_LIMITS } from './slime-burst-config.ts';
 import { SLIME_INFLATION_DEFAULTS, SLIME_INFLATION_LIMITS } from './slime-inflation-config.ts';
 import { DEFAULT_JUICE_SPEED_CURVE } from './juice-speed-curve.ts';
@@ -13,6 +14,7 @@ export const HIT_DEFAULTS = {
   hitSquashTime: 2, hitSquashAmount: .15, hitCompressTime: .06, hitReleaseTime: .2, hitSpringFrequency: 4, hitSpringDamping: .15,
   // Screenshot defaults, world units; independent delayed burst, additional to sparks.
   slimeEyeSpeedCurve:DEFAULT_EYE_SPEED_CURVE,
+  liquidSpeedCurve:DEFAULT_LIQUID_SPEED_CURVE,
   juiceSpeedCurve: DEFAULT_JUICE_SPEED_CURVE,
   hitSplashSheetsEnabled:1,hitSplashSheetsScale:1,hitSplashSheetsSpeed:1,hitSplashSheetsDelay:0,hitSplashSheetsHeight:0,
   hitSplashParticlesCount:33,hitSplashParticlesScale:1,hitSplashParticlesHeight:0,
@@ -34,9 +36,9 @@ export const HIT_LIMITS = {
   juiceEnabled:[0,1,1],juiceDelay:[0,3,.01],juiceCount:[1,64,1],juiceSpeed:[0,20,.1],juiceSpeedJitter:[0,10,.1],juiceRadius:[0,1.5,.01],
   juiceLife:[.05,5,.05],juiceSize:[.01,2,.01],juiceSizeJitter:[0,1,.01],juiceColor:[0,0xffffff,1],
   juiceCurve:[0,6,1],juiceDragRel:[.05,1,.05],juiceDepthTest:[0,1,1],juiceHeight:[-.5,1,.01],
-} satisfies Record<Exclude<keyof typeof HIT_DEFAULTS,'juiceSpeedCurve'|'slimeEyeSpeedCurve'|EyeHitCurveKey>,[number,number,number]>;
+} satisfies Record<Exclude<keyof typeof HIT_DEFAULTS,'juiceSpeedCurve'|'slimeEyeSpeedCurve'|'liquidSpeedCurve'|EyeHitCurveKey>,[number,number,number]>;
 export type HitSettings = typeof HIT_DEFAULTS;
-export const HIT_CONTROLS: [Exclude<keyof HitSettings,'juiceSpeedCurve'|'slimeEyeSpeedCurve'|EyeHitCurveKey>,string,string,string][] = [
+export const HIT_CONTROLS: [Exclude<keyof HitSettings,'juiceSpeedCurve'|'slimeEyeSpeedCurve'|'liquidSpeedCurve'|EyeHitCurveKey>,string,string,string][] = [
  ['hitKnockEnabled','受击击退','0/1','0 关闭，1 开启；只阻挡场地边界。'],
  ['hitRimEnabled','白色边缘亮光','0/1','整座假人同步发亮；0 关闭，1 开启。'],
  ['hitSquashEnabled','受击缩放回弹','0/1','控制整体缩放和沿命中方向压缩；0 关闭，1 开启。'],

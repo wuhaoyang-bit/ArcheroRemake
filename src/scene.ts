@@ -385,6 +385,7 @@ export class GameScene {
   interactPlayerEyes(from:{x:number;z:number},dt:number){
     const collider={radius:PLAYER_RADIUS,height:3.25};
     this.feedback?.eyeDebris.kickPlayer({...from,...collider},{...this.controller.position,...collider},dt,this.controller.mode==='moving',this.controller.settings.slimeEyeKickStrength);
+    if(this.controller.mode==='moving')this.burstEffects?.playerStep(from,this.controller.position,dt,this.controller.settings);
   }
 
   private queuePendingShots(dt:number){
