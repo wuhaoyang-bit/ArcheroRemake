@@ -30,6 +30,7 @@
     "slimeEyeWallCollision": 1,
     "slimeEyeMonsterCollision": 1,
     "slimeEyeCollisionBounce": 0.85,
+    "slimeEyeKickStrength": 0.7,
     "slimeEyeEjectEnabled": 1,
     "slimeEyeEjectSpeed": 20,
     "slimeEyeEjectGravity": 20,

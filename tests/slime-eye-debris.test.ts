@@ -42,3 +42,46 @@ test('monster sweep excludes source and respects height, without mutating obstac
 test('hitting another monster reflects only the eye velocity',()=>{
  const {debris,eyes}=setup(),box=new T.Box3(new T.Vector3(-10,0,5),new T.Vector3(10,4,6)),before=box.clone();debris.setCollisions(Infinity,Infinity,[{id:'other',box}]);debris.emit(eyes,new T.Vector3(2,1,3),{...C,slimeEyeEjectGravity:0,slimeEyeEjectSpeed:40,slimeEyeSpeedCurve:[{time:0,progress:100},{time:100,progress:100}]},'source');debris.update(.1);assert.ok(debris.snapshot().every(f=>f.velocity[2]<0));assert.ok(box.equals(before));
 });
+
+test('moving player wakes a resting eye and kicks along actual movement, then gravity settles it again',()=>{
+ const {debris,eyes}=setup();debris.emit([eyes[0]],new T.Vector3(2,1,3),{...C,slimeEyeEjectSpeed:0});
+ debris.update(20);const before=debris.snapshot()[0];assert.ok(before.settled);
+ const [x,,z]=before.position,collider={radius:.46,height:3.25};
+ debris.kickPlayer({x:x-1,z:z-.2,...collider},{x:x-.3,z:z-.2,...collider},.1,true);
+ const kicked=debris.snapshot()[0];assert.ok(!kicked.settled&&!kicked.grounded);assert.ok(kicked.velocity[0]>0&&kicked.velocity[1]>0);assert.equal(kicked.velocity[2],0);
+ debris.update(.1);assert.ok(debris.snapshot()[0].position[0]>kicked.position[0]);
+ debris.update(20);assert.ok(debris.snapshot()[0].settled);
+});
+test('player sweep catches an eye even when both endpoints miss; high eyes and stationary players do not kick',()=>{
+ const {debris,eyes}=setup();debris.emit([eyes[0]],new T.Vector3(2,1,3),{...C,slimeEyeEjectSpeed:0});debris.update(20);
+ const before=debris.snapshot()[0],[x,,z]=before.position,c={radius:.46,height:3.25};
+ debris.kickPlayer({x,z:z-2,...c},{x,z:z-2,...c},.1,true);assert.deepEqual(debris.snapshot()[0],before);
+ debris.kickPlayer({x,z:z-2,...c},{x,z:z+2,...c},.1,true);assert.ok(debris.snapshot()[0].velocity[2]>0);
+ const high=setup();high.debris.emit([high.eyes[0]],new T.Vector3(2,1,3),{...C,slimeEyeEjectSpeed:0,slimeEyeEjectGravity:0});
+ const initial=high.debris.snapshot()[0];high.debris.kickPlayer({x:x-2,z,...c,height:.3},{x:x+2,z,...c,height:.3},.1,true);assert.deepEqual(high.debris.snapshot()[0],initial);
+});
+test('stationary player reflects airborne eyes without moving the player',()=>{
+ const {debris,eyes}=setup(),player={x:1.7,z:5,radius:.46,height:3.25},before={...player};
+ debris.setPlayer(player);debris.emit([eyes[0]],new T.Vector3(1.7,1.2,3),{...C,slimeEyeEjectGravity:0,slimeEyeEjectSpeed:10,slimeEyeSpeedCurve:[{time:0,progress:100},{time:100,progress:100}]});
+ debris.update(.1);assert.ok(debris.snapshot()[0].velocity[2]<0);assert.deepEqual(player,before);
+});
+test('player collision uses a round footprint and a finite height',async()=>{
+ const {eyePlayerContact}=await import('../src/eye-collision.ts'),player={x:0,z:0,radius:.5,height:3};
+ assert.equal(eyePlayerContact(new T.Vector3(.59,1,.59),new T.Vector3(.59,1,.59),.1,player),null);
+ assert.equal(eyePlayerContact(new T.Vector3(-2,4,0),new T.Vector3(2,4,0),.1,player),null);
+ const hit=eyePlayerContact(new T.Vector3(-2,1,0),new T.Vector3(2,1,0),.1,player);assert.ok(hit);assert.ok(Math.abs(hit.time-.35)<1e-8);assert.deepEqual(hit.normal.toArray(),[-1,0,0]);
+ const top=eyePlayerContact(new T.Vector3(0,4,0),new T.Vector3(0,2,0),.1,player);assert.ok(top);assert.deepEqual(top.normal.toArray(),[0,1,0]);
+});
+
+test('live kick strength scales an existing eye launch and zero keeps passive contact',async()=>{
+ const kick=(strength:number)=>{const {debris,eyes}=setup();debris.emit([eyes[0]],new T.Vector3(2,1,3),{...C,slimeEyeEjectSpeed:0});debris.update(20);
+ const [x,,z]=debris.snapshot()[0].position,c={radius:.46,height:3.25};
+ debris.kickPlayer({x:x-1,z,...c},{x:x-.3,z,...c},.1,true,strength);return debris.snapshot()[0];};
+ const normal=kick(1),strong=kick(2),gentle=kick(.5),off=kick(0);
+ for(const axis of [0,1]){assert.equal(strong.velocity[axis],normal.velocity[axis]*2);assert.equal(gentle.velocity[axis],normal.velocity[axis]*.5);}
+ assert.equal(off.velocity[1],0);assert.ok(off.velocity[0]>0);
+ const {parseSettingsDocument,settingsDocument}=await import('../src/settings-store.ts');
+ assert.equal(parseSettingsDocument({version:1,settings:{}}).slimeEyeKickStrength,1);
+ const saved=parseSettingsDocument({version:1,settings:{slimeEyeKickStrength:2.5}});
+ assert.equal(parseSettingsDocument(settingsDocument(saved)).slimeEyeKickStrength,2.5);
+});

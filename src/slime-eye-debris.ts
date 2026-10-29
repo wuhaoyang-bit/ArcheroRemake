@@ -1,18 +1,40 @@
 import {eyeDeformation,directionalScale,eyeSupport,type EyeImpact,type EyeApproach} from './eye-deformation.ts';
-import {eyeContact,type EyeObstacle} from './eye-collision.ts';
+import {eyeContact,eyePlayerContact,type EyeObstacle,type EyePlayer} from './eye-collision.ts';
 import {sampleJuiceSpeedCurve,type JuiceSpeedPoint} from './juice-speed-curve.ts';
 import {DEFAULT_EYE_SPEED_CURVE} from './slime-eyes-config.ts';
 import * as T from 'three/webgpu';
 import type {SlimeEyesSettings} from './slime-eyes-config.ts';
 type EyeMotionSettings=SlimeEyesSettings&{slimeEyeSpeedCurve?:JuiceSpeedPoint[]};
 type Fragment={impact?:EyeImpact;sourceId?:string;ballistic:boolean;age:number;origin:T.Vector3;direction:T.Vector3;landed:boolean;grounded:boolean;object:T.Object3D;velocity:T.Vector3;spin:T.Vector3;radius:number;settled:boolean;settings:EyeMotionSettings};
-/** Visual debris only: no registration in player/monster movement collision. */
+/** Eyes respond to contacts without blocking player or monster movement. */
 export class SlimeEyeDebris{
  private fragments:Fragment[]=[];
  private shapeMatrix=new T.Matrix4();private rotationMatrix=new T.Matrix4();
  private width=Infinity;private length=Infinity;private obstacles:EyeObstacle[]=[];
+ private player?:EyePlayer;
  get active(){return this.fragments.some(f=>!f.settled);}
  setCollisions(width:number,length:number,obstacles:EyeObstacle[]){this.width=width;this.length=length;this.obstacles=obstacles;}
+ setPlayer(player:EyePlayer){this.player={...player};}
+ /** Sweep actual player displacement, so resting eyes wake up and fast movement cannot skip them. */
+ kickPlayer(from:EyePlayer,to:EyePlayer,dt:number,moving:boolean,strength=1){
+  this.setPlayer(to);if(dt<=0)return;
+  const delta=new T.Vector3(to.x-from.x,0,to.z-from.z),speed=delta.length()/dt;
+  if(speed<.01)return;
+  for(const f of this.fragments){
+   const p=f.object.position,hit=eyePlayerContact(p,p.clone().sub(delta),f.radius,from);if(!hit)continue;
+   const incoming=delta.dot(hit.normal)/dt;
+   if(incoming<=0)continue;
+   // Place outside the player's final position; subsequent ground/wall collisions remain authoritative.
+   p.addScaledVector(hit.normal,(1-hit.time)*delta.dot(hit.normal)+(hit.push??0)+.001);
+   if(moving&&strength>0){
+    const direction=delta.clone().normalize();f.velocity.copy(direction).multiplyScalar(Math.max(4,speed*1.8)*strength);
+    f.velocity.y=Math.max(2,Math.min(5,speed*.65))*strength;
+    f.spin.set(direction.z,0,-direction.x).multiplyScalar(f.settings.slimeEyeEjectSpin);
+   }else f.velocity.addScaledVector(hit.normal,Math.max(0,incoming-f.velocity.dot(hit.normal)));
+   f.ballistic=true;f.settled=false;f.grounded=false;
+   this.recordImpact(f,hit.normal,incoming,p);this.deform(f);
+  }
+ }
  constructor(private parent:T.Object3D){}
  emit(eyes:T.Object3D[],center:T.Vector3,c:EyeMotionSettings,sourceId?:string){if(!c.slimeEyeEjectEnabled)return;this.parent.updateWorldMatrix(true,false);const inverse=this.parent.matrixWorld.clone().invert(),localCenter=this.parent.worldToLocal(center.clone());
  for(const source of eyes){if(!source.parent?.visible||!source.visible)continue;source.updateWorldMatrix(true,true);const object=source.clone(true);object.name='DetachedSlimeEye';object.matrix.copy(inverse).multiply(source.matrixWorld);object.matrix.decompose(object.position,object.quaternion,object.scale);object.matrixAutoUpdate=true;
@@ -85,7 +107,9 @@ export class SlimeEyeDebris{
  }
  // Only the eye responds: the obstacle roster and monster positions are read-only.
  let start=previous,remaining=step;
- for(let attempt=0;attempt<4;attempt++){const hit=eyeContact(start,f.object.position,f.radius,c.slimeEyeWallCollision?this.width:Infinity,c.slimeEyeWallCollision?this.length:Infinity,c.slimeEyeMonsterCollision?this.obstacles:[],f.sourceId);if(!hit)break;
+ for(let attempt=0;attempt<4;attempt++){let hit=eyeContact(start,f.object.position,f.radius,c.slimeEyeWallCollision?this.width:Infinity,c.slimeEyeWallCollision?this.length:Infinity,c.slimeEyeMonsterCollision?this.obstacles:[],f.sourceId);
+ const playerHit=this.player?eyePlayerContact(start,f.object.position,f.radius,this.player):null;
+ if(playerHit&&(!hit||playerHit.time<hit.time))hit=playerHit;if(!hit)break;
  const point=start.clone().lerp(f.object.position,hit.time).addScaledVector(hit.normal,(hit.push??0)+.0001),incoming=f.velocity.dot(hit.normal);
  if(incoming<0){f.velocity.addScaledVector(hit.normal,-(1+c.slimeEyeCollisionBounce)*incoming);this.recordImpact(f,hit.normal,-incoming,point);}
  f.ballistic=true;f.settled=false;if(hit.normal.y>.5){f.landed=true;f.grounded=false;}

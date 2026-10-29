@@ -17,7 +17,7 @@ import * as THREE from 'three/webgpu';
 import { loadCharacter } from './character.ts';
 import { CharacterAnimation } from './character-animation.ts';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { AnimationBlend, follow, type MovementController } from './controller.ts';
+import { AnimationBlend, follow, PLAYER_RADIUS, type MovementController } from './controller.ts';
 import { ASPECT, LIMITS } from './config.ts';
 import { isAndroidApp } from './settings-store.ts';
 
@@ -374,11 +374,17 @@ export class GameScene {
   advanceFeedback(dt:number){
     if(this.needsRoomRefresh())this.setRoom();
     for(const hit of this.deferredDebugHits.splice(0))this.applyArrowHit?.(hit);
+    this.feedback?.eyeDebris.setPlayer({...this.controller.position,radius:PLAYER_RADIUS,height:3.25});
     this.feedback?.update(dt,this.controller.settings);
     if(this.controller.training==='monsters'){this.feedback?.pursue(dt,this.controller.position,this.controller.settings.monsterSpeed,this.controller.settings,()=>this.controller.resolveMonsterContacts());}
     this.hitSplash?.update(dt,this.camera,(id,out)=>this.feedback?.feetOrigin(id,out)??null,this.controller.settings);
     this.juice?.update(dt,id=>this.juiceOriginFor(id));
     this.burstEffects?.update(dt,this.controller.settings,this.roomSize,this.roomLength,this.camera);
+  }
+
+  interactPlayerEyes(from:{x:number;z:number},dt:number){
+    const collider={radius:PLAYER_RADIUS,height:3.25};
+    this.feedback?.eyeDebris.kickPlayer({...from,...collider},{...this.controller.position,...collider},dt,this.controller.mode==='moving',this.controller.settings.slimeEyeKickStrength);
   }
 
   private queuePendingShots(dt:number){

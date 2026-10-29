@@ -564,7 +564,9 @@ function frame(time: number) {
     const step = Math.min(remaining, 1 / 120);
     const completed = controller.completions, pointer = controller.pointerId;
     game.advanceFeedback(step);
+    const playerBeforeMove={...controller.position};
     controller.update(step);
+    if(controller.completions===completed)game.interactPlayerEyes(playerBeforeMove,step);
     if (controller.completions !== completed) {
       if (pointer !== null && viewport.hasPointerCapture(pointer)) viewport.releasePointerCapture(pointer);
       game.cameraZ = controller.position.z;
