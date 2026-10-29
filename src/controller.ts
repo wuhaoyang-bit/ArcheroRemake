@@ -1,3 +1,4 @@
+import {validateEyeHitCurve,type EyeHitCurveKey} from './eye-hit-config.ts';
 import { ShotRecoil } from './shot-recoil.ts';
 import { validateJuiceSpeedCurve, type JuiceSpeedPoint } from './juice-speed-curve.ts';
 import { monsterTargets, spawnNearMonsters, separateMonsters, DUMMY_RADIUS, type MonsterTarget } from './monster-training.ts';
@@ -292,6 +293,7 @@ export class MovementController {
   setMoveCurve(points: TurnCurvePoint[]) { this.settings.moveCurve = validateMoveCurve(points); }
 
   setRecoilSpeedCurve(points:JuiceSpeedPoint[]){this.settings.recoilSpeedCurve=validateJuiceSpeedCurve(points);}
+  setEyeHitCurve(key:EyeHitCurveKey,points:JuiceSpeedPoint[]){this.settings[key]=validateEyeHitCurve(points);}
   setEyeSpeedCurve(points:JuiceSpeedPoint[]){this.settings.slimeEyeSpeedCurve=validateJuiceSpeedCurve(points);}
   setJuiceSpeedCurve(points:JuiceSpeedPoint[]){this.settings.juiceSpeedCurve=validateJuiceSpeedCurve(points);}
   setCurve(points: TurnCurvePoint[]) { this.settings.turnCurve = validateCurve(points); }

@@ -211,7 +211,7 @@ export class GameScene {
     const loaded=(i:number,value=1)=>{progress[i]=value;report(.08+.52*progress.reduce((n,p,j)=>n+p*weights[j],0),'正在加载角色、箭矢与特效资源');};
     const track=<V,>(i:number,promise:Promise<V>)=>promise.then(value=>{loaded(i);return value;});
     const [juice,burstEffects,character,arrows,monsters,bowRelease,hitSplash]=await Promise.all([
-      track(0,JuiceParticles.load(this.scene)),track(1,LushBurstEffects.load(this.scene,p=>loaded(1,p))),
+      track(0,JuiceParticles.load(this.scene)),track(1,LushBurstEffects.load(this.scene,p=>loaded(1,p),this.slimeEnvironment)),
       track(2,loadCharacter()),track(3,ArrowProjectiles.load(this.scene)),track(4,TrainingMonsterFactory.load()),track(5,BowReleaseEffects.load(this.scene)),HitSplashEffects.load(this.scene),
     ]);
     this.hitSplash=hitSplash;this.juice=juice;

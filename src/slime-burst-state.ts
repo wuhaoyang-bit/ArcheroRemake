@@ -1,4 +1,9 @@
 import type {BurstSettings} from './slime-burst-config.ts';
+/** Independent eye pose, smoothly taking over even when the last hit is still restoring. */
+export function burstEyePose(age:number,c:BurstSettings){
+ const duration=Math.min(c.burstEyePoseTime,c.burstDuration),u=duration>0?Math.max(0,Math.min(1,age/duration)):1;
+ return {weight:c.burstEyeEnabled?u*u*(3-2*u):0,out:c.burstEyeOut,angle:c.burstEyeAngle};
+}
 export function burstSample(t:number,c:BurstSettings){
  const d=c.burstDuration,u=Math.min(1,Math.max(0,t/d)),p=c.burstFrequencyPower;
  const cycles=c.burstFrequencyStart*Math.min(t,d)+(c.burstFrequencyEnd-c.burstFrequencyStart)*d*Math.pow(u,p+1)/(p+1)+Math.max(0,t-d)*c.burstFrequencyEnd;

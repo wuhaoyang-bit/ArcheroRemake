@@ -1,10 +1,11 @@
+import {EYE_HIT_CURVES,type EyeHitCurveKey} from './eye-hit-config.ts';
 import {DEFAULT_EYE_SPEED_CURVE} from './slime-eyes-config.ts';
 import { BURST_DEFAULTS, BURST_LIMITS } from './slime-burst-config.ts';
 import { SLIME_INFLATION_DEFAULTS, SLIME_INFLATION_LIMITS } from './slime-inflation-config.ts';
 import { DEFAULT_JUICE_SPEED_CURVE } from './juice-speed-curve.ts';
 /** Confirmed training feedback defaults. Existing settings files inherit these fields. */
 export const HIT_DEFAULTS = {
-  ...SLIME_INFLATION_DEFAULTS,...BURST_DEFAULTS,
+  ...SLIME_INFLATION_DEFAULTS,...BURST_DEFAULTS,...EYE_HIT_CURVES,
   hitKnockEnabled: 1, hitRimEnabled: 1, hitSquashEnabled: 1,
   hitSquashMode: 0, hitSquashCompensation: 1,
   hitKnockTime: .2, hitKnockDistance: 1.05,
@@ -33,9 +34,9 @@ export const HIT_LIMITS = {
   juiceEnabled:[0,1,1],juiceDelay:[0,3,.01],juiceCount:[1,64,1],juiceSpeed:[0,20,.1],juiceSpeedJitter:[0,10,.1],juiceRadius:[0,1.5,.01],
   juiceLife:[.05,5,.05],juiceSize:[.01,2,.01],juiceSizeJitter:[0,1,.01],juiceColor:[0,0xffffff,1],
   juiceCurve:[0,6,1],juiceDragRel:[.05,1,.05],juiceDepthTest:[0,1,1],juiceHeight:[-.5,1,.01],
-} satisfies Record<Exclude<keyof typeof HIT_DEFAULTS,'juiceSpeedCurve'|'slimeEyeSpeedCurve'>,[number,number,number]>;
+} satisfies Record<Exclude<keyof typeof HIT_DEFAULTS,'juiceSpeedCurve'|'slimeEyeSpeedCurve'|EyeHitCurveKey>,[number,number,number]>;
 export type HitSettings = typeof HIT_DEFAULTS;
-export const HIT_CONTROLS: [Exclude<keyof HitSettings,'juiceSpeedCurve'|'slimeEyeSpeedCurve'>,string,string,string][] = [
+export const HIT_CONTROLS: [Exclude<keyof HitSettings,'juiceSpeedCurve'|'slimeEyeSpeedCurve'|EyeHitCurveKey>,string,string,string][] = [
  ['hitKnockEnabled','受击击退','0/1','0 关闭，1 开启；只阻挡场地边界。'],
  ['hitRimEnabled','白色边缘亮光','0/1','整座假人同步发亮；0 关闭，1 开启。'],
  ['hitSquashEnabled','受击缩放回弹','0/1','控制整体缩放和沿命中方向压缩；0 关闭，1 开启。'],

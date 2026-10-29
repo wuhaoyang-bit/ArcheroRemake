@@ -35,3 +35,24 @@ test('inflation-dominated feedback also supports early start',()=>{
  const time=(offset:number)=>{const root=createTrainingCube();root.userData.practiceTarget='a';const group=new T.Group();group.add(root);const f=new TrainingFeedback(group,[{id:'a',x:0,z:0}],16,38),c={...DEFAULTS,slimeInjectionAmount:100,slimeInflationFrequency:1,slimeInflationDamping:.2,hitSquashTime:.1,burstFeedbackDelay:offset};f.hit('a',{x:0,z:1},c);let ticks=0;while(f.snapshot()[0].burst.phase==='feedback'&&ticks<3000){f.update(1/120,c);ticks++;}assert.ok(ticks<3000);return ticks/120;};
  const baseline=time(0),early=time(-.5);assert.ok(baseline>2);assert.ok(Math.abs(baseline-early-.5)<1/120+.0001);
 });
+
+test('burst eyes protrude and mirror a ten-degree diagonal gaze without accumulating rotation',()=>{
+ const root=createTrainingCube();root.userData.practiceTarget='a';const group=new T.Group();group.add(root);
+ const f=new TrainingFeedback(group,[{id:'a',x:0,z:0}],16,38),c={...DEFAULTS,slimeInjectionAmount:100,burstFeedbackDelay:-5,hitSquashEnabled:0,hitKnockEnabled:0,eyeHitEnabled:0};
+ const eyes=root.getObjectByName('Face')!.children;f.hit('a',{x:0,z:-1},c);f.update(0,c);
+ for(const eye of eyes){const q=new T.Quaternion();eye.matrix.decompose(new T.Vector3(),q,new T.Vector3());near(q.angleTo(new T.Quaternion()),0);}
+ f.update(c.burstEyePoseTime,c);
+ const matrices=eyes.map(eye=>eye.matrix.clone());
+ eyes.forEach((eye,i)=>{const p=new T.Vector3(),q=new T.Quaternion();eye.matrix.decompose(p,q,new T.Vector3());near(q.angleTo(new T.Quaternion()),10*Math.PI/180);const gaze=new T.Vector3(0,0,1).applyQuaternion(q);assert.ok(gaze.y>0);assert.ok(i===0?gaze.x<0:gaze.x>0);near(p.distanceTo(eye.position),c.burstEyeOut*eye.scale.x);assert.ok(eye.quaternion.equals(new T.Quaternion()));});
+ for(let i=0;i<10;i++)f.refresh(c);eyes.forEach((eye,i)=>assert.ok(eye.matrix.equals(matrices[i])));
+ f.reset();for(const eye of eyes){const q=new T.Quaternion();eye.matrix.decompose(new T.Vector3(),q,new T.Vector3());near(q.angleTo(new T.Quaternion()),0);}
+});
+
+test('burst eye pose is retained exactly when eyes detach',()=>{
+ const root=createTrainingCube();root.userData.practiceTarget='a';const group=new T.Group();group.add(root);
+ const f=new TrainingFeedback(group,[{id:'a',x:0,z:0}],16,38),c={...DEFAULTS,slimeInjectionAmount:100,burstFeedbackDelay:-5,hitSquashEnabled:0,eyeHitEnabled:0};
+ let captured:T.Matrix4[]=[];const emit=f.eyeDebris.emit.bind(f.eyeDebris);
+ f.eyeDebris.emit=(eyes,center,settings,id)=>{captured=eyes.map(eye=>{eye.updateWorldMatrix(true,false);return eye.matrixWorld.clone();});emit(eyes,center,settings,id);};
+ f.hit('a',{x:0,z:-1},c);for(let i=0;i<500&&f.snapshot()[0].burst.phase!=='gone';i++)f.update(1/120,c);
+ assert.equal(captured.length,2);group.children.filter(o=>o.name==='DetachedSlimeEye').forEach((eye,i)=>{eye.updateWorldMatrix(true,true);assert.ok(eye.matrixWorld.elements.every((n,k)=>Math.abs(n-captured[i].elements[k])<1e-7));});
+});

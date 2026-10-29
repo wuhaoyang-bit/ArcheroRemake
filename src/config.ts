@@ -1,3 +1,4 @@
+import type {EyeHitCurveKey} from './eye-hit-config.ts';
 import { CAMERA_ZOOM_DEFAULTS, CAMERA_ZOOM_LIMITS } from './camera-zoom-config.ts';
 import { BOW_FX_DEFAULTS, BOW_FX_LIMITS } from './bow-release-config.ts';
 import { ARROW_TRAIL_DEFAULTS, ARROW_TRAIL_LIMITS } from './arrow-trail-config.ts';
@@ -75,7 +76,7 @@ export const DEFAULTS = {
   viewWidth: 18,
 };
 export type Settings = typeof DEFAULTS;
-export type SettingKey = Exclude<keyof Settings, 'slimeEyeSpeedCurve' | 'recoilSpeedCurve' | 'juiceSpeedCurve' | 'turnCurve' | 'lockTurnCurve' | 'anchorCurve' | 'moveCurve' | 'ringCurve' | 'ringStrokeCurve' | 'ringLinkAttackCurve' | 'ringSwitchCurve' | 'ringWaveCurve'>;
+export type SettingKey = Exclude<keyof Settings, EyeHitCurveKey | 'slimeEyeSpeedCurve' | 'recoilSpeedCurve' | 'juiceSpeedCurve' | 'turnCurve' | 'lockTurnCurve' | 'anchorCurve' | 'moveCurve' | 'ringCurve' | 'ringStrokeCurve' | 'ringLinkAttackCurve' | 'ringSwitchCurve' | 'ringWaveCurve'>;
 /** Missing lock values inherit the corresponding ordinary tuning once, on load. */
 export const LOCK_TURN_KEYS = {
   lockTurnModel: 'turnModel', lockTurnSpeed: 'turnSpeed', lockCurveSnapAngle: 'curveSnapAngle',

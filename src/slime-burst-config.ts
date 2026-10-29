@@ -1,6 +1,13 @@
 // Legacy puddleInnerPower / puddleEdgeColor / puddleReflection keys are retained for saved-file compatibility only.
 export const BURST_DEFAULTS={
+ puddleRenderer:0,
+ puddleCanvasShapes:7,
+ puddleCurveShapes:7,
  burstEnabled:1,
+ burstEyeEnabled:1,
+ burstEyeOut:.35,
+ burstEyeAngle:10,
+ burstEyePoseTime:.18,
  burstFeedbackDelay:0,
  burstOnset:0.1,
  burstScaleStart:0,
@@ -107,6 +114,13 @@ export const BURST_DEFAULTS={
 };
 export type BurstSettings=typeof BURST_DEFAULTS;
 export const BURST_LIMITS:Record<keyof BurstSettings,[number,number,number]>={
+ puddleRenderer:[0,1,1],
+ puddleCanvasShapes:[1,7,1],
+ puddleCurveShapes:[1,7,1],
+ burstEyeEnabled:[0,1,1],
+ burstEyeOut:[0,1,.05],
+ burstEyeAngle:[0,45,1],
+ burstEyePoseTime:[0,5,.01],
  burstEnabled:[0,1,1],
  burstFeedbackDelay:[-10, 3, 0.01],
  burstOnset:[0, 1, 0.01],
@@ -213,6 +227,10 @@ export const BURST_LIMITS:Record<keyof BurstSettings,[number,number,number]>={
  burstLayer5Opacity:[0,1,0.05],
 };
 export const BURST_CONTROLS:[keyof BurstSettings,string,string,string][]=[
+ ['burstEyeEnabled','蓄爆眼球姿态','0/1','蓄爆期间逐渐突出，左右眼分别朝斜上方外侧转动；独立于受击滞后开关。'],
+ ['burstEyeOut','蓄爆眼球突出量','眼球半径','沿脸部表面向外突出，默认 0.35 个眼球半径。'],
+ ['burstEyeAngle','蓄爆眼球斜上外转','°','左右镜像，朝斜上方外侧转动的总角度，默认 10°。'],
+ ['burstEyePoseTime','蓄爆眼球渐入时间','s','从蓄爆开始平滑进入姿态；提前蓄爆时接续受击眼位。0 立即到位，最长不超过蓄爆目标时长。'],
  ['burstFeedbackDelay','受击 → 蓄爆时间偏移','s','负数提前：-0.5 表示受击反馈结束前约 0.5 秒开始蓄爆；0 等待完整反馈；正数额外停顿。提前时叠加剩余受击与鼓胀，最早从最后一箭命中开始。'],
  ['burstOnset','伸缩渐入时间','s','从当前尺寸平滑进入振荡；0立即使用设定相位。'],
  ['burstScaleStart','体型增长开始进度','比例','相对蓄爆目标时长；结束进度小于开始时视为瞬间变化。'],
@@ -242,6 +260,7 @@ export const BURST_CONTROLS:[keyof BurstSettings,string,string,string][]=[
  ['burstColorR','特效红通道','','线性颜色。'],
  ['burstColorG','特效绿通道','','默认黄色。'],
  ['burstColorB','特效蓝通道','','所有六层共用。'],
+ ['puddleRenderer','液体渲染方式','','可随时切换：旧版平面粘液 / CurveFluid 三维粘液。'],
  ['puddleHighlightEnabled','柔和大高光开关','0/1','独立控制浅色圆润亮斑。'],
  ['puddleHighlightStrength','大高光强度','','向浅色提亮，不使用边缘反光。'],
  ['puddleHighlightSize','大高光大小','比例','相对液滩尺寸的半径。'],

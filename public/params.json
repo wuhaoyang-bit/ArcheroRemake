@@ -1,6 +1,20 @@
 {
   "version": 1,
   "settings": {
+    "eyeHitEnabled": 1,
+    "eyeHitPull": 3,
+    "eyeHitPullTime": 0.12,
+    "eyeHitHoldTime": 0.005,
+    "eyeHitReturnTime": 0.04,
+    "eyeHitDepth": 1.25,
+    "eyeHitAbsorbTime": 0.075,
+    "eyeHitRestoreSpeed": 2,
+    "eyeHitReferenceSpeed": 12,
+    "eyeHitMinimumStrength": 0.45,
+    "eyeHitTetherEnabled": 1,
+    "eyeHitTetherRoot": 0.7,
+    "eyeHitTetherNeck": 0.24,
+    "eyeHitTetherTip": 0.65,
     "slimeEyeDeformEnabled": 1,
     "slimeEyeDeformSpeed": 12,
     "slimeEyeDeformPower": 1.25,
@@ -62,7 +76,14 @@
     "slimeBulge": 0.65,
     "slimeInflationFrequency": 5.5,
     "slimeInflationDamping": 0.55,
+    "puddleRenderer": 1,
+    "puddleCanvasShapes": 7,
+    "puddleCurveShapes": 1,
     "burstEnabled": 1,
+    "burstEyeEnabled": 1,
+    "burstEyeOut": 0.55,
+    "burstEyeAngle": 15,
+    "burstEyePoseTime": 5,
     "burstFeedbackDelay": -2,
     "burstOnset": 0.1,
     "burstScaleStart": 0,
@@ -70,11 +91,11 @@
     "burstBulgeStart": 0,
     "burstBulgeEnd": 1,
     "burstDuration": 1.2,
-    "burstFrequencyStart": 2,
-    "burstFrequencyEnd": 8,
+    "burstFrequencyStart": 4,
+    "burstFrequencyEnd": 16,
     "burstFrequencyPower": 2,
-    "burstAmplitudeStart": 0.04,
-    "burstAmplitudeEnd": 0.04,
+    "burstAmplitudeStart": 0.24,
+    "burstAmplitudeEnd": 0.06,
     "burstAmplitudePower": 1,
     "burstPhaseStart": 0,
     "burstPhaseEnd": 90,
@@ -164,6 +185,56 @@
     "burstLayer5Size": 1,
     "burstLayer5Speed": 1,
     "burstLayer5Opacity": 1,
+    "eyeHitPullCurve": [
+      {
+        "time": 0,
+        "progress": 260
+      },
+      {
+        "time": 25,
+        "progress": 180
+      },
+      {
+        "time": 65,
+        "progress": 45
+      },
+      {
+        "time": 100,
+        "progress": 0
+      }
+    ],
+    "eyeHitReturnCurve": [
+      {
+        "time": 0,
+        "progress": 0
+      },
+      {
+        "time": 35,
+        "progress": 70
+      },
+      {
+        "time": 100,
+        "progress": 260
+      }
+    ],
+    "eyeHitAbsorbCurve": [
+      {
+        "time": 0,
+        "progress": 260
+      },
+      {
+        "time": 40,
+        "progress": 80
+      },
+      {
+        "time": 80,
+        "progress": 10
+      },
+      {
+        "time": 100,
+        "progress": 0
+      }
+    ],
     "hitKnockEnabled": 1,
     "hitRimEnabled": 1,
     "hitSquashEnabled": 1,
@@ -336,7 +407,7 @@
     "monsterScale": 1,
     "monsterHitRadius": 0.47,
     "monsterHitSpeed": 2,
-    "monsterCount": 1,
+    "monsterCount": 3,
     "joystickSize": 0.95,
     "joystickRadius": 64,
     "unlockDistance": 20,

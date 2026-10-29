@@ -1,0 +1,26 @@
+{
+  "source": "CurveFluid.blend",
+  "author": "FuLi",
+  "version": "0.0.2",
+  "license": "CC-BY-4.0",
+  "variants": [
+    {
+      "variant": 1,
+      "sourceComponent": 2,
+      "vertices": 825,
+      "triangles": 1650
+    },
+    {
+      "variant": 2,
+      "sourceComponent": 3,
+      "vertices": 811,
+      "triangles": 1618
+    },
+    {
+      "variant": 3,
+      "sourceComponent": 4,
+      "vertices": 796,
+      "triangles": 1592
+    }
+  ]
+}

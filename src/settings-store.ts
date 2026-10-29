@@ -1,3 +1,4 @@
+import {EYE_HIT_CURVE_KEYS,validateEyeHitCurve} from './eye-hit-config.ts';
 import { validateJuiceSpeedCurve } from './juice-speed-curve.ts';
 import { validateProgressCurve, validateSwitchCurve, validateStrokeCurve } from './lock-rings.ts';
 import { validateMoveCurve } from './move-speed.ts';
@@ -55,6 +56,7 @@ export function parseSettingsDocument(raw: unknown, strict = false): Settings {
   settings.ringWaveCurve = validateProgressCurve(source.ringWaveCurve === undefined ? DEFAULTS.ringWaveCurve : source.ringWaveCurve);
   settings.ringSwitchCurve = validateSwitchCurve(source.ringSwitchCurve === undefined ? DEFAULTS.ringSwitchCurve : source.ringSwitchCurve);
   settings.ringCurve = validateProgressCurve(source.ringCurve === undefined ? DEFAULTS.ringCurve : source.ringCurve);
+  for(const key of EYE_HIT_CURVE_KEYS)settings[key]=validateEyeHitCurve(source[key]??DEFAULTS[key]);
   settings.slimeEyeSpeedCurve=validateJuiceSpeedCurve(source.slimeEyeSpeedCurve ?? DEFAULTS.slimeEyeSpeedCurve);
   settings.juiceSpeedCurve=validateJuiceSpeedCurve(source.juiceSpeedCurve ?? DEFAULTS.juiceSpeedCurve);
   settings.recoilSpeedCurve=validateJuiceSpeedCurve(source.recoilSpeedCurve ?? DEFAULTS.recoilSpeedCurve);

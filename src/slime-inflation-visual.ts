@@ -1,3 +1,4 @@
+import {EyeHitVisual} from './eye-hit-visual.ts';
 import * as T from 'three';
 import {mergeVertices} from 'three/addons/utils/BufferGeometryUtils.js';
 import {inflatePoint} from './slime-inflation-shape.ts';
@@ -6,6 +7,7 @@ import {SlimeInflationState} from './slime-inflation-state.ts';
 import type {SlimeInflationSettings} from './slime-inflation-config.ts';
 /** Inner geometry carries permanent growth; the outer feedback matrix carries transient squash. */
 export class SlimeInflationVisual{
+ readonly eyeHit:EyeHitVisual;
  readonly state=new SlimeInflationState();extent=1;settledExtent=1;
  private base:T.BufferAttribute;private positions:T.BufferAttribute;private geometry:T.BufferGeometry;private baseVolume:number;private radius=0;
  private startColor=new T.Color();private endColor=new T.Color();private originalAttenuation:T.Color;
@@ -19,6 +21,7 @@ export class SlimeInflationVisual{
   this.positions=this.geometry.getAttribute('position') as T.BufferAttribute;this.positions.setUsage(T.DynamicDrawUsage);this.base=this.positions.clone();this.baseVolume=this.volume();
   for(let i=0;i<this.base.count;i++)this.radius=Math.max(this.radius,this.p.fromBufferAttribute(this.base,i).length());
   this.faceBase=model.face.children.map(o=>o.position.clone().add(new T.Vector3(0,-1,0)));model.body.position.y=0;
+  this.eyeHit=new EyeHitVisual(model.face.children.slice(),model.root);
  }
  private volume(){const idx=this.geometry.index!;let v=0;for(let i=0;i<idx.count;i+=3){this.a.fromBufferAttribute(this.positions,idx.getX(i));this.b.fromBufferAttribute(this.positions,idx.getX(i+1));this.c.fromBufferAttribute(this.positions,idx.getX(i+2));v+=this.a.dot(this.b.cross(this.c))/6;}return Math.abs(v);}
  private shape(fill:number,c:SlimeInflationSettings){const bulge=Math.min(c.slimeBulge,1/Math.max(1,fill));for(let i=0;i<this.base.count;i++){this.p.fromBufferAttribute(this.base,i);inflatePoint(this.out,this.p,'bulge',fill,bulge,3,this.radius);this.positions.setXYZ(i,this.out.x,this.out.y,this.out.z);}const scale=(1+(c.slimeMaxScale-1)*fill)*Math.cbrt(this.baseVolume/this.volume());return {scale,bulge,extent:scale*(1+bulge*fill*(this.radius-1))};}
@@ -38,7 +41,10 @@ export class SlimeInflationVisual{
   const {scale,bulge,extent}=this.shape(fill,c);this.extent=extent;
   this.positions.needsUpdate=true;this.geometry.computeVertexNormals();this.geometry.computeBoundingBox();this.geometry.computeBoundingSphere();
   this.model.root.scale.setScalar(this.size/2*scale);this.model.root.position.y=this.size/2*extent;
-  this.model.face.children.forEach((eye,i)=>{inflatePoint(this.out,this.faceBase[i],'bulge',fill,bulge,3,this.radius);eye.position.copy(this.out);});
+  this.model.face.children.forEach((eye,i)=>{inflatePoint(this.out,this.faceBase[i],'bulge',fill,bulge,3,this.radius);eye.position.copy(this.out);
+   const base=this.faceBase[i].clone();base.z=1;inflatePoint(this.eyeHit.surfaces[i],base,'bulge',fill,bulge,3,this.radius);
+   const dx=base.clone(),dy=base.clone();dx.x+=.001;dy.y+=.001;inflatePoint(dx,dx,'bulge',fill,bulge,3,this.radius);inflatePoint(dy,dy,'bulge',fill,bulge,3,this.radius);
+   this.eyeHit.normals[i].crossVectors(dx.sub(this.eyeHit.surfaces[i]),dy.sub(this.eyeHit.surfaces[i])).normalize();});
  }
  get eyes(){return this.model.face.children;}
  copyColor(out:T.Color){return out.copy((this.model.body.material as T.MeshPhysicalMaterial).color);}
