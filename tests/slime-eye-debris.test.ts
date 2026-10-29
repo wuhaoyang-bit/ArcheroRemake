@@ -28,3 +28,17 @@ test('eye curve settings validate, round-trip and snapshot independently',async(
  assert.throws(()=>parseSettingsDocument({version:1,settings:{slimeEyeSpeedCurve:[{time:0,progress:-1},{time:100,progress:0}]}}));
  const {debris,eyes}=setup();debris.emit(eyes,new T.Vector3(2,1,3),c);c.slimeEyeSpeedCurve[0].progress=0;assert.equal((debris as any).fragments[0].settings.slimeEyeSpeedCurve[0].progress,200);
 });
+
+test('fast eyes bounce off walls and do not return to their pre-collision launch curve',()=>{
+ const {debris,eyes}=setup();debris.setCollisions(12,12,[]);debris.emit(eyes,new T.Vector3(2,1,3),{...C,slimeEyeEjectGravity:0,slimeEyeEjectSpeed:40,slimeEyeSpeedCurve:[{time:0,progress:300},{time:100,progress:300}]},'source');
+ let reflected=false;for(let i=0;i<30;i++){debris.update(1/120);for(const f of debris.snapshot()){assert.ok(Math.abs(f.position[0])<6);assert.ok(Math.abs(f.position[2])<6);if(f.velocity[2]<0)reflected=true;}}assert.ok(reflected);
+});
+test('monster sweep excludes source and respects height, without mutating obstacles',async()=>{
+ const {eyeContact}=await import('../src/eye-collision.ts');const box=new T.Box3(new T.Vector3(-1,0,4),new T.Vector3(1,2,6)),before=box.clone(),from=new T.Vector3(0,1,0),to=new T.Vector3(0,1,10);
+ assert.equal(eyeContact(from,to,.2,Infinity,Infinity,[{id:'self',box}],'self'),null);
+ const hit=eyeContact(from,to,.2,Infinity,Infinity,[{id:'other',box}],'self');assert.ok(hit);assert.ok(hit.time<.4);assert.deepEqual(hit.normal.toArray(),[0,0,-1]);
+ assert.equal(eyeContact(new T.Vector3(0,3,0),new T.Vector3(0,3,10),.2,Infinity,Infinity,[{id:'other',box}],'self'),null);assert.ok(box.equals(before));
+});
+test('hitting another monster reflects only the eye velocity',()=>{
+ const {debris,eyes}=setup(),box=new T.Box3(new T.Vector3(-10,0,5),new T.Vector3(10,4,6)),before=box.clone();debris.setCollisions(Infinity,Infinity,[{id:'other',box}]);debris.emit(eyes,new T.Vector3(2,1,3),{...C,slimeEyeEjectGravity:0,slimeEyeEjectSpeed:40,slimeEyeSpeedCurve:[{time:0,progress:100},{time:100,progress:100}]},'source');debris.update(.1);assert.ok(debris.snapshot().every(f=>f.velocity[2]<0));assert.ok(box.equals(before));
+});

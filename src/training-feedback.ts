@@ -19,7 +19,7 @@ export class TrainingFeedback {
   onFilled?:(id:string)=>void;
   onBurst?:(center:T.Vector3,feet:T.Vector3,settings:BurstSettings,color?:T.Color)=>void;
   private worldRotation=new T.Quaternion();
-  constructor(group:T.Group,targets:({id:string}&Point)[],width:number,length:number){
+  constructor(group:T.Group,targets:({id:string}&Point)[],private width:number,private length:number){
     this.eyeDebris=new SlimeEyeDebris(group);
     for(const root of group.children.filter(o=>o.userData.practiceTarget)){
       const target=targets.find(t=>t.id===root.userData.practiceTarget)!;
@@ -47,7 +47,7 @@ export class TrainingFeedback {
     d.root.getWorldQuaternion(this.worldRotation);
     hitDeformation(d.visual.matrix,squash,modelScale*burstScale*d.breath.scale,c.hitSquashMode,c.hitSquashCompensation,d.response.direction,this.worldRotation);
     d.visual.matrixWorldNeedsUpdate=true;d.rim.value=d.response.rim(c);d.brightness.value=c.hitRimBrightness;d.power.value=8*Math.pow(.05,(c.hitRimWidth-.1)/.9);d.root.updateWorldMatrix(true,true);}
-  update(dt:number,c:FeedbackSettings){this.eyeDebris.update(dt);for(const d of this.dummies){
+  update(dt:number,c:FeedbackSettings){if(this.eyeDebris.active)this.eyeDebris.setCollisions(this.width,this.length,this.dummies.filter(d=>d.burst.phase!=='gone'&&d.root.visible).map(d=>({id:d.root.userData.practiceTarget as string,box:new T.Box3().setFromObject(d.visual)})));this.eyeDebris.update(dt);for(const d of this.dummies){
     if(d.burst.phase==='gone')continue;
     d.response.update(dt,c);d.monster?.inflation?.state.update(dt,c);
     const complete=d.response.complete(c)&&(!d.monster?.inflation||!Number.isFinite(d.monster.inflation.state.age))&&!(d.monster?.animation?.snapshot().hitRemaining);
@@ -56,7 +56,7 @@ export class TrainingFeedback {
     const exploded=d.burst.update(dt,complete,remaining);
     if(wasWaiting&&d.burst.phase==='winding')d.burstBase={...c};
     this.apply(d,c);
-    if(exploded){const center=new T.Box3().setFromObject(d.visual).getCenter(new T.Vector3());const feet=new T.Vector3(d.response.position.x,.025,d.response.position.z);if(d.monster?.inflation)this.eyeDebris.emit(d.monster.inflation.eyes,center,c);d.root.visible=false;this.onBurst?.(center,feet,d.burst.config!,d.monster?.inflation?.copyColor(new T.Color()));}
+    if(exploded){const center=new T.Box3().setFromObject(d.visual).getCenter(new T.Vector3());const feet=new T.Vector3(d.response.position.x,.025,d.response.position.z);if(d.monster?.inflation)this.eyeDebris.emit(d.monster.inflation.eyes,center,c,d.root.userData.practiceTarget);d.root.visible=false;this.onBurst?.(center,feet,d.burst.config!,d.monster?.inflation?.copyColor(new T.Color()));}
   }}
   pursue(dt:number,player:Point,speed:number,c:FeedbackSettings,resolveContacts?:()=>void){
     for(const d of this.dummies){

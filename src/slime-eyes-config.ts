@@ -1,9 +1,24 @@
 import type {JuiceSpeedPoint} from './juice-speed-curve.ts';
 export const DEFAULT_EYE_SPEED_CURVE:JuiceSpeedPoint[]=[{time:0,progress:100},{time:15,progress:85},{time:55,progress:25},{time:100,progress:8}];
-export const SLIME_EYES_DEFAULTS={slimeEyeEjectEnabled:1,slimeEyeEjectSpeed:14,slimeEyeEjectGravity:9.8,slimeEyeCurveTime:.22,slimeEyeGroundFriction:.12,slimeEyeRollDrag:2,slimeEyeEjectBounce:.6,slimeEyeEjectSpin:5,slimeEyesEnabled:1,slimeEyeSize:.13,slimeEyeSpacing:.68,slimeEyeX:0,slimeEyeY:1.15,slimeEyeZ:1.035,slimeEyeWidth:1,slimeEyeHeight:1,slimeEyeDepth:1,slimePupilSize:.47,slimePupilAspect:1,slimePupilX:0,slimePupilY:0,slimeEyeRoughness:.22,slimeEyeGloss:.12};
+export const SLIME_EYES_DEFAULTS={slimeEyeDeformEnabled:1,slimeEyeDeformSpeed:12,slimeEyeDeformPower:1.25,slimeEyeFlightStretch:.3,slimeEyeAnticipationTime:.075,slimeEyeSquash:.45,slimeEyeSquashTime:.055,slimeEyeSquashHold:.18,slimeEyeReboundStretch:.38,slimeEyeRecoverTime:.14,slimeEyeReboundPeak:.22,slimeEyeSettle:.12,slimeEyeWallCollision:1,slimeEyeMonsterCollision:1,slimeEyeCollisionBounce:.85,slimeEyeEjectEnabled:1,slimeEyeEjectSpeed:14,slimeEyeEjectGravity:9.8,slimeEyeCurveTime:.22,slimeEyeGroundFriction:.12,slimeEyeRollDrag:2,slimeEyeEjectBounce:.6,slimeEyeEjectSpin:5,slimeEyesEnabled:1,slimeEyeSize:.13,slimeEyeSpacing:.68,slimeEyeX:0,slimeEyeY:1.15,slimeEyeZ:1.035,slimeEyeWidth:1,slimeEyeHeight:1,slimeEyeDepth:1,slimePupilSize:.47,slimePupilAspect:1,slimePupilX:0,slimePupilY:0,slimeEyeRoughness:.22,slimeEyeGloss:.12};
 export type SlimeEyesSettings=typeof SLIME_EYES_DEFAULTS;
-export const SLIME_EYES_LIMITS:Record<keyof SlimeEyesSettings,[number,number,number]>={slimeEyeEjectEnabled:[0,1,1],slimeEyeEjectSpeed:[0,40,.1],slimeEyeEjectGravity:[0,30,.1],slimeEyeCurveTime:[.02,2,.01],slimeEyeGroundFriction:[0,1,.01],slimeEyeRollDrag:[0,10,.1],slimeEyeEjectBounce:[0,.9,.05],slimeEyeEjectSpin:[0,20,.1],slimeEyesEnabled:[0,1,1],slimeEyeSize:[.03,.4,.005],slimeEyeSpacing:[.1,1.6,.01],slimeEyeX:[-.8,.8,.01],slimeEyeY:[.3,1.9,.01],slimeEyeZ:[.6,1.5,.005],slimeEyeWidth:[.3,2,.05],slimeEyeHeight:[.3,2,.05],slimeEyeDepth:[.3,2,.05],slimePupilSize:[.05,.85,.01],slimePupilAspect:[.3,2,.05],slimePupilX:[-.8,.8,.01],slimePupilY:[-.8,.8,.01],slimeEyeRoughness:[.02,1,.01],slimeEyeGloss:[.02,1,.01]};
+export const SLIME_EYES_LIMITS:Record<keyof SlimeEyesSettings,[number,number,number]>={slimeEyeDeformEnabled:[0,1,1],slimeEyeDeformSpeed:[1,40,.5],slimeEyeDeformPower:[.3,3,.1],slimeEyeFlightStretch:[0,.8,.01],slimeEyeSquash:[0,.7,.01],slimeEyeAnticipationTime:[.01,.2,.005],slimeEyeSquashTime:[.015,.15,.005],slimeEyeSquashHold:[0,.6,.01],slimeEyeReboundStretch:[0,.8,.01],slimeEyeRecoverTime:[.03,.4,.005],slimeEyeReboundPeak:[.1,.5,.01],slimeEyeSettle:[0,.4,.01],slimeEyeWallCollision:[0,1,1],slimeEyeMonsterCollision:[0,1,1],slimeEyeCollisionBounce:[0,1,.01],slimeEyeEjectEnabled:[0,1,1],slimeEyeEjectSpeed:[0,40,.1],slimeEyeEjectGravity:[0,30,.1],slimeEyeCurveTime:[.02,2,.01],slimeEyeGroundFriction:[0,1,.01],slimeEyeRollDrag:[0,10,.1],slimeEyeEjectBounce:[0,.9,.05],slimeEyeEjectSpin:[0,20,.1],slimeEyesEnabled:[0,1,1],slimeEyeSize:[.03,.4,.005],slimeEyeSpacing:[.1,1.6,.01],slimeEyeX:[-.8,.8,.01],slimeEyeY:[.3,1.9,.01],slimeEyeZ:[.6,1.5,.005],slimeEyeWidth:[.3,2,.05],slimeEyeHeight:[.3,2,.05],slimeEyeDepth:[.3,2,.05],slimePupilSize:[.05,.85,.01],slimePupilAspect:[.3,2,.05],slimePupilX:[-.8,.8,.01],slimePupilY:[-.8,.8,.01],slimeEyeRoughness:[.02,1,.01],slimeEyeGloss:[.02,1,.01]};
 export const SLIME_EYES_CONTROLS:[keyof SlimeEyesSettings,string,string,string][]=[
+ ['slimeEyeDeformEnabled','眼球弹性形变','0/1','碰前拉伸 → 接触压扁 → 弹开拉伸 → 回圆；瞳孔一起变形，下次爆炸生效。'],
+ ['slimeEyeDeformSpeed','满强度参考速度','u/s','碰撞与碰前拉伸取迎向接触面的速度；达到该速度时形变满强度，擦碰不会过度压扁。'],
+ ['slimeEyeDeformPower','速度影响曲线','幂次','大于 1 时轻碰形变更小，高速撞击更明显。'],
+ ['slimeEyeFlightStretch','碰前 / 弹出拉伸','比例','只在即将碰撞或刚弹出时沿运动方向拉长；空中中段回圆。'],
+ ['slimeEyeAnticipationTime','碰前拉伸窗口','s','碰撞前多长时间开始拉伸；越短越利落，太长会显得拖沓。'],
+ ['slimeEyeSquash','碰撞最大压缩','比例','沿碰撞法线压扁，力度取决于碰撞瞬间的速度。'],
+ ['slimeEyeSquashTime','接触压扁时长','s','短暂贴住接触面后迅速恢复圆形；轻碰和小弹跳自动缩短。'],
+ ['slimeEyeSquashHold','最扁姿势停留比例','比例','压扁阶段中，最扁姿势保留的时间比例；之后快速弹开。'],
+ ['slimeEyeReboundStretch','反弹额外拉伸','比例','回圆后沿本次弹离方向拉伸，方向锁定，不受眼球翻滚干扰。'],
+ ['slimeEyeRecoverTime','弹开与回圆时长','s','包括快速拉长、回圆与一次轻微余震；小弹跳在最高点前结束。'],
+ ['slimeEyeReboundPeak','拉伸达峰时间比例','比例','弹开阶段多早达到最长姿势；越小越有快速弹开的感觉。'],
+ ['slimeEyeSettle','回圆余震比例','比例','回圆前轻微反向收缩一次；0 关闭，避免持续软绵晃动。'],
+ ['slimeEyeWallCollision','眼球碰撞场地边缘','0/1','碰到边缘后反弹，不影响玩家。'],
+ ['slimeEyeMonsterCollision','眼球碰撞其他怪物','0/1','排除来源怪物和已消失怪物；只改变眼球运动。'],
+ ['slimeEyeCollisionBounce','撞墙与撞怪反弹系数','比例','法线方向速度保留比例，越接近 1 越有弹性。地面弹性仍单独设置。'],
  ['slimeEyeEjectEnabled','爆炸保留眼球','0/1','保留眼球作为无角色碰撞的视觉碎片，重置怪物时清理。'],
  ['slimeEyeEjectSpeed','眼球弹出速度','u/s','方向严格从爆炸中心指向各自眼球。'],
  ['slimeEyeEjectGravity','眼球下落重力','u/s²','从弹出第一帧就生效，不受速度曲线影响。'],
