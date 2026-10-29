@@ -1,6 +1,27 @@
 {
   "version": 1,
   "settings": {
+    "slimeEyeEjectEnabled": 1,
+    "slimeEyeEjectSpeed": 20,
+    "slimeEyeEjectGravity": 20,
+    "slimeEyeCurveTime": 0.9,
+    "slimeEyeEjectBounce": 0.6,
+    "slimeEyeEjectSpin": 10,
+    "slimeEyesEnabled": 1,
+    "slimeEyeSize": 0.25,
+    "slimeEyeSpacing": 0.88,
+    "slimeEyeX": 0,
+    "slimeEyeY": 1.15,
+    "slimeEyeZ": 0.985,
+    "slimeEyeWidth": 1,
+    "slimeEyeHeight": 1,
+    "slimeEyeDepth": 1,
+    "slimePupilSize": 0.47,
+    "slimePupilAspect": 1,
+    "slimePupilX": 0,
+    "slimePupilY": 0,
+    "slimeEyeRoughness": 0.22,
+    "slimeEyeGloss": 0.12,
     "slimeColorEnabled": 1,
     "slimeColorStartR": 255,
     "slimeColorStartG": 230,
@@ -144,6 +165,16 @@
     "hitReleaseTime": 0.1,
     "hitSpringFrequency": 5.2,
     "hitSpringDamping": 0.25,
+    "slimeEyeSpeedCurve": [
+      {
+        "time": 0,
+        "progress": 120
+      },
+      {
+        "time": 100,
+        "progress": 8
+      }
+    ],
     "juiceSpeedCurve": [
       {
         "time": 0,

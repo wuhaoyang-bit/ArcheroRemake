@@ -290,11 +290,13 @@ export class GameScene {
       this.hitSplash.warmup(this.camera,this.controller.settings);this.arrows.prepareWarmup(32,this.camera);this.bowRelease.prepareWarmup(16);this.juice.prepareWarmup(16,this.controller.settings,this.camera);
       await compile(.7,.82,'正在准备射箭与命中特效');
     }finally{this.arrows.clear();this.bowRelease.finishWarmup();this.juice.finishWarmup();this.hitSplash.clear();}
+    const eyeWarmTargets=[{id:'eye-warmup',label:'Eye warmup',x:0,z:0}],eyeWarmGroup=buildLockingTraining(this.roomSize,this.roomLength,eyeWarmTargets,()=>createTrainingCube(this.slimeEnvironment));
+    this.scene.add(eyeWarmGroup);const eyeWarmFeedback=new TrainingFeedback(eyeWarmGroup,eyeWarmTargets,this.roomSize,this.roomLength);eyeWarmFeedback.prepareEyeDebris(this.controller.settings);
     try{
       report(.82,'正在准备爆炸与地面液体');await breathe();
       this.burstEffects.prepareWarmup(LIMITS.monsterCount[1],this.controller.settings,this.camera,this.roomSize,this.roomLength);
       await compile(.82,.98,'正在准备爆炸与地面液体');
-    }finally{this.burstEffects.clear();}
+    }finally{this.burstEffects.clear();eyeWarmGroup.visible=false; /* Retain warmed eye materials so their GPU pipelines stay cached. */}
     this.sync(0);this.renderer.render(this.scene,this.camera);await finishGpuWarmup(this.renderer);
     this.startup.warmed=true;report(1,'准备完成');
 

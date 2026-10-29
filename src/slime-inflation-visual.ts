@@ -23,6 +23,7 @@ export class SlimeInflationVisual{
  private volume(){const idx=this.geometry.index!;let v=0;for(let i=0;i<idx.count;i+=3){this.a.fromBufferAttribute(this.positions,idx.getX(i));this.b.fromBufferAttribute(this.positions,idx.getX(i+1));this.c.fromBufferAttribute(this.positions,idx.getX(i+2));v+=this.a.dot(this.b.cross(this.c))/6;}return Math.abs(v);}
  private shape(fill:number,c:SlimeInflationSettings){const bulge=Math.min(c.slimeBulge,1/Math.max(1,fill));for(let i=0;i<this.base.count;i++){this.p.fromBufferAttribute(this.base,i);inflatePoint(this.out,this.p,'bulge',fill,bulge,3,this.radius);this.positions.setXYZ(i,this.out.x,this.out.y,this.out.z);}const scale=(1+(c.slimeMaxScale-1)*fill)*Math.cbrt(this.baseVolume/this.volume());return {scale,bulge,extent:scale*(1+bulge*fill*(this.radius-1))};}
  apply(c:SlimeInflationSettings){
+  if(this.model.updateEyes(c)){this.faceBase=this.model.face.children.map(o=>o.position.clone().add(new T.Vector3(0,-1,0)));this.key='';}
   const material=this.model.body.material as T.MeshPhysicalMaterial;
   this.startColor.setRGB(c.slimeColorStartR/255,c.slimeColorStartG/255,c.slimeColorStartB/255,T.SRGBColorSpace);
   this.endColor.setRGB(c.slimeColorEndR/255,c.slimeColorEndG/255,c.slimeColorEndB/255,T.SRGBColorSpace);
@@ -39,6 +40,7 @@ export class SlimeInflationVisual{
   this.model.root.scale.setScalar(this.size/2*scale);this.model.root.position.y=this.size/2*extent;
   this.model.face.children.forEach((eye,i)=>{inflatePoint(this.out,this.faceBase[i],'bulge',fill,bulge,3,this.radius);eye.position.copy(this.out);});
  }
+ get eyes(){return this.model.face.children;}
  copyColor(out:T.Color){return out.copy((this.model.body.material as T.MeshPhysicalMaterial).color);}
  snapshot(){return {color:(this.model.body.material as T.MeshPhysicalMaterial).color.getHex(),colorFill:this.state.colorFill,amount:this.state.amount,target:this.state.target,visual:this.state.visual,extent:this.extent,settledExtent:this.settledExtent};}
 }

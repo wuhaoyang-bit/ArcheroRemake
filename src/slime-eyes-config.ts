@@ -1,0 +1,30 @@
+import type {JuiceSpeedPoint} from './juice-speed-curve.ts';
+export const DEFAULT_EYE_SPEED_CURVE:JuiceSpeedPoint[]=[{time:0,progress:100},{time:15,progress:85},{time:55,progress:25},{time:100,progress:8}];
+export const SLIME_EYES_DEFAULTS={slimeEyeEjectEnabled:1,slimeEyeEjectSpeed:14,slimeEyeEjectGravity:9.8,slimeEyeCurveTime:.22,slimeEyeGroundFriction:.12,slimeEyeRollDrag:2,slimeEyeEjectBounce:.6,slimeEyeEjectSpin:5,slimeEyesEnabled:1,slimeEyeSize:.13,slimeEyeSpacing:.68,slimeEyeX:0,slimeEyeY:1.15,slimeEyeZ:1.035,slimeEyeWidth:1,slimeEyeHeight:1,slimeEyeDepth:1,slimePupilSize:.47,slimePupilAspect:1,slimePupilX:0,slimePupilY:0,slimeEyeRoughness:.22,slimeEyeGloss:.12};
+export type SlimeEyesSettings=typeof SLIME_EYES_DEFAULTS;
+export const SLIME_EYES_LIMITS:Record<keyof SlimeEyesSettings,[number,number,number]>={slimeEyeEjectEnabled:[0,1,1],slimeEyeEjectSpeed:[0,40,.1],slimeEyeEjectGravity:[0,30,.1],slimeEyeCurveTime:[.02,2,.01],slimeEyeGroundFriction:[0,1,.01],slimeEyeRollDrag:[0,10,.1],slimeEyeEjectBounce:[0,.9,.05],slimeEyeEjectSpin:[0,20,.1],slimeEyesEnabled:[0,1,1],slimeEyeSize:[.03,.4,.005],slimeEyeSpacing:[.1,1.6,.01],slimeEyeX:[-.8,.8,.01],slimeEyeY:[.3,1.9,.01],slimeEyeZ:[.6,1.5,.005],slimeEyeWidth:[.3,2,.05],slimeEyeHeight:[.3,2,.05],slimeEyeDepth:[.3,2,.05],slimePupilSize:[.05,.85,.01],slimePupilAspect:[.3,2,.05],slimePupilX:[-.8,.8,.01],slimePupilY:[-.8,.8,.01],slimeEyeRoughness:[.02,1,.01],slimeEyeGloss:[.02,1,.01]};
+export const SLIME_EYES_CONTROLS:[keyof SlimeEyesSettings,string,string,string][]=[
+ ['slimeEyeEjectEnabled','爆炸保留眼球','0/1','保留眼球作为无角色碰撞的视觉碎片，重置怪物时清理。'],
+ ['slimeEyeEjectSpeed','眼球弹出速度','u/s','方向严格从爆炸中心指向各自眼球。'],
+ ['slimeEyeEjectGravity','眼球下落重力','u/s²','从弹出第一帧就生效，不受速度曲线影响。'],
+ ['slimeEyeCurveTime','弹出曲线时长','s','下方速度曲线的 0–100% 对应这段时间；首次触地前按曲线运动；触地后改由弹性、水平损耗和重力控制。'],
+ ['slimeEyeGroundFriction','每次触地水平损耗','比例','每次落地削减多少前进速度；0 完整保留，1 完全停止前进。'],
+ ['slimeEyeRollDrag','停止弹跳后的滚动阻力','1/s','只在贴地滚动时减速，不削弱空中的反弹。'],
+ ['slimeEyeEjectBounce','眼球落地弹性','比例','每次触地保留的竖直速度比例，连续向前反弹；越大弹得越高、次数越多。'],
+ ['slimeEyeEjectSpin','眼球翻滚速度','rad/s','弹出后自身旋转速度。'],
+ ['slimeEyesEnabled','显示眼睛','0/1','白色眼球与贴图瞳孔一起显示。'],
+ ['slimeEyeSize','眼球大小','半径','模型局部单位，随怪物整体大小缩放。'],
+ ['slimeEyeSpacing','两眼间距','u','左右眼球中心的间距。'],
+ ['slimeEyeX','双眼左右偏移','u','同时移动双眼。'],
+ ['slimeEyeY','双眼高度','u','未膨胀时相对模型脚底的高度。'],
+ ['slimeEyeZ','眼球前后位置','u','越大越突出，过小会埋入身体。'],
+ ['slimeEyeWidth','眼球宽度','倍','只改变眼球形状，不改变两眼间距。'],
+ ['slimeEyeHeight','眼球高度','倍','可调整圆眼或椭圆眼。'],
+ ['slimeEyeDepth','眼球厚度','倍','调整眼球向前凸出的程度。'],
+ ['slimePupilSize','瞳孔大小','比例','相对眼球半径，黑色直接绘制在球面贴图上。'],
+ ['slimePupilAspect','瞳孔宽高比','倍','1 为圆形，小于 1 为竖长形。'],
+ ['slimePupilX','瞳孔左右偏移','弧度','沿球面移动黑色区域。'],
+ ['slimePupilY','瞳孔上下偏移','弧度','正值向上。'],
+ ['slimeEyeRoughness','眼球粗糙度','比例','越小高光越集中。'],
+ ['slimeEyeGloss','眼球涂层粗糙度','比例','控制湿润表面的高光柔和程度。'],
+];

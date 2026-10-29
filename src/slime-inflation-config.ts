@@ -1,7 +1,8 @@
+import {SLIME_EYES_DEFAULTS,SLIME_EYES_LIMITS} from './slime-eyes-config.ts';
 import {SLIME_FULLNESS_DEFAULTS,SLIME_FULLNESS_LIMITS,SLIME_FULLNESS_CONTROLS} from './slime-fullness-config.ts';
-export const SLIME_INFLATION_DEFAULTS={...SLIME_FULLNESS_DEFAULTS,slimeInflationEnabled:1,slimeInjectionAmount:20,slimeCapacity:100,slimeMaxScale:1.35,slimeBulge:.65,slimeInflationFrequency:5.5,slimeInflationDamping:.55};
+export const SLIME_INFLATION_DEFAULTS={...SLIME_EYES_DEFAULTS,...SLIME_FULLNESS_DEFAULTS,slimeInflationEnabled:1,slimeInjectionAmount:20,slimeCapacity:100,slimeMaxScale:1.35,slimeBulge:.65,slimeInflationFrequency:5.5,slimeInflationDamping:.55};
 export type SlimeInflationSettings=typeof SLIME_INFLATION_DEFAULTS;
-export const SLIME_INFLATION_LIMITS:Record<keyof SlimeInflationSettings,[number,number,number]>={...SLIME_FULLNESS_LIMITS,slimeInflationEnabled:[0,1,1],slimeInjectionAmount:[0,100,1],slimeCapacity:[1,500,1],slimeMaxScale:[1,2,.01],slimeBulge:[0,1,.01],slimeInflationFrequency:[1,12,.1],slimeInflationDamping:[.15,2,.05]};
+export const SLIME_INFLATION_LIMITS:Record<keyof SlimeInflationSettings,[number,number,number]>={...SLIME_EYES_LIMITS,...SLIME_FULLNESS_LIMITS,slimeInflationEnabled:[0,1,1],slimeInjectionAmount:[0,100,1],slimeCapacity:[1,500,1],slimeMaxScale:[1,2,.01],slimeBulge:[0,1,.01],slimeInflationFrequency:[1,12,.1],slimeInflationDamping:[.15,2,.05]};
 export const SLIME_INFLATION_CONTROLS:[keyof SlimeInflationSettings,string,string,string][]=[
  ['slimeInflationEnabled','启用累计鼓胀','0/1','仅黄色史莱姆。关闭暂停注入并隐藏累计膨胀，保留已注入量；重置怪物清空。与受击伸缩独立。'],
  ['slimeInjectionAmount','每箭注入量','单位','每次有效命中累计一次，默认 20。'],

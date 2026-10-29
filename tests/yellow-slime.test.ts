@@ -11,7 +11,7 @@ test('yellow slime retains transmissive physical material through hit feedback, 
  assert.equal(root.userData.monsterModel,'yellow-slime');assert.equal(monsterInstance(root)?.animation,undefined);
  const f=new TrainingFeedback(group,[{id:'slime',x:0,z:0}],16,38);
  const materials:T.MeshPhysicalNodeMaterial[]=[];root.traverse(o=>{if(o instanceof T.Mesh&&o.material instanceof T.MeshPhysicalNodeMaterial)materials.push(o.material);});
- assert.equal(materials.length,1);const material=materials[0];
+ assert.equal(materials.length,3);const bodyMaterials=materials.filter(m=>m.transmission>0);assert.equal(bodyMaterials.length,1);const material=bodyMaterials[0];
  assert.equal(material.color.getHex(),0xfff4b1);assert.equal(material.transmission,.65);assert.equal(material.thickness,1.8);assert.equal(material.clearcoat,.8);assert.ok(material.emissiveNode);
  const c={...DEFAULTS,hitSquashMode:1};f.hit('slime',{x:1,z:1},c);f.update(.1,c);
  const s=f.snapshot()[0];assert.ok(s.compression>0);assert.ok(s.inflation!.amount===20);assert.deepEqual(s.proxyScale,Array(3).fill(s.inflation!.settledExtent));assert.notEqual(material.color.getHex(),0xfff4b1);assert.notEqual(DEFAULTS.juiceColor,material.color.getHex());
