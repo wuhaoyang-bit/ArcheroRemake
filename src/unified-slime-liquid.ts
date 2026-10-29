@@ -1,5 +1,5 @@
 import * as T from 'three/webgpu';
-import {texture,uv,uniform,uniformArray,vec2,vec3,Fn,normalMap,smoothstep} from 'three/tsl';
+import {texture,uv,uniform,uniformArray,vec2,vec3,Fn,If,normalMap,smoothstep} from 'three/tsl';
 import {SlimeLiquidField,type LiquidMark} from './slime-liquid-field.ts';
 import {puddleRenderKey,type PuddleState} from './puddle-live-settings.ts';
 import type {BurstSettings} from './slime-burst-config.ts';
@@ -40,9 +40,13 @@ export class UnifiedSlimeLiquid{
    const gy=h(coord.add(dv)).sub(h(coord.sub(dv))).div(this.room.y.mul(2/this.field.nz));
    const gradient=vec2(gx,gy).toVar();const world=coord.sub(.5).mul(this.room);
    for(let i=0;i<MAX_WAVES;i++){
-    const w=this.waveNode.element(i),age=this.time.sub(w.z).max(0),delta=world.sub(w.xy),distance=delta.length().max(.01),front=distance.sub(age.mul(2));
-    const envelope=front.mul(front).mul(-12).exp().mul(age.div(1.2).oneMinus().clamp()).mul(w.w);
-    gradient.addAssign(delta.div(distance).mul(front.mul(24).cos()).mul(envelope).mul(coverage));
+    const w=this.waveNode.element(i),age=this.time.sub(w.z).max(0);
+    // Most path pixels have no active impact wave. Skip its expensive trig/exponential work.
+    If(age.lessThan(1.2).and(w.w.greaterThan(0)),()=>{
+     const delta=world.sub(w.xy),distance=delta.length().max(.01),front=distance.sub(age.mul(2));
+     const envelope=front.mul(front).mul(-12).exp().mul(age.div(1.2).oneMinus().clamp()).mul(w.w);
+     gradient.addAssign(delta.div(distance).mul(front.mul(24).cos()).mul(envelope).mul(coverage));
+    });
    }
    return vec3(gradient.x.negate(),gradient.y,1).normalize().mul(.5).add(.5);
   })();
@@ -121,7 +125,7 @@ export class UnifiedSlimeLiquid{
    for(const d of this.deposits){const age=this.clock-d.born,grow=1-Math.pow(1-Math.min(1,Math.max(0,age)/.28),3),opacity=c.puddleLifetime>0&&age>c.puddleLifetime?Math.max(0,1-(age-c.puddleLifetime)/Math.max(.001,c.puddleFade)):1;
     marks.push({x:d.x+c.puddleX,z:d.z+c.puddleZ,radius:d.radius*(c.puddleSize/6)*(.35+.65*grow),opacity,color:d.color,seed:d.seed});}
    this.trail.appendMarks(marks);
-   this.field.rebuild(marks);this.map.needsUpdate=true;this.dirty=false;this.drawClock=0;
+   if(this.field.rebuild(marks))this.map.needsUpdate=true;this.dirty=false;this.drawClock=0;
   }
   this.dropRenderer.update(this.drops,true,!!c.puddleShadowEnabled);
  }

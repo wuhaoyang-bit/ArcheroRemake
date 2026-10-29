@@ -54,11 +54,12 @@ export class SlimeGroundTrail{
  private spawn(body:SlimeTrailBody,state:BodyState){
   if(this.strands.length>=MAX_SLIME_STRANDS)return;
   // The anchor is an actual stamp, just behind the body's footprint, never a moving fake tail.
-  const mark=[...state.recent].reverse().find(m=>m.id>state.lastMark&&this.opacity(m)>.8&&Math.hypot(body.position.x-m.x,body.position.z-m.z)>body.radius*.98);
+  let mark:TrailMark|undefined;
+  for(let i=state.recent.length-1;i>=0;i--){const m=state.recent[i];if(m.id>state.lastMark&&this.opacity(m)>.8&&Math.hypot(body.position.x-m.x,body.position.z-m.z)>body.radius*.98){mark=m;break;}}
   if(!mark)return;
   const seed=Math.sin(mark.seed*7.13)*.5+.5,radius=body.radius;
-  const occupied=new Set(this.strands.filter(s=>s.body.id===body.id&&s.breaking<0).map(s=>s.lane));
-  const lane=[-1,1,0].find(l=>!occupied.has(l))??0;
+  let occupied=0;for(const s of this.strands)if(s.body.id===body.id&&s.breaking<0)occupied|=1<<(s.lane+1);
+  const lane=!(occupied&1)?-1:!(occupied&4)?1:0;
   this.dir.set(mark.x-body.position.x,0,mark.z-body.position.z).normalize();
   const lateral=(lane*.45+(seed-.5)*.12)*this.markRadius(mark);
   const ground=new T.Vector3(mark.x-this.dir.z*lateral,FLOOR+.001,mark.z+this.dir.x*lateral),tip=this.sampleTip(body,ground,lane,new T.Vector3());
@@ -106,7 +107,8 @@ export class SlimeGroundTrail{
     let offset=Math.max(0,spacing-state.carry);
     for(;offset<=distance+1e-8;offset+=spacing){const f=Math.min(1,offset/distance);this.addMark(body,T.MathUtils.lerp(state.previous.x,body.position.x,f),T.MathUtils.lerp(state.previous.z,body.position.z,f),state);dirty=true;}
     state.carry=(state.carry+distance)%spacing;state.travel+=distance;
-    if(c.slimeStrandEnabled&&state.travel>body.radius*.28&&this.strands.filter(s=>s.body.id===body.id&&s.breaking<0).length<Math.round(c.slimeStrandCount)){
+    let attached=0;for(const s of this.strands)if(s.body.id===body.id&&s.breaking<0)attached++;
+    if(c.slimeStrandEnabled&&state.travel>body.radius*.28&&attached<Math.round(c.slimeStrandCount)){
      const n=this.strands.length;this.spawn(body,state);if(this.strands.length>n)state.travel=0;
     }
    }
