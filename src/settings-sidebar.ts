@@ -2,6 +2,7 @@ import './settings-sidebar.css';
 export type SidebarCategory={id:string;label:string;sections:string[]};
 /** Explicit newest-first feature order; moving existing controls preserves handlers and draft values. */
 export const GAME_SIDEBAR_CATEGORIES:SidebarCategory[]=[
+ {id:'shockwave',label:'爆炸 · 空间扭曲冲击波',sections:['爆炸 · 空间扭曲冲击波']},
  {id:'camera-shake',label:'爆炸 · 屏幕震动',sections:['爆炸 · 屏幕震动']},
  {id:'slime-trail',label:'史莱姆 · 移动液路与黏丝',sections:['史莱姆 · 移动液路与黏丝']},
  {id:'shooting',label:'射箭 · 特效与后坐力',sections:['箭头 · 颜料球','出箭特效 · 环带与尖刺','箭矢拖尾','射击后坐力','弓与箭']},

@@ -169,7 +169,7 @@ export class MovementController {
   }
 
   constructor(settings: Settings = { ...DEFAULTS }) {
-    this.settings = { ...settings, recoilSpeedCurve:validateJuiceSpeedCurve(settings.recoilSpeedCurve), ringWaveCurve:validateProgressCurve(settings.ringWaveCurve), ringSwitchCurve:validateSwitchCurve(settings.ringSwitchCurve), ringLinkAttackCurve:validateStrokeCurve(settings.ringLinkAttackCurve), ringStrokeCurve:validateStrokeCurve(settings.ringStrokeCurve), ringCurve: validateProgressCurve(settings.ringCurve), turnCurve: validateCurve(settings.turnCurve), lockTurnCurve: validateCurve(settings.lockTurnCurve), anchorCurve: validateAnchorCurve(settings.anchorCurve), moveCurve: validateMoveCurve(settings.moveCurve) };
+    this.settings = { ...settings, burstShockwaveSpeedCurve:validateJuiceSpeedCurve(settings.burstShockwaveSpeedCurve), recoilSpeedCurve:validateJuiceSpeedCurve(settings.recoilSpeedCurve), ringWaveCurve:validateProgressCurve(settings.ringWaveCurve), ringSwitchCurve:validateSwitchCurve(settings.ringSwitchCurve), ringLinkAttackCurve:validateStrokeCurve(settings.ringLinkAttackCurve), ringStrokeCurve:validateStrokeCurve(settings.ringStrokeCurve), ringCurve: validateProgressCurve(settings.ringCurve), turnCurve: validateCurve(settings.turnCurve), lockTurnCurve: validateCurve(settings.lockTurnCurve), anchorCurve: validateAnchorCurve(settings.anchorCurve), moveCurve: validateMoveCurve(settings.moveCurve) };
     this.position = { x: 0, z: settings.roomSize * 0.27 };
   }
   get anchorVisible() { return this.mode !== 'idle'; }
@@ -293,6 +293,7 @@ export class MovementController {
   setMoveCurve(points: TurnCurvePoint[]) { this.settings.moveCurve = validateMoveCurve(points); }
 
   setRecoilSpeedCurve(points:JuiceSpeedPoint[]){this.settings.recoilSpeedCurve=validateJuiceSpeedCurve(points);}
+  setShockwaveSpeedCurve(points:JuiceSpeedPoint[]){this.settings.burstShockwaveSpeedCurve=validateJuiceSpeedCurve(points);}
   setEyeHitCurve(key:EyeHitCurveKey,points:JuiceSpeedPoint[]){this.settings[key]=validateEyeHitCurve(points);}
   setEyeSpeedCurve(points:JuiceSpeedPoint[]){this.settings.slimeEyeSpeedCurve=validateJuiceSpeedCurve(points);}
   setLiquidSpeedCurve(points:JuiceSpeedPoint[]){this.settings.liquidSpeedCurve=validateJuiceSpeedCurve(points);}

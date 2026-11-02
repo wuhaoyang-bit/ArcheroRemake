@@ -65,6 +65,7 @@ export function parseSettingsDocument(raw: unknown, strict = false): Settings {
   settings.liquidSpeedCurve=validateJuiceSpeedCurve(source.liquidSpeedCurve ?? source.slimeEyeSpeedCurve ?? DEFAULTS.liquidSpeedCurve);
   settings.juiceSpeedCurve=validateJuiceSpeedCurve(source.juiceSpeedCurve ?? DEFAULTS.juiceSpeedCurve);
   settings.recoilSpeedCurve=validateJuiceSpeedCurve(source.recoilSpeedCurve ?? DEFAULTS.recoilSpeedCurve);
+  settings.burstShockwaveSpeedCurve=validateJuiceSpeedCurve(source.burstShockwaveSpeedCurve ?? DEFAULTS.burstShockwaveSpeedCurve);
   return settings;
 }
 

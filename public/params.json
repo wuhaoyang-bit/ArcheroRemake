@@ -88,6 +88,8 @@
     "puddleCanvasShapes": 7,
     "puddleCurveShapes": 1,
     "burstEnabled": 1,
+    "burstColorPulseEnabled": 1,
+    "burstColorPulseAmount": 4,
     "burstEyeEnabled": 1,
     "burstEyeOut": 0.55,
     "burstEyeAngle": 15,
@@ -351,6 +353,34 @@
     "juiceDragRel": 0.6,
     "juiceDepthTest": 1,
     "juiceHeight": 0.4,
+    "burstShockwaveEnabled": 1,
+    "burstShockwaveRadius": 3.5,
+    "burstShockwaveDuration": 0.7,
+    "burstShockwaveWidth": 1.5,
+    "burstShockwaveStrength": 4,
+    "burstShockwaveFadePower": 1.5,
+    "burstShockwaveSpeedCurve": [
+      {
+        "time": 0,
+        "progress": 100
+      },
+      {
+        "time": 25,
+        "progress": 56.25
+      },
+      {
+        "time": 50,
+        "progress": 25
+      },
+      {
+        "time": 75,
+        "progress": 6.25
+      },
+      {
+        "time": 100,
+        "progress": 0
+      }
+    ],
     "cameraZoomShotEnabled": 0,
     "cameraZoomHitEnabled": 0,
     "cameraZoomShotAmount": 1,

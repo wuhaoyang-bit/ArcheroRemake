@@ -1,3 +1,5 @@
+import {BurstShockwaveEffects} from './burst-shockwave.ts';
+import {SHOCKWAVE_CONTROLS,SHOCKWAVE_CURVE_OPTIONS,DEFAULT_SHOCKWAVE_SPEED_CURVE} from './burst-shockwave-config.ts';
 import {slimeColorMarkup,bindSlimeColors} from './slime-color-controls.ts';
 import {createSettingsSidebar} from './settings-sidebar.ts';
 import {SLIME_FULLNESS_CONTROLS} from './slime-fullness-config.ts';
@@ -26,6 +28,7 @@ import './juice-curve-editor.css';
 const $=<E extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id) as E;
 type Control=[SettingKey,string,string,string];
 const groups:{title:string;rows:Control[]}[]=[
+ {title:'空间扭曲冲击波',rows:SHOCKWAVE_CONTROLS},
  {title:'蓄爆节奏与形态',rows:BURST_CONTROLS.filter(r=>!r[0].startsWith('puddle')&&!r[0].startsWith('liquid')&&!r[0].startsWith('burstLayer'))},
  {title:'六层爆开特效',rows:BURST_CONTROLS.filter(r=>r[0].startsWith('burstLayer'))},
  {title:'地面液滩',rows:BURST_CONTROLS.filter(r=>(r[0].startsWith('puddle')||r[0].startsWith('liquid'))&&!LIQUID_FLIGHT_CONTROLS.some(([key])=>key===r[0]))},
@@ -37,6 +40,7 @@ groups.push({title:'充盈变色与行走',rows:SLIME_FULLNESS_CONTROLS});
 const keys=[...new Set(groups.flatMap(g=>g.rows.map(r=>r[0])))];
 let c:Settings={...DEFAULTS},frame=0,total=720,playing=false,ready=false,accumulator=0,last=0,seed=1,windFrame=0,burstFrame=0;
 const STEP=1/120;
+let shockwave:BurstShockwaveEffects;
 let feedback:TrainingFeedback,effects:LushBurstEffects,root:T.Group,renderer:T.WebGPURenderer,orbit:OrbitControls;
 let seekMode=false,event:{center:T.Vector3;feet:T.Vector3;color?:T.Color;frame:number}|undefined;
 const scene=new T.Scene(),camera=new T.PerspectiveCamera(38,1,.05,200);
@@ -47,12 +51,15 @@ document.querySelector('#app')!.innerHTML=`<header><div><h1>怪物爆炸 · 逐�
 const labAside=document.querySelector<HTMLElement>('aside')!,labSections=[...labAside.querySelectorAll<HTMLElement>(':scope > details')];
 const labContent=document.createElement('div');labContent.className='lab-settings-sections';labSections[0].before(labContent);
 const labCategory=createSettingsSidebar(labContent,labSections,[
+ {id:'shockwave',label:'爆炸 · 空间扭曲冲击波',sections:['空间扭曲冲击波']},
  {id:'fullness',label:'史莱姆 · 充盈与行走',sections:['充盈变色与行走','注入与弹性鼓胀']},
  {id:'puddle',label:'地面液体 · 外观与展开',sections:['地面液滩','液滴 · 飞行']},
  {id:'burst',label:'怪物爆炸 · 动画与特效',sections:['蓄爆节奏与形态','六层爆开特效','尺寸与时间曲线']},
  {id:'hit',label:'受击反馈',sections:['最后一箭 · 受击反馈']},
 ],'lab-settings-category');
 for(const category of labContent.querySelectorAll('.settings-category')){const first=category.querySelector('details');if(first)first.open=true;}
+const shockwaveHost=document.createElement('div');labSections.find(section=>section.querySelector('summary')?.textContent==='空间扭曲冲击波')!.append(shockwaveHost);
+const shockwaveEditor=new ProgressCurveEditor(shockwaveHost,()=>c.burstShockwaveSpeedCurve,points=>{c.burstShockwaveSpeedCurve=points;rebuild();message('冲击波速度曲线已更新，尚未保存到游戏。');},true,false,false,false,SHOCKWAVE_CURVE_OPTIONS);
 const burstCurve=new SlimeBurstPreview($('burst-curve'),()=>c),puddleCurve=new SlimeBurstPreview($('puddle-curve'),()=>c,true);
 const motionSection=labSections.find(section=>section.querySelector('summary')?.textContent==='液滴 · 飞行')!;
 const motionEditorHost=document.createElement('div');motionSection.append(motionEditorHost);
@@ -61,14 +68,14 @@ function message(s:string){$('message').textContent=s;}
 function stop(){playing=false;accumulator=0;$('play').textContent='播放';}
 function random(){let n=seed|0;return ()=>{n=(Math.imul(n,1664525)+1013904223)|0;return (n>>>0)/4294967296;};}
 const slimeColors=bindSlimeColors(()=>c,values=>{Object.assign(c,values);updateInputs();rebuild();message('颜色已更新，尚未保存到游戏。');});
-function updateInputs(){liquidCurveEditor.render();slimeColors.render();document.querySelectorAll<HTMLInputElement>('[data-puddle-toggle]').forEach(el=>el.checked=!!c[el.dataset.puddleToggle as SettingKey]);document.querySelectorAll<HTMLInputElement>('[data-key]').forEach(el=>el.value=String(c[el.dataset.key as SettingKey]));burstCurve.render();puddleCurve.render();}
+function updateInputs(){shockwaveEditor.render();liquidCurveEditor.render();slimeColors.render();document.querySelectorAll<HTMLInputElement>('[data-puddle-toggle]').forEach(el=>el.checked=!!c[el.dataset.puddleToggle as SettingKey]);document.querySelectorAll<HTMLInputElement>('[data-key]').forEach(el=>el.value=String(c[el.dataset.key as SettingKey]));burstCurve.render();puddleCurve.render();}
 function prefill(){const state=monsterInstance(root)!.inflation!.state;state.amount=Math.max(0,c.slimeCapacity-c.slimeInjectionAmount);state.colorFill=state.target=state.visual=state.amount/c.slimeCapacity;}
-function reset(){effects.clear();feedback.reset();prefill();frame=0;event=undefined;feedback.hit('preview',{x:0,z:-1},c);feedback.refresh(c);}
-function advance(){frame++;feedback.update(STEP,c);if(!seekMode)effects.update(STEP,c,24,24,camera);}
+function reset(){shockwave.clear();effects.clear();feedback.reset();prefill();frame=0;event=undefined;feedback.hit('preview',{x:0,z:-1},c);feedback.refresh(c);}
+function advance(){frame++;shockwave.update(STEP,c);feedback.update(STEP,c);if(!seekMode)effects.update(STEP,c,24,24,camera);}
 function seek(to:number){if(!ready)return;stop();to=Math.max(0,Math.min(total,Math.round(to)));seekMode=true;reset();while(frame<to)advance();seekMode=false;
  // Replay the state machine at 120 Hz, then evaluate baked FX and springs directly at this age.
  if(event){effects.update((event.frame-1)*STEP,c,24,24,camera);effects.emit(event.center,event.feet,c,random(),event.color);effects.update((frame-event.frame+1)*STEP,c,24,24,camera);}else effects.update(frame*STEP,c,24,24,camera);
- updateReadout();}
+ updateReadout();shockwave.render(c);}
 function measure(){
  const state=new SlimeInflationState();state.amount=Math.max(0,c.slimeCapacity-c.slimeInjectionAmount);state.colorFill=state.target=state.visual=state.amount/c.slimeCapacity;state.hit(c);
  const hit=new HitResponse({x:0,z:0},{x:12,z:12});hit.hit({x:0,z:-1},c);hit.update(0,c);
@@ -95,11 +102,11 @@ let changeFrame=0;
 document.querySelectorAll<HTMLInputElement|HTMLSelectElement>('[data-key]').forEach(el=>el.addEventListener('input',()=>{const value=Number(el.value);if(!Number.isFinite(value))return;const key=el.dataset.key as SettingKey;c[key]=sanitize(key,value);document.querySelectorAll<HTMLInputElement>(`[data-puddle-toggle="${key}"]`).forEach(x=>x.checked=!!c[key]);document.querySelectorAll<HTMLInputElement>(`[data-key="${key}"]`).forEach(x=>{if(x!==el)x.value=String(c[key]);});stop();cancelAnimationFrame(changeFrame);changeFrame=requestAnimationFrame(()=>{rebuild();burstCurve.render();puddleCurve.render();message('已在当前时刻应用修改，尚未保存到游戏。');});}));
 document.querySelectorAll<HTMLInputElement>('[data-puddle-toggle]').forEach(el=>el.onchange=()=>{c[el.dataset.puddleToggle as SettingKey]=el.checked?1:0;updateInputs();rebuild();message('已切换液滩效果，尚未保存到游戏。');});
 $('filter').oninput=()=>{const q=$<HTMLInputElement>('filter').value.trim().toLowerCase();document.querySelectorAll<HTMLElement>('[data-control]').forEach(el=>el.hidden=!`${el.textContent} ${el.dataset.control}`.toLowerCase().includes(q));if(q){const match=[...labContent.querySelectorAll<HTMLElement>('[data-control]')].find(el=>!el.hidden);const category=match?.closest<HTMLElement>('[data-category]');if(category){labCategory.value=category.dataset.category!;labCategory.dispatchEvent(new Event('change'));}}if(q)document.querySelectorAll<HTMLDetailsElement>('aside details').forEach(el=>{if(el.querySelector('[data-control]'))el.open=true;});};
-$('defaults').onclick=()=>{for(const key of keys)c[key]=DEFAULTS[key];c.liquidSpeedCurve=DEFAULT_LIQUID_SPEED_CURVE.map(p=>({...p}));updateInputs();rebuild();message('已恢复本页默认参数，尚未保存到游戏。');};
+$('defaults').onclick=()=>{for(const key of keys)c[key]=DEFAULTS[key];c.liquidSpeedCurve=DEFAULT_LIQUID_SPEED_CURVE.map(p=>({...p}));c.burstShockwaveSpeedCurve=DEFAULT_SHOCKWAVE_SPEED_CURVE.map(p=>({...p}));updateInputs();rebuild();message('已恢复本页默认参数，尚未保存到游戏。');};
 $('load').onclick=async()=>{try{c=await loadSettings();updateInputs();rebuild();message('已读取游戏保存的参数。');}catch(e){message(String(e));}};
-$('save').onclick=async()=>{try{const latest=await loadSettings();for(const key of keys)latest[key]=c[key];latest.liquidSpeedCurve=c.liquidSpeedCurve.map(p=>({...p}));await saveSettings(latest);message('已保存本页参数到游戏；刷新游戏页生效。');}catch(e){message(`保存失败：${e}`);}};
+$('save').onclick=async()=>{try{const latest=await loadSettings();for(const key of keys)latest[key]=c[key];latest.liquidSpeedCurve=c.liquidSpeedCurve.map(p=>({...p}));latest.burstShockwaveSpeedCurve=c.burstShockwaveSpeedCurve.map(p=>({...p}));await saveSettings(latest);message('已保存本页参数到游戏；刷新游戏页生效。');}catch(e){message(`保存失败：${e}`);}};
 $('export').onclick=()=>{const url=URL.createObjectURL(new Blob([JSON.stringify(settingsDocument(c),null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='slime-burst-settings.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
-$('import').onchange=async()=>{try{const file=$<HTMLInputElement>('import').files?.[0];if(!file)return;const imported=parseSettingsDocument(JSON.parse(await file.text()));for(const key of keys)c[key]=imported[key];c.liquidSpeedCurve=imported.liquidSpeedCurve.map(p=>({...p}));updateInputs();rebuild();message('已导入本页参数，尚未保存到游戏。');}catch(e){message(`导入失败：${e}`);}};
+$('import').onchange=async()=>{try{const file=$<HTMLInputElement>('import').files?.[0];if(!file)return;const imported=parseSettingsDocument(JSON.parse(await file.text()));for(const key of keys)c[key]=imported[key];c.liquidSpeedCurve=imported.liquidSpeedCurve.map(p=>({...p}));c.burstShockwaveSpeedCurve=imported.burstShockwaveSpeedCurve.map(p=>({...p}));updateInputs();rebuild();message('已导入本页参数，尚未保存到游戏。');}catch(e){message(`导入失败：${e}`);}};
 document.querySelectorAll<HTMLButtonElement>('[data-view]').forEach(b=>b.onclick=()=>{if(!ready)return;camera.position.fromArray(views[b.dataset.view!]);orbit.target.set(0,1,-.5);orbit.update();});
 
 async function init(){try{
@@ -108,17 +115,18 @@ async function init(){try{
  report(.02,'正在启动渲染器');
  try{c=await loadSettings();}catch{message('无法读取游戏参数，已使用默认值。');}updateInputs();
  renderer=new T.WebGPURenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));await renderer.init();renderer.shadowMap.enabled=true;renderer.toneMapping=T.LinearToneMapping;renderer.toneMappingExposure=1;
+ shockwave=new BurstShockwaveEffects(renderer,scene,camera);
  $('view').prepend(renderer.domElement);scene.background=new T.Color('#29392e');scene.add(new T.HemisphereLight(0xf5ffe5,0xb6ca6c,1.7));const sun=new T.DirectionalLight(0xfff4ce,1.8);sun.position.set(-9,22,-8);sun.castShadow=true;scene.add(sun);
  const env=new RoomEnvironment(),pmrem=new T.PMREMGenerator(renderer);const environment=pmrem.fromScene(env).texture;env.dispose();pmrem.dispose();
  const ground=new T.Mesh(new T.PlaneGeometry(24,24),new T.MeshStandardMaterial({color:0x344b3b,roughness:.85}));ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);const grid=new T.GridHelper(24,24,0x70816a,0x485e4c);grid.position.y=.005;scene.add(grid);
  camera.position.fromArray(views.perspective);orbit=new OrbitControls(camera,renderer.domElement);orbit.target.set(0,1,-.5);orbit.enableDamping=false;orbit.minDistance=2;orbit.maxDistance=50;orbit.update();
  root=createTrainingCube(environment);root.userData.practiceTarget='preview';const group=new T.Group();group.add(root);scene.add(group);feedback=new TrainingFeedback(group,[{id:'preview',x:0,z:0}],24,24);effects=await LushBurstEffects.load(scene,p=>report(.1+p*.55,'正在加载爆炸与液体资源'),environment);
- feedback.onBurst=(center,feet,_settings,color)=>{event={center:center.clone(),feet:feet.clone(),color:color?.clone(),frame};if(!seekMode)effects.emit(center,feet,c,random(),color);};
+ feedback.onBurst=(center,feet,_settings,color)=>{shockwave.emit(center,c);event={center:center.clone(),feet:feet.clone(),color:color?.clone(),frame};if(!seekMode)effects.emit(center,feet,c,random(),color);};
  const resize=()=>{const r=$('view').getBoundingClientRect();renderer.setSize(r.width,r.height);camera.aspect=r.width/r.height;camera.updateProjectionMatrix();};new ResizeObserver(resize).observe($('view'));resize();
  report(.65,'正在准备爆炸与液体效果');await new Promise<void>(resolve=>setTimeout(resolve,0));
- try{effects.prepareWarmup(1,c,camera,24,24);await renderer.compileAsync(scene,camera,null,e=>{if(e.total)report(.65+.33*e.loaded/e.total,'正在准备爆炸与液体效果');});renderer.render(scene,camera);await finishGpuWarmup(renderer);}finally{effects.clear();}
+ try{effects.prepareWarmup(1,c,camera,24,24);await renderer.compileAsync(scene,camera,null,e=>{if(e.total)report(.65+.33*e.loaded/e.total,'正在准备爆炸与液体效果');});renderer.render(scene,camera);await shockwave.warmup(c);await finishGpuWarmup(renderer);}finally{effects.clear();}
  ready=true;measure();seek(0);renderer.render(scene,camera);await finishGpuWarmup(renderer);report(1,'准备完成');$('loading').remove();
- renderer.setAnimationLoop(now=>{const dt=last?Math.min(.1,(now-last)/1000):0;last=now;if(playing){accumulator+=dt*Number($<HTMLSelectElement>('speed').value);while(accumulator>=STEP&&frame<total){advance();accumulator-=STEP;}if(frame>=total){if($<HTMLInputElement>('loop').checked){seek(0);playing=true;$('play').textContent='暂停';}else stop();}updateReadout();}effects.update(0,c,24,24,camera);renderer.render(scene,camera);});
- if(import.meta.env.DEV)Object.assign(window,{__BURST_LAB__:{seek,snapshot:()=>({ready,frame,total,windFrame,burstFrame,playing,feedback:feedback.snapshot(),effects:effects.snapshot(),settings:{...c}})}});
+ renderer.setAnimationLoop(now=>{const dt=last?Math.min(.1,(now-last)/1000):0;last=now;if(playing){accumulator+=dt*Number($<HTMLSelectElement>('speed').value);while(accumulator>=STEP&&frame<total){advance();accumulator-=STEP;}if(frame>=total){if($<HTMLInputElement>('loop').checked){seek(0);playing=true;$('play').textContent='暂停';}else stop();}updateReadout();}effects.update(0,c,24,24,camera);shockwave.render(c);});
+ if(import.meta.env.DEV)Object.assign(window,{__BURST_LAB__:{seek,snapshot:()=>({ready,frame,total,windFrame,burstFrame,playing,feedback:feedback.snapshot(),effects:effects.snapshot(),shockwave:shockwave.snapshot(),settings:{...c}})}});
  }catch(e){console.error(e);$('loading').textContent=`加载失败：${e}。请刷新重试。`;}}
 void init();

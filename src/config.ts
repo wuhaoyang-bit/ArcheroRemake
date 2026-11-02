@@ -1,4 +1,5 @@
 import type {EyeHitCurveKey} from './eye-hit-config.ts';
+import {SHOCKWAVE_DEFAULTS,SHOCKWAVE_LIMITS,DEFAULT_SHOCKWAVE_SPEED_CURVE} from './burst-shockwave-config.ts';
 import { CAMERA_SHAKE_DEFAULTS, CAMERA_SHAKE_LIMITS } from './camera-shake-config.ts';
 import { CAMERA_ZOOM_DEFAULTS, CAMERA_ZOOM_LIMITS } from './camera-zoom-config.ts';
 import { BOW_FX_DEFAULTS, BOW_FX_LIMITS } from './bow-release-config.ts';
@@ -14,6 +15,7 @@ export const ASPECT = 9 / 19.5;
 
 export const DEFAULTS = {
   ...HIT_DEFAULTS,
+  ...SHOCKWAVE_DEFAULTS,burstShockwaveSpeedCurve:DEFAULT_SHOCKWAVE_SPEED_CURVE,
   ...CAMERA_ZOOM_DEFAULTS,
   ...CAMERA_SHAKE_DEFAULTS,
   ...BOW_FX_DEFAULTS,
@@ -78,7 +80,7 @@ export const DEFAULTS = {
   viewWidth: 18,
 };
 export type Settings = typeof DEFAULTS;
-export type SettingKey = Exclude<keyof Settings, EyeHitCurveKey | 'liquidSpeedCurve' | 'slimeEyeSpeedCurve' | 'recoilSpeedCurve' | 'juiceSpeedCurve' | 'turnCurve' | 'lockTurnCurve' | 'anchorCurve' | 'moveCurve' | 'ringCurve' | 'ringStrokeCurve' | 'ringLinkAttackCurve' | 'ringSwitchCurve' | 'ringWaveCurve'>;
+export type SettingKey = Exclude<keyof Settings, EyeHitCurveKey | 'burstShockwaveSpeedCurve' | 'liquidSpeedCurve' | 'slimeEyeSpeedCurve' | 'recoilSpeedCurve' | 'juiceSpeedCurve' | 'turnCurve' | 'lockTurnCurve' | 'anchorCurve' | 'moveCurve' | 'ringCurve' | 'ringStrokeCurve' | 'ringLinkAttackCurve' | 'ringSwitchCurve' | 'ringWaveCurve'>;
 /** Missing lock values inherit the corresponding ordinary tuning once, on load. */
 export const LOCK_TURN_KEYS = {
   lockTurnModel: 'turnModel', lockTurnSpeed: 'turnSpeed', lockCurveSnapAngle: 'curveSnapAngle',
@@ -87,6 +89,7 @@ export const LOCK_TURN_KEYS = {
 } as const;
 export const LIMITS: Record<SettingKey, [number, number, number]> = {
   ...HIT_LIMITS,
+  ...SHOCKWAVE_LIMITS,
   ...CAMERA_ZOOM_LIMITS,
   ...CAMERA_SHAKE_LIMITS,
   ...BOW_FX_LIMITS,

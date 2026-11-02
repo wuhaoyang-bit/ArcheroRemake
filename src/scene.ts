@@ -1,3 +1,4 @@
+import {BurstShockwaveEffects} from './burst-shockwave.ts';
 import {HitSplashEffects} from './hit-splash-effects.ts';
 import { finishGpuWarmup } from './gpu-warmup.ts';
 import { LushBurstEffects } from './lush-burst-effects.ts';
@@ -117,6 +118,7 @@ export class GameScene {
   scene = new THREE.Scene();
   readonly cameraZoom=new CameraZoomFeedback();
   readonly cameraShake=new CameraShakeFeedback();
+  shockwave?:BurstShockwaveEffects;
   camera = new THREE.OrthographicCamera();
   private slimeEnvironment?: THREE.Texture;
   player = new THREE.Group();
@@ -183,6 +185,7 @@ export class GameScene {
       : '当前浏览器未能启用 WebGPU。请使用支持 WebGPU 的浏览器，并确认硬件加速已开启。');
     this.renderer = new THREE.WebGPURenderer({ antialias: true, powerPreference: 'high-performance' });
     await this.renderer.init();
+    this.shockwave=new BurstShockwaveEffects(this.renderer,this.scene,this.camera);
     if (!('isWebGPUBackend' in this.renderer.backend) || !this.renderer.backend.isWebGPUBackend) {
       this.renderer.dispose(); throw new Error('WebGPU 初始化失败，请检查浏览器和设备支持。');
     }
@@ -298,6 +301,7 @@ export class GameScene {
       report(.82,'正在准备爆炸与地面液体');await breathe();
       this.burstEffects.prepareWarmup(LIMITS.monsterCount[1],this.controller.settings,this.camera,this.roomSize,this.roomLength);
       await compile(.82,.98,'正在准备爆炸与地面液体');
+      await this.shockwave.warmup(this.controller.settings);await finishGpuWarmup(this.renderer);
     }finally{this.burstEffects.clear();eyeWarmGroup.visible=false; /* Retain warmed eye materials so their GPU pipelines stay cached. */}
     this.sync(0);this.renderer.render(this.scene,this.camera);await finishGpuWarmup(this.renderer);
     this.startup.warmed=true;report(1,'准备完成');
@@ -330,6 +334,7 @@ export class GameScene {
     this.hitDebug.clear();this.deferredDebugHits=[];
     this.hitSplash?.clear();this.juice?.clear();this.burstEffects?.clear();
     this.bowRelease?.clear();
+    this.shockwave?.clear();
     this.cameraZoom.reset();this.cameraShake.reset();this.applyCameraFeedback();
     this.pendingShots.length=0;
     this.practiceRevision=this.controller.practiceRevision;
@@ -349,6 +354,7 @@ export class GameScene {
       this.feedback.onFilled=id=>{this.controller.notifyTargetDeath(id);this.arrows?.setTargets(this.feedback?.proxies??[]);};
       this.feedback.onBurst=(center,feet,c,color)=>{
         this.cameraShake.trigger(this.controller.settings);
+        this.shockwave?.emit(center,this.controller.settings);
         this.burstEffects?.emit(center,feet,c,Math.random,color);
       };
     }
@@ -365,6 +371,7 @@ export class GameScene {
     this.arrows?.clear();
     this.hitSplash?.clear();this.juice?.clear();this.burstEffects?.clear();
     this.bowRelease?.clear();
+    this.shockwave?.clear();
     this.cameraZoom.reset();this.cameraShake.reset();this.applyCameraFeedback();
     if(this.controller.training==='monsters'){
       this.controller.regenerateMonsterRoster();
@@ -380,6 +387,7 @@ export class GameScene {
     if(this.needsRoomRefresh())this.setRoom();
     // Advance existing shake before explosion callbacks so a new pulse starts at frame zero.
     this.cameraShake.update(dt,this.controller.settings);
+    this.shockwave?.update(dt,this.controller.settings);
     for(const hit of this.deferredDebugHits.splice(0))this.applyArrowHit?.(hit);
     this.feedback?.eyeDebris.setPlayer({...this.controller.position,radius:PLAYER_RADIUS,height:3.25});
     this.feedback?.update(dt,this.controller.settings);
@@ -510,6 +518,13 @@ export class GameScene {
     this.rings.update(dt, ctl.settings, this.camera, ctl.position, ctl.combatTraining ? ctl.targeting.target : null);
   }
 
+  previewShockwave(){
+    const target=this.controller.targeting.target;
+    const center=target?this.feedback?.modelCenter(target.id,new THREE.Vector3()):null;
+    this.shockwave?.emit(center??new THREE.Vector3(this.controller.position.x,1.2,this.controller.position.z-4),this.controller.settings);
+    this.render();
+  }
+
   render() {
     this.applyCameraFeedback();
     const ctl=this.controller;
@@ -520,6 +535,6 @@ export class GameScene {
     this.hitDebug.update(this.hitDebug.enabled?(this.arrows?.snapshot().active.map(a=>a.tip)??[]):[]);
     this.juice?.prepare(this.camera,this.controller.settings);
     this.arrows?.prepare(this.camera,this.controller.settings);
-    this.renderer.render(this.scene, this.camera);
+    if(this.shockwave)this.shockwave.render(this.controller.settings);else this.renderer.render(this.scene,this.camera);
   }
 }
