@@ -11,8 +11,12 @@ export function burstSample(t:number,c:BurstSettings){
  const amplitude=c.burstAmplitudeStart+(c.burstAmplitudeEnd-c.burstAmplitudeStart)*Math.pow(u,c.burstAmplitudePower);
  // A brief continuous onset keeps the actual hand-off shape intact at t=0, for any phase.
  const onset=c.burstOnset>0?Math.min(1,t/Math.min(c.burstOnset,d)):1;const envelope=onset*onset*(3-2*onset);
+ const oscillation=amplitude*Math.sin(phase)*envelope,maxAmplitude=Math.max(c.burstAmplitudeStart,c.burstAmplitudeEnd);
+ // Follow the same stretch/compression wave, including its onset and amplitude ramp.
+ // Overall size growth does not pin the colour to its bright extreme.
+ const colorLightness=c.burstColorPulseEnabled&&maxAmplitude>0?c.burstColorPulseAmount/100*oscillation/maxAmplitude:0;
  const progress=(start:number,end:number)=>end<=start?(u>=start?1:0):Math.max(0,Math.min(1,(u-start)/(end-start)));
- return {phase,scale:(1+(c.burstScale-1)*Math.pow(progress(c.burstScaleStart,c.burstScaleEnd),c.burstScalePower))*(1+amplitude*Math.sin(phase)*envelope),bulgeProgress:Math.pow(progress(c.burstBulgeStart,c.burstBulgeEnd),c.burstBulgePower)};
+ return {phase,scale:(1+(c.burstScale-1)*Math.pow(progress(c.burstScaleStart,c.burstScaleEnd),c.burstScalePower))*(1+oscillation),bulgeProgress:Math.pow(progress(c.burstBulgeStart,c.burstBulgeEnd),c.burstBulgePower),colorLightness};
 }
 export function burstEndTime(c:BurstSettings){const phase=burstSample(c.burstDuration,c).phase,target=c.burstPhaseEnd*Math.PI/180;const turns=Math.ceil((phase-target)/(2*Math.PI)-1e-10);return c.burstDuration+Math.max(0,target+turns*2*Math.PI-phase)/(2*Math.PI*c.burstFrequencyEnd);}
 export class SlimeBurstState{

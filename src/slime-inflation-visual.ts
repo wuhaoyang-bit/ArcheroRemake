@@ -11,6 +11,7 @@ export class SlimeInflationVisual{
  readonly state=new SlimeInflationState();extent=1;settledExtent=1;
  private base:T.BufferAttribute;private positions:T.BufferAttribute;private geometry:T.BufferGeometry;private baseVolume:number;private radius=0;
  private startColor=new T.Color();private endColor=new T.Color();private originalAttenuation:T.Color;
+ private colorLightness=0;private hsl={h:0,s:0,l:0};
  private faceBase:T.Vector3[];private key='';private settledKey='';
  private p=new T.Vector3();private out=new T.Vector3();private a=new T.Vector3();private b=new T.Vector3();private c=new T.Vector3();
  private groundInverse=new T.Matrix4();private groundPoint=new T.Vector3();private groundInner=new T.Vector3();private groundDirection=new T.Vector3();
@@ -27,7 +28,11 @@ export class SlimeInflationVisual{
  }
  private volume(){const idx=this.geometry.index!;let v=0;for(let i=0;i<idx.count;i+=3){this.a.fromBufferAttribute(this.positions,idx.getX(i));this.b.fromBufferAttribute(this.positions,idx.getX(i+1));this.c.fromBufferAttribute(this.positions,idx.getX(i+2));v+=this.a.dot(this.b.cross(this.c))/6;}return Math.abs(v);}
  private shape(fill:number,c:SlimeInflationSettings){const bulge=Math.min(c.slimeBulge,1/Math.max(1,fill));for(let i=0;i<this.base.count;i++){this.p.fromBufferAttribute(this.base,i);inflatePoint(this.out,this.p,'bulge',fill,bulge,3,this.radius);this.positions.setXYZ(i,this.out.x,this.out.y,this.out.z);}const scale=(1+(c.slimeMaxScale-1)*fill)*Math.cbrt(this.baseVolume/this.volume());return {scale,bulge,extent:scale*(1+bulge*fill*(this.radius-1))};}
- apply(c:SlimeInflationSettings){
+ private shiftLightness(color:T.Color,amount:number){
+  color.getHSL(this.hsl,T.SRGBColorSpace);
+  color.setHSL(this.hsl.h,this.hsl.s,this.hsl.l+amount,T.SRGBColorSpace);
+ }
+ apply(c:SlimeInflationSettings,colorLightness=0){
   if(this.model.updateEyes(c)){this.faceBase=this.model.face.children.map(o=>o.position.clone().add(new T.Vector3(0,-1,0)));this.key='';}
   const material=this.model.body.material as T.MeshPhysicalMaterial;
   this.startColor.setRGB(c.slimeColorStartR/255,c.slimeColorStartG/255,c.slimeColorStartB/255,T.SRGBColorSpace);
@@ -35,6 +40,9 @@ export class SlimeInflationVisual{
   const colorProgress=c.slimeColorEnabled?Math.pow(T.MathUtils.clamp(this.state.colorFill,0,1),c.slimeColorPower):1;
   material.color.copy(this.startColor).lerp(this.endColor,colorProgress);
   material.attenuationColor.copy(this.startColor).lerp(this.originalAttenuation,colorProgress);
+  // Always rebuild from fullness colours first; repeated refresh/render calls cannot accumulate tint.
+  this.colorLightness=colorLightness;
+  if(colorLightness!==0){this.shiftLightness(material.color,colorLightness);this.shiftLightness(material.attenuationColor,colorLightness);}
 
   const fill=c.slimeInflationEnabled?this.state.visual:0,target=c.slimeInflationEnabled?this.state.target:0;
   this.groundFill=fill;this.groundBulge=Math.min(c.slimeBulge,1/Math.max(1,fill));
@@ -68,5 +76,5 @@ export class SlimeInflationVisual{
   return Math.max(.08,scale*(1+this.groundBulge*this.groundFill*(this.radius-1))*.9);
  }
  copyColor(out:T.Color){return out.copy((this.model.body.material as T.MeshPhysicalMaterial).color);}
- snapshot(){return {color:(this.model.body.material as T.MeshPhysicalMaterial).color.getHex(),colorFill:this.state.colorFill,amount:this.state.amount,target:this.state.target,visual:this.state.visual,extent:this.extent,settledExtent:this.settledExtent};}
+ snapshot(){return {color:(this.model.body.material as T.MeshPhysicalMaterial).color.getHex(),colorLightness:this.colorLightness,colorFill:this.state.colorFill,amount:this.state.amount,target:this.state.target,visual:this.state.visual,extent:this.extent,settledExtent:this.settledExtent};}
 }

@@ -48,10 +48,10 @@ export class TrainingFeedback {
     d.monster?.inflation?.eyeHit.hit(v,strength,settings);this.apply(d,settings);
     if(d.monster?.inflation&&d.monster.inflation.state.amount>=settings.slimeCapacity&&d.burst.fill(settings))this.onFilled?.(id);return true;}
   private apply(d:Dummy,c:FeedbackSettings){
-    let burstScale=1;let shape=c;
-    if(d.burst.phase==='winding'||d.burst.phase==='gone'){const b=d.burst.config!,v=burstSample(d.burst.age,b),base=d.burstBase!;burstScale=v.scale;shape={...base,slimeBulge:base.slimeBulge+(Math.max(base.slimeBulge,b.burstBulge)-base.slimeBulge)*v.bulgeProgress};}
+    let burstScale=1,colorLightness=0;let shape=c;
+    if(d.burst.phase==='winding'||d.burst.phase==='gone'){const b=d.burst.config!,v=burstSample(d.burst.age,b),base=d.burstBase!;burstScale=v.scale;if(d.burst.phase==='winding')colorLightness=v.colorLightness;shape={...base,slimeBulge:base.slimeBulge+(Math.max(base.slimeBulge,b.burstBulge)-base.slimeBulge)*v.bulgeProgress};}
     else d.monster?.inflation?.state.update(0,c);
-    d.monster?.inflation?.apply(shape);d.root.position.set(d.response.position.x,0,d.response.position.z);const modelScale=d.monster ? (c.monsterScale ?? 1) : 1;d.proxy.scale.setScalar(modelScale*(d.monster?.inflation?.settledExtent??1));if(d.monster){const radius=c.monsterHitRadius??DEFAULTS.monsterHitRadius;d.monster.hitBody.scale.set(radius,1,radius);}const squash=(c.hitSquashEnabled?d.response.scale:1);
+    d.monster?.inflation?.apply(shape,colorLightness);d.root.position.set(d.response.position.x,0,d.response.position.z);const modelScale=d.monster ? (c.monsterScale ?? 1) : 1;d.proxy.scale.setScalar(modelScale*(d.monster?.inflation?.settledExtent??1));if(d.monster){const radius=c.monsterHitRadius??DEFAULTS.monsterHitRadius;d.monster.hitBody.scale.set(radius,1,radius);}const squash=(c.hitSquashEnabled?d.response.scale:1);
     d.visual.scale.setScalar(modelScale*squash*burstScale*d.breath.scale);
     d.root.getWorldQuaternion(this.worldRotation);
     hitDeformation(d.visual.matrix,squash,modelScale*burstScale*d.breath.scale,c.hitSquashMode,c.hitSquashCompensation,d.response.direction,this.worldRotation);

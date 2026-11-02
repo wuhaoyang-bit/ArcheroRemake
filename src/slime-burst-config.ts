@@ -9,6 +9,8 @@ export const BURST_DEFAULTS={
  puddleCanvasShapes:7,
  puddleCurveShapes:7,
  burstEnabled:1,
+ burstColorPulseEnabled:1,
+ burstColorPulseAmount:4,
  burstEyeEnabled:1,
  burstEyeOut:.35,
  burstEyeAngle:10,
@@ -131,6 +133,8 @@ export const BURST_LIMITS:Record<keyof BurstSettings,[number,number,number]>={
  burstEyeAngle:[0,45,1],
  burstEyePoseTime:[0,5,.01],
  burstEnabled:[0,1,1],
+ burstColorPulseEnabled:[0,1,1],
+ burstColorPulseAmount:[0,15,.5],
  burstFeedbackDelay:[-10, 3, 0.01],
  burstOnset:[0, 1, 0.01],
  burstScaleStart:[0, 0.99, 0.01],
@@ -236,6 +240,8 @@ export const BURST_LIMITS:Record<keyof BurstSettings,[number,number,number]>={
  burstLayer5Opacity:[0,1,0.05],
 };
 export const BURST_CONTROLS:[keyof BurstSettings,string,string,string][]=[
+ ['burstColorPulseEnabled','蓄爆伸缩变色','0/1','仅蓄爆时生效：膨胀略微变亮，收缩略微变深，保留当前配色。修改后下次蓄爆生效；逐帧页会重算当前时刻。'],
+ ['burstColorPulseAmount','蓄爆颜色变化幅度','%','默认 4，最多增减 4 个明度百分点；随伸缩幅度和渐入同步变化。0 关闭颜色变化，不影响伸缩。'],
  ['burstEyeEnabled','蓄爆眼球姿态','0/1','蓄爆期间逐渐突出，左右眼分别朝斜上方外侧转动；独立于受击滞后开关。'],
  ['burstEyeOut','蓄爆眼球突出量','眼球半径','沿脸部表面向外突出，默认 0.35 个眼球半径。'],
  ['burstEyeAngle','蓄爆眼球斜上外转','°','左右镜像，朝斜上方外侧转动的总角度，默认 10°。'],
