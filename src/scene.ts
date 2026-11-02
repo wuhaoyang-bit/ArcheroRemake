@@ -3,6 +3,7 @@ import { finishGpuWarmup } from './gpu-warmup.ts';
 import { LushBurstEffects } from './lush-burst-effects.ts';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { CameraZoomFeedback } from './camera-zoom.ts';
+import { CameraShakeFeedback } from './camera-shake.ts';
 import { BowReleaseEffects } from './bow-release-effects.ts';
 import { HitDebug } from './hit-debug.ts';
 import type { ArrowHit } from './arrow-projectiles.ts';
@@ -18,7 +19,7 @@ import { loadCharacter } from './character.ts';
 import { CharacterAnimation } from './character-animation.ts';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { AnimationBlend, follow, PLAYER_RADIUS, type MovementController } from './controller.ts';
-import { ASPECT, LIMITS } from './config.ts';
+import { ASPECT, DESIGN_WIDTH, LIMITS } from './config.ts';
 import { isAndroidApp } from './settings-store.ts';
 
 const CAMERA_TILT = Math.asin(0.82);
@@ -115,6 +116,7 @@ export class GameScene {
   renderer!: THREE.WebGPURenderer;
   scene = new THREE.Scene();
   readonly cameraZoom=new CameraZoomFeedback();
+  readonly cameraShake=new CameraShakeFeedback();
   camera = new THREE.OrthographicCamera();
   private slimeEnvironment?: THREE.Texture;
   player = new THREE.Group();
@@ -328,7 +330,7 @@ export class GameScene {
     this.hitDebug.clear();this.deferredDebugHits=[];
     this.hitSplash?.clear();this.juice?.clear();this.burstEffects?.clear();
     this.bowRelease?.clear();
-    this.cameraZoom.reset();this.applyCameraZoom();
+    this.cameraZoom.reset();this.cameraShake.reset();this.applyCameraFeedback();
     this.pendingShots.length=0;
     this.practiceRevision=this.controller.practiceRevision;
     this.monsterRosterSignature=this.rosterSignature();
@@ -345,7 +347,10 @@ export class GameScene {
     if(this.controller.combatTraining&&this.trainingVisual)this.feedback=new TrainingFeedback(this.trainingVisual,this.controller.getPracticeTargets(),this.roomSize,this.roomLength);
     if(this.feedback){
       this.feedback.onFilled=id=>{this.controller.notifyTargetDeath(id);this.arrows?.setTargets(this.feedback?.proxies??[]);};
-      this.feedback.onBurst=(center,feet,c,color)=>this.burstEffects?.emit(center,feet,c,Math.random,color);
+      this.feedback.onBurst=(center,feet,c,color)=>{
+        this.cameraShake.trigger(this.controller.settings);
+        this.burstEffects?.emit(center,feet,c,Math.random,color);
+      };
     }
     this.scene.add(this.room);
     this.arrows?.clear();
@@ -360,7 +365,7 @@ export class GameScene {
     this.arrows?.clear();
     this.hitSplash?.clear();this.juice?.clear();this.burstEffects?.clear();
     this.bowRelease?.clear();
-    this.cameraZoom.reset();this.applyCameraZoom();
+    this.cameraZoom.reset();this.cameraShake.reset();this.applyCameraFeedback();
     if(this.controller.training==='monsters'){
       this.controller.regenerateMonsterRoster();
       this.setRoom();
@@ -373,6 +378,8 @@ export class GameScene {
 
   advanceFeedback(dt:number){
     if(this.needsRoomRefresh())this.setRoom();
+    // Advance existing shake before explosion callbacks so a new pulse starts at frame zero.
+    this.cameraShake.update(dt,this.controller.settings);
     for(const hit of this.deferredDebugHits.splice(0))this.applyArrowHit?.(hit);
     this.feedback?.eyeDebris.setPlayer({...this.controller.position,radius:PLAYER_RADIUS,height:3.25});
     this.feedback?.update(dt,this.controller.settings);
@@ -447,10 +454,16 @@ export class GameScene {
     this.camera.near = 0.1; this.camera.far = 140; this.camera.updateProjectionMatrix();
   }
 
-  private applyCameraZoom(){
+  private applyCameraFeedback(){
     const c=this.controller.settings;this.cameraZoom.update(0,c);
     const zoom=this.cameraZoom.value(c);
     if(this.camera.zoom!==zoom){this.camera.zoom=zoom;this.camera.updateProjectionMatrix();}
+    this.cameraShake.update(0,c);
+    const shake=this.cameraShake.offset(),height=DESIGN_WIDTH/this.aspect;
+    // Shift the rendered world in screen space, including projected lock rings.
+    // The frustum offset scales with viewport width and remains independent of zoom.
+    if(shake.x||shake.y)this.camera.setViewOffset(DESIGN_WIDTH,height,-shake.x,shake.y,DESIGN_WIDTH,height);
+    else if(this.camera.view?.enabled)this.camera.clearViewOffset();
   }
 
   sync(dt: number) {
@@ -493,12 +506,14 @@ export class GameScene {
     this.camera.position.set(0, 24, this.cameraZ + 24 / Math.tan(this.tilt));
     this.camera.lookAt(0, 0, this.cameraZ);
     this.camera.updateMatrixWorld();
-    this.applyCameraZoom();
+    this.applyCameraFeedback();
     this.rings.update(dt, ctl.settings, this.camera, ctl.position, ctl.combatTraining ? ctl.targeting.target : null);
   }
 
   render() {
-    this.applyCameraZoom();
+    this.applyCameraFeedback();
+    const ctl=this.controller;
+    this.rings.update(0,ctl.settings,this.camera,ctl.position,ctl.combatTraining?ctl.targeting.target:null);
     // Apply tuning even while hit-debug simulation is paused.
     this.feedback?.refresh(this.controller.settings);
     this.bowRelease?.update(0,this.controller.settings);

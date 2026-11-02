@@ -1,4 +1,5 @@
 import type {EyeHitCurveKey} from './eye-hit-config.ts';
+import { CAMERA_SHAKE_DEFAULTS, CAMERA_SHAKE_LIMITS } from './camera-shake-config.ts';
 import { CAMERA_ZOOM_DEFAULTS, CAMERA_ZOOM_LIMITS } from './camera-zoom-config.ts';
 import { BOW_FX_DEFAULTS, BOW_FX_LIMITS } from './bow-release-config.ts';
 import { ARROW_TRAIL_DEFAULTS, ARROW_TRAIL_LIMITS } from './arrow-trail-config.ts';
@@ -14,6 +15,7 @@ export const ASPECT = 9 / 19.5;
 export const DEFAULTS = {
   ...HIT_DEFAULTS,
   ...CAMERA_ZOOM_DEFAULTS,
+  ...CAMERA_SHAKE_DEFAULTS,
   ...BOW_FX_DEFAULTS,
   ...ARROW_TRAIL_DEFAULTS,
   recoilEnabled:1,recoilDistance:.16,recoilDuration:.12,recoilSpeedCurve:DEFAULT_RECOIL_CURVE,
@@ -86,6 +88,7 @@ export const LOCK_TURN_KEYS = {
 export const LIMITS: Record<SettingKey, [number, number, number]> = {
   ...HIT_LIMITS,
   ...CAMERA_ZOOM_LIMITS,
+  ...CAMERA_SHAKE_LIMITS,
   ...BOW_FX_LIMITS,
   ...ARROW_TRAIL_LIMITS,
   recoilEnabled:[0,1,1],recoilDistance:[0,2,.01],recoilDuration:[.01,1,.01],
@@ -125,6 +128,7 @@ export const LIMITS: Record<SettingKey, [number, number, number]> = {
 
 export function sanitize(key: SettingKey, value: number): number {
   if (!Number.isFinite(value)) return DEFAULTS[key];
+  if(key.startsWith('cameraShake')&&(key.endsWith('Enabled')||key.endsWith('Tier')||key.endsWith('Formula')||key.endsWith('Duration')))value=Math.round(value);
   if ((key.startsWith('hit') || key.startsWith('juice')) && key.endsWith('Enabled')) return value >= .5 ? 1 : 0;
   if(key==='cameraZoomShotEnabled'||key==='cameraZoomHitEnabled')return value>=.5?1:0;
   if (key.startsWith('bowFx') && (key.endsWith('Enabled') || key==='bowFxRingCurve')) return value>=.5?1:0;

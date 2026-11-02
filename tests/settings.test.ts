@@ -1,4 +1,5 @@
 import { CAMERA_ZOOM_DEFAULTS } from '../src/camera-zoom-config.ts';
+import { CAMERA_SHAKE_DEFAULTS } from '../src/camera-shake-config.ts';
 import { BOW_FX_DEFAULTS } from '../src/bow-release-config.ts';
 import { ARROW_TRAIL_DEFAULTS } from '../src/arrow-trail-config.ts';
 import { HIT_DEFAULTS } from '../src/hit-feedback-config.ts';
@@ -19,6 +20,7 @@ test('requested defaults match the screenshot, with speed 16 / upper limit 30 an
   assert.deepEqual(DEFAULTS, {
     ...HIT_DEFAULTS,
     ...CAMERA_ZOOM_DEFAULTS,
+    ...CAMERA_SHAKE_DEFAULTS,
     ...BOW_FX_DEFAULTS,
     ...ARROW_TRAIL_DEFAULTS,
     recoilEnabled:1,recoilDistance:.16,recoilDuration:.12,recoilSpeedCurve:DEFAULTS.recoilSpeedCurve,

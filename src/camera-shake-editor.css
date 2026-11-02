@@ -1,0 +1,4 @@
+#camera-shake-editor svg { display:block; width:100%; height:auto; margin:12px 0; }
+#camera-shake-editor svg text { fill:#afc1b5; font:12px sans-serif; }
+#camera-shake-editor .zoom-preview-actions { flex-wrap:wrap; }
+#camera-shake-editor button:disabled { cursor:default; opacity:.45; }

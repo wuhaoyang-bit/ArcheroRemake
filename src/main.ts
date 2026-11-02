@@ -1,3 +1,4 @@
+import {CameraShakeEditor} from './camera-shake-editor.ts';
 import {EYE_HIT_CONTROLS,EYE_HIT_CURVES,EYE_HIT_CURVE_KEYS,validateEyeHitCurve} from './eye-hit-config.ts';
 import {EyeHitPreview} from './eye-hit-preview.ts';
 import {SLIME_EYES_CONTROLS,DEFAULT_EYE_SPEED_CURVE} from './slime-eyes-config.ts';
@@ -30,6 +31,7 @@ import type { Settings } from './config.ts';
 
 const arrow = '<svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M8 24 24 8M9 8h15v15M7 17l8 8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const settings: { title: string; items: [SettingKey, string, string, string][] }[] = [
+  {title:'爆炸 · 屏幕震动',items:[]},
   {title:'史莱姆 · 移动液路与黏丝',items:SLIME_TRAIL_CONTROLS},
   {title:'眼球 · 受击胶质滞后',items:EYE_HIT_CONTROLS},
   { title: '轮盘与锚点', items: [
@@ -118,7 +120,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <main class="workspace">
     <aside class="panel left-panel" data-ui aria-label="参数调试">
       <div class="panel-heading"><div><span class="eyebrow">TUNING</span><h1>找到你的手感<span class="title-dot">.</span></h1></div><button class="icon-button mobile-only" id="close-settings" aria-label="关闭调试面板">×</button></div>
-      <div class="settings-scroll">${settings.map(group => `<section class="setting-group"><h2>${group.title}</h2>${group.title === '目标锁定' ? targetingControls : group.title === '旋转角速度－锁定' ? lockTurnControls : ''}${group.title === '角色' ? '<div class="turn-model-field"><label for="turn-model">旋转角速度模型</label><select id="turn-model" disabled><option value="0">匀速转向</option><option value="2">自定义转向曲线</option><option value="5">Slerp</option><option value="6">SmoothDampAngle</option></select><p id="turn-model-hint" class="threshold-help"></p><div id="turn-curve-editor" hidden></div></div>' : ''}${group.items.map(([key, name, unit, hint]) => {
+      <div class="settings-scroll">${settings.map(group => `<section class="setting-group"><h2>${group.title}</h2>${group.title === '爆炸 · 屏幕震动' ? '<div id="camera-shake-editor"></div>' : ''}${group.title === '目标锁定' ? targetingControls : group.title === '旋转角速度－锁定' ? lockTurnControls : ''}${group.title === '角色' ? '<div class="turn-model-field"><label for="turn-model">旋转角速度模型</label><select id="turn-model" disabled><option value="0">匀速转向</option><option value="2">自定义转向曲线</option><option value="5">Slerp</option><option value="6">SmoothDampAngle</option></select><p id="turn-model-hint" class="threshold-help"></p><div id="turn-curve-editor" hidden></div></div>' : ''}${group.items.map(([key, name, unit, hint]) => {
         const colorMarkup=slimeColorMarkup(key);if(colorMarkup!==undefined)return colorMarkup;
         const [min, max, step] = LIMITS[key];
         if(key==='puddleRenderer')return `<div class="setting"><label for="value-${key}">${name}</label><select id="value-${key}" data-setting="${key}"><option value="0">旧版 · 平面粘液</option><option value="1">CurveFluid · 三维粘液</option><option value="2">融合液面 · 液滴与交互</option></select><p class="threshold-help">切换立即作用于现有液滩；大高光、渐变与噪声设置仅用于旧版。</p></div>`;
@@ -162,6 +164,10 @@ slimeColors.setEnabled(false);
 const burstPreview=new SlimeBurstPreview(element('slime-burst-preview'),()=>controller.settings);
 const puddlePreview=new SlimeBurstPreview(element('puddle-preview'),()=>controller.settings,true);
 const cameraZoomPreview=new CameraZoomPreview(element('camera-zoom-preview'),()=>controller.settings);
+const cameraShakeEditor=new CameraShakeEditor(element('camera-shake-editor'),()=>controller.settings,values=>{
+  for(const [key,value] of Object.entries(values))controller.set(key as SettingKey,value);
+  syncSettings();settingsChanged();
+},tier=>{if(ready){game.cameraShake.trigger(controller.settings,tier);game.render();}});
 const recoilEditor=new ProgressCurveEditor(element('recoil-speed-curve-editor'),()=>controller.settings.recoilSpeedCurve,points=>{controller.setRecoilSpeedCurve(points);settingsChanged();},true,false,false,false,{title:'射击后坐速度曲线',x:'后坐时间进度',y:'相对速度',max:300,defaults:DEFAULT_RECOIL_CURVE,validate:validateJuiceSpeedCurve,help:'横轴：后坐时间 0–100%；纵轴：相对速度权重。曲线决定快慢分布，总距离始终由后坐距离控制；全零曲线不产生位移。双击加点、拖动调整或编辑数值，下一支箭生效。'});
 const eyeHitPreview=new EyeHitPreview(element('eye-hit-preview'),()=>controller.settings);
 const eyeHitEditors=EYE_HIT_CURVE_KEYS.map((key,i)=>new ProgressCurveEditor(element(['eye-hit-pull-editor','eye-hit-return-editor','eye-hit-absorb-editor'][i]),()=>controller.settings[key],points=>{controller.setEyeHitCurve(key,points);settingsChanged();},true,false,false,false,{title:['① 拉开速度曲线','② 拉回速度曲线','③ 入体吸能速度曲线'][i],x:'本阶段时间',y:'相对速度',max:300,defaults:EYE_HIT_CURVES[key],validate:validateEyeHitCurve,help:'横轴对应本阶段时长，纵轴越高运动越快。双击加点、拖点或输入数值；整体面积自动归一化，端点位置由拉开距离 / 入体深度决定。拉回终点接入入体起点；默认拉回末速高、入体逐渐减速。末段推出始终匀速。修改后下次命中生效。'}));
@@ -253,7 +259,7 @@ function updateHistoryButtons() {
 // Group continuous pointer/keyboard edits, including graphs in body-level dialogs.
 let editPointer: number | null = null;
 const dragControl = (target: EventTarget | null) => target instanceof Element
-  && !!target.closest('[data-setting][type="range"], .curve-graph');
+  && !!target.closest('[data-setting][type="range"], [data-shake-setting][type="range"], .curve-graph');
 document.addEventListener('pointerdown', event => {
   if (event.button !== 0 || !dragControl(event.target)) return;
   history?.end(); history?.begin(); editPointer = event.pointerId;
@@ -431,7 +437,7 @@ function syncSettings() {
   eyeEditor.render();
   liquidEditor.render();
   recoilEditor.render();
-  cameraZoomPreview.render();burstPreview.render();puddlePreview.render();
+  cameraShakeEditor.render();cameraZoomPreview.render();burstPreview.render();puddlePreview.render();
   element('juice-speed-curve-editor').hidden=controller.settings.juiceCurve!==6;juiceEditor.render();
   ringEditor.render();waveEditor.render();switchEditor.render();strokeEditor.render();
   element<HTMLInputElement>('anchor-follow').checked = !!controller.settings.anchorFollow;
@@ -633,7 +639,7 @@ async function start() {
   saveButton.disabled = false;slimeColors.setEnabled(true);
   try {
     await game.init((progress,stage)=>{element<HTMLProgressElement>('loading-progress').value=progress*100;element('loading-percent').textContent=`${Math.round(progress*100)}%`;element('loading-stage').textContent=stage;});
-    ready = true;
+    ready = true;cameraShakeEditor.setEnabled(true);
     element<HTMLButtonElement>('switch-training').disabled = false;
     element<HTMLButtonElement>('switch-monster-training').disabled = false;
     element<HTMLButtonElement>('switch-locking-training').disabled = false;
@@ -644,7 +650,7 @@ async function start() {
         pauseForInspection: (paused:boolean) => {game.renderer.setAnimationLoop(paused?null:frame);lastFrame=0;if(paused)game.render();},
         testSlimeHit: (id:string) => game.feedback?.hit(id,{x:0,z:-1},controller.settings),
         stepInspection: (dt:number) => {game.advanceFeedback(dt);game.sync(dt);game.render();},
-        snapshot: () => ({ ...controller.snapshot(), settings: { ...controller.settings }, center: { ...controller.center }, cameraZoom:game.cameraZoom.snapshot(controller.settings), cameraZ: game.cameraZ, cameraX: game.camera.position.x, footNdc: game.player.position.clone().project(game.camera).toArray(), anchorNdc: game.anchor.position.clone().project(game.camera).toArray(), trainingTargets: game.trainingTargetsSnapshot(), feedback: game.feedback?.snapshot() ?? [], bowRelease:game.bowRelease?.snapshot(), juice:game.juice?.snapshot(), burstEffects:game.burstEffects?.snapshot(), attack: game.animation.snapshot(), arrows: game.arrows?.snapshot(), runWeight: game.blend.weight, runTime: game.run.time, runTimeScale: game.run.getEffectiveTimeScale(), idleTimeScale: game.idle.getEffectiveTimeScale(), debug: { hit:game.hitDebug.snapshot(), headingVisible: game.headingGuide.visible, heading: game.headingGuide.rotation.y, anchorVisible: game.anchor.visible, anchorOutlineVisible: game.anchor.visible && game.anchorOutline.visible, lockRangeVisible: game.lockRangeGuide.visible, lockRangeRadius: game.lockRangeGuide.scale.x, rings: game.rings.state.snapshot(), candidateMarkerVisible: game.candidateMarker.visible }, gpuMemory:{...game.renderer.info.memory}, startup:{...game.startup}, renderer: 'webgpu', ready }),
+        snapshot: () => ({ ...controller.snapshot(), settings: { ...controller.settings }, center: { ...controller.center }, cameraZoom:game.cameraZoom.snapshot(controller.settings), cameraShake:game.cameraShake.snapshot(), cameraView:game.camera.view?{...game.camera.view}:null, cameraZ: game.cameraZ, cameraX: game.camera.position.x, footNdc: game.player.position.clone().project(game.camera).toArray(), anchorNdc: game.anchor.position.clone().project(game.camera).toArray(), trainingTargets: game.trainingTargetsSnapshot(), feedback: game.feedback?.snapshot() ?? [], bowRelease:game.bowRelease?.snapshot(), juice:game.juice?.snapshot(), burstEffects:game.burstEffects?.snapshot(), attack: game.animation.snapshot(), arrows: game.arrows?.snapshot(), runWeight: game.blend.weight, runTime: game.run.time, runTimeScale: game.run.getEffectiveTimeScale(), idleTimeScale: game.idle.getEffectiveTimeScale(), debug: { hit:game.hitDebug.snapshot(), headingVisible: game.headingGuide.visible, heading: game.headingGuide.rotation.y, anchorVisible: game.anchor.visible, anchorOutlineVisible: game.anchor.visible && game.anchorOutline.visible, lockRangeVisible: game.lockRangeGuide.visible, lockRangeRadius: game.lockRangeGuide.scale.x, rings: game.rings.state.snapshot(), candidateMarkerVisible: game.candidateMarker.visible }, gpuMemory:{...game.renderer.info.memory}, startup:{...game.startup}, renderer: 'webgpu', ready }),
       } });
     }
   } catch (error) {
