@@ -96,3 +96,29 @@ test('directional compression follows world hit direction through turns, preserv
  f.refresh({...c,hitSquashEnabled:0});close(visual.matrix.determinant(),1);
  f.reset();assert.deepEqual(visual.matrix.toArray(),new T.Matrix4().toArray());
 });
+
+test('afterKnockStun starts when knock ends; default 0 never stuns; snapshot ignores live edits',()=>{
+  const c={...HIT_DEFAULTS,hitKnockTime:.2,hitKnockStun:.15};
+  const r=make();
+  r.hit({x:0,z:-1},c);
+  assert.equal(r.afterKnockStun,false);
+  assert.equal(r.knockingBack,true);
+  r.update(.2,c);
+  assert.equal(r.knockingBack,false);
+  assert.equal(r.afterKnockStun,true);
+  r.update(.14,c);
+  assert.equal(r.afterKnockStun,true);
+  r.update(.02,c);
+  assert.equal(r.afterKnockStun,false);
+
+  const zero={...HIT_DEFAULTS,hitKnockTime:.2,hitKnockStun:0};
+  const z=make();z.hit({x:1,z:0},zero);z.update(.2,zero);
+  assert.equal(z.afterKnockStun,false);
+
+  const live=make();live.hit({x:1,z:0},c);live.update(.2,c);
+  assert.equal(live.afterKnockStun,true);
+  live.update(0,{...c,hitKnockStun:0});
+  assert.equal(live.afterKnockStun,true);
+
+  close(parseSettingsDocument({version:1,settings:{}}).hitKnockStun,0);
+});

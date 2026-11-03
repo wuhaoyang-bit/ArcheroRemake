@@ -100,18 +100,20 @@ export class TrainingFeedback {
     this.apply(d,c);
     if(exploded){const center=new T.Box3().setFromObject(d.visual).getCenter(new T.Vector3());const feet=new T.Vector3(d.response.position.x,.025,d.response.position.z);if(d.monster?.inflation)this.eyeDebris.emit(d.monster.inflation.eyes,center,c,d.root.userData.practiceTarget);d.monster?.inflation?.eyeHit.reset();d.root.visible=false;this.onBurst?.(center,feet,d.burst.config!,d.monster?.inflation?.copyColor(new T.Color()));}
   }}
+  /** Yellow slime only: knock travel or post-knock stun blocks voluntary chase. Other displacement still applies. */
+  private blocksSlimeWalk(d:Dummy){return d.response.knockingBack||(this.isYellowSlime(d)&&d.response.afterKnockStun);}
   pursue(dt:number,player:Point,speed:number,c:FeedbackSettings,resolveContacts?:()=>void){
     for(const d of this.dummies){
       Object.assign(d.walkFrom,d.response.position);
       if(d.burst.phase!=='alive')continue;
       const fill=d.monster?.inflation?Math.min(1,d.monster.inflation.state.amount/c.slimeCapacity):0;
       const p=d.response.position,dx=player.x-p.x,dz=player.z-p.z,distance=Math.hypot(dx,dz);
-      if(distance>1e-8){d.root.rotation.y=Math.atan2(dx,dz);if(!d.response.knockingBack){const step=Math.min(distance,speed*slimeSpeedMultiplier(fill,c)*dt);p.x+=dx/distance*step;p.z+=dz/distance*step;}}
+      if(distance>1e-8){d.root.rotation.y=Math.atan2(dx,dz);if(!this.blocksSlimeWalk(d)){const step=Math.min(distance,speed*slimeSpeedMultiplier(fill,c)*dt);p.x+=dx/distance*step;p.z+=dz/distance*step;}}
     }
     resolveContacts?.();
     for(const d of this.dummies){
       const fill=d.monster?.inflation?Math.min(1,d.monster.inflation.state.amount/c.slimeCapacity):0;
-      const moving=d.burst.phase==='alive'&&!d.response.knockingBack&&speed*slimeSpeedMultiplier(fill,c)>0&&Math.hypot(d.response.position.x-d.walkFrom.x,d.response.position.z-d.walkFrom.z)>1e-8;
+      const moving=d.burst.phase==='alive'&&!this.blocksSlimeWalk(d)&&speed*slimeSpeedMultiplier(fill,c)>0&&Math.hypot(d.response.position.x-d.walkFrom.x,d.response.position.z-d.walkFrom.z)>1e-8;
       d.breath.update(dt,moving&&!!d.monster?.inflation,fill,c);this.apply(d,c);
     }
   }
