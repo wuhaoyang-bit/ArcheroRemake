@@ -14,15 +14,26 @@ export function slimeMoveHump(u:number,peakAt:number){
  * Yellow-slime chase gait multiplier over a cycle clock.
  * [0, period): valley↔peak hump; [period, period+pause): full stop 0; then caller wraps age.
  */
-export function slimeMoveGaitMultiplier(age:number,c:Pick<SlimeFullnessSettings,'slimeMovePeriod'|'slimeMovePause'|'slimeMovePeak'|'slimeMoveValley'|'slimeMovePeakAt'>){
+export type GaitLocalState={
+  period:number;pause:number;cycle:number;local:number;
+  inPause:boolean;humpU:number;e:number;mult:number;
+};
+
+/** Preview-isomorphic gait clock breakdown; only calls existing slimeMoveHump. */
+export function gaitLocalState(age:number,c:Pick<SlimeFullnessSettings,'slimeMovePeriod'|'slimeMovePause'|'slimeMovePeak'|'slimeMoveValley'|'slimeMovePeakAt'>):GaitLocalState{
   const period=Math.max(1e-6,c.slimeMovePeriod);
   const pause=Math.max(0,c.slimeMovePause);
-  const t=Math.max(0,age);
   const cycle=period+pause;
-  const local=cycle>0?t%cycle:0;
-  if(local>=period)return 0;
-  const e=slimeMoveHump(local/period,c.slimeMovePeakAt);
-  return c.slimeMoveValley+(c.slimeMovePeak-c.slimeMoveValley)*e;
+  const local=cycle>0?Math.max(0,age)%cycle:0;
+  const inPause=local>=period;
+  const humpU=inPause?1:local/period;
+  const e=inPause?0:slimeMoveHump(humpU,c.slimeMovePeakAt);
+  const mult=inPause?0:c.slimeMoveValley+(c.slimeMovePeak-c.slimeMoveValley)*e;
+  return {period,pause,cycle,local,inPause,humpU,e,mult};
+}
+
+export function slimeMoveGaitMultiplier(age:number,c:Pick<SlimeFullnessSettings,'slimeMovePeriod'|'slimeMovePause'|'slimeMovePeak'|'slimeMoveValley'|'slimeMovePeakAt'>){
+  return gaitLocalState(age,c).mult;
 }
 
 export class SlimeWalkBreath{

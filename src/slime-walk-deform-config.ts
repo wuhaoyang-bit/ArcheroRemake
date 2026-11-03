@@ -1,0 +1,66 @@
+/** Yellow-slime walk deform defaults / limits / panel (PLAN-EXEC 终版 AABCAA §1.2). */
+
+export const SLIME_WALK_DEFORM_DEFAULTS = {
+  slimeWalkEnabled: 1,
+  slimeWalkRestSx: 1.08,
+  slimeWalkRestSy: 0.94,
+  slimeWalkPeakSx: 1.44,
+  slimeWalkPeakSy: 0.67,
+  slimeWalkPauseSx: 1.1,
+  slimeWalkPauseSy: 0.92,
+  slimeWalkIdleSx: 1.15,
+  slimeWalkIdleSy: 0.9,
+  slimeWalkMaxLean: 0.22,
+  slimeWalkLeanRate: 2.11,
+  slimeWalkLeanDamp: 0.28,
+  slimeWalkLeanUpperFreqScale: 0.55,
+  slimeWalkLeanUpperDamp: 0.38,
+  slimeWalkScaleFreq: 2.4,
+  slimeWalkScaleDamp: 0.35,
+  slimeWalkEyeFollowFreq: 1.4,
+  slimeWalkEyeFollowDamp: 0.32,
+};
+
+export type SlimeWalkDeformSettings = typeof SLIME_WALK_DEFORM_DEFAULTS;
+
+export const SLIME_WALK_DEFORM_LIMITS: Record<keyof typeof SLIME_WALK_DEFORM_DEFAULTS, [number, number, number]> = {
+  slimeWalkEnabled: [0, 1, 1],
+  slimeWalkRestSx: [0.5, 2.2, 0.01],
+  slimeWalkRestSy: [0.3, 1.5, 0.01],
+  slimeWalkPeakSx: [0.5, 2.2, 0.01],
+  slimeWalkPeakSy: [0.3, 1.5, 0.01],
+  slimeWalkPauseSx: [0.5, 2.2, 0.01],
+  slimeWalkPauseSy: [0.3, 1.5, 0.01],
+  slimeWalkIdleSx: [0.5, 2.2, 0.01],
+  slimeWalkIdleSy: [0.3, 1.5, 0.01],
+  slimeWalkMaxLean: [0, 0.45, 0.01],
+  slimeWalkLeanRate: [0.2, 12, 0.01],
+  slimeWalkLeanDamp: [0.05, 1.2, 0.01],
+  slimeWalkLeanUpperFreqScale: [0.1, 1.2, 0.01],
+  slimeWalkLeanUpperDamp: [0.05, 1.2, 0.01],
+  slimeWalkScaleFreq: [0.5, 10, 0.05],
+  slimeWalkScaleDamp: [0.05, 1.2, 0.01],
+  slimeWalkEyeFollowFreq: [0.5, 10, 0.05],
+  slimeWalkEyeFollowDamp: [0.05, 1.2, 0.01],
+};
+
+export const SLIME_WALK_DEFORM_CONTROLS: [keyof SlimeWalkDeformSettings, string, string, string][] = [
+  ['slimeWalkEnabled', '行走 · 形变开关', '0/1', '仅黄史莱姆；关闭则跳过行走剪切、非均匀胖瘦与眼睛跟随。'],
+  ['slimeWalkRestSx', '行走 · 谷 sx', '', 'period 内 e=0 时的水平缩放。'],
+  ['slimeWalkRestSy', '行走 · 谷 sy', '', 'period 内 e=0 时的竖直缩放。'],
+  ['slimeWalkPeakSx', '行走 · 峰 sx', '', 'period 内 e=1 时的水平缩放。'],
+  ['slimeWalkPeakSy', '行走 · 峰 sy', '', 'period 内 e=1 时的竖直缩放。'],
+  ['slimeWalkPauseSx', '行走 · 停 sx', '', 'gait pause 包络峰值（近谷）。'],
+  ['slimeWalkPauseSy', '行走 · 停 sy', '', 'gait pause 包络峰值（近谷）。'],
+  ['slimeWalkIdleSx', '行走 · 站住 sx', '', 'moving=false 时的理想水平缩放。'],
+  ['slimeWalkIdleSy', '行走 · 站住 sy', '', 'moving=false 时的理想竖直缩放。'],
+  ['slimeWalkMaxLean', '行走 · 最大前倾', '身宽比', '满倾顶边剪切 = 该值 × 运行时身宽。'],
+  ['slimeWalkLeanRate', '行走 · 前倾速度', '', '弹簧频率 f≈rate×0.65；越大越脆。'],
+  ['slimeWalkLeanDamp', '行走 · 前倾阻尼', '', '主体欠阻尼比 z；越小越晃。'],
+  ['slimeWalkLeanUpperFreqScale', '行走 · 上身频率比', '', '上身弹簧频率 = 主体 f × 该值。'],
+  ['slimeWalkLeanUpperDamp', '行走 · 上身阻尼', '', '上身弹簧阻尼比。'],
+  ['slimeWalkScaleFreq', '行走 · 胖瘦频率', 'Hz', 'sx/sy 弹簧频率（选型 4C-γ）。'],
+  ['slimeWalkScaleDamp', '行走 · 胖瘦阻尼', '', 'sx/sy 弹簧阻尼比。'],
+  ['slimeWalkEyeFollowFreq', '行走 · 眼睛跟随频率', 'Hz', '眼睛水平弹簧；有惯性与过冲。'],
+  ['slimeWalkEyeFollowDamp', '行走 · 眼睛跟随阻尼', '', '眼睛水平弹簧阻尼比。'],
+];

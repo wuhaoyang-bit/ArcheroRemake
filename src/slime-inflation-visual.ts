@@ -63,6 +63,8 @@ export class SlimeInflationVisual{
  /** Live body position attribute (post-inflation, pre/post bend). */
  get bendPositions(){return this.positions;}
  get bendFace(){return this.model.face;}
+ /** Model root (scale + foot lift from inflation). Used by walk foot glue. */
+ get modelRoot(){return this.model.root;}
  /** Force next apply() to rewrite positions from base (clears residual bend). */
  invalidateShape(){this.key='';this.settledKey='';}
  /** Analytic low rounded-box surface, with the same inflation and world deformation as the body. */

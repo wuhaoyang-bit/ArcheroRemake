@@ -1,0 +1,197 @@
+:root {
+  font: 14px/1.55 system-ui, sans-serif;
+  color: #363b2d;
+  background: #f4f2e9;
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 20px 3vw 32px; }
+header, footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 11px;
+  letter-spacing: 1.2px;
+  color: #7b806e;
+}
+header { padding-bottom: 16px; border-bottom: 1px solid #dcded0; align-items: baseline; }
+header h1 { margin: 0; font-size: 20px; letter-spacing: -0.4px; color: #3a4130; }
+main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 20px 28px;
+  margin: 18px 0;
+}
+.stage-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+#viewport {
+  height: min(58vh, 560px);
+  min-height: 360px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #e9e7dc;
+  position: relative;
+}
+#viewport canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.stage-caption {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: #787d68;
+  font-size: 10px;
+  pointer-events: none;
+  z-index: 1;
+}
+.curve-panel {
+  background: #eceadf;
+  border: 1px solid #d5d9c5;
+  border-radius: 14px;
+  padding: 12px 14px 10px;
+}
+.curve-panel h2 {
+  margin: 0 0 6px;
+  font-size: 13px;
+  color: #4d573c;
+}
+.curve-help {
+  margin: 0 0 8px;
+  font-size: 11px;
+  color: #858770;
+  line-height: 1.5;
+}
+#curve {
+  display: block;
+  width: 100%;
+  height: 168px;
+  background: #f7f6ef;
+  border-radius: 8px;
+  border: 1px solid #d8dcc8;
+}
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin-top: 8px;
+  font-size: 11px;
+  color: #5a614c;
+}
+.legend label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  cursor: pointer;
+}
+.legend i {
+  width: 12px;
+  height: 3px;
+  border-radius: 2px;
+  display: inline-block;
+}
+aside {
+  max-height: calc(58vh + 220px);
+  overflow: auto;
+  padding: 4px 4px 24px 0;
+}
+.eyebrow { font-size: 11px; letter-spacing: 2px; color: #777c62; margin: 0; }
+aside h2 { font-size: 20px; margin: 6px 0 10px; }
+.intro { color: #858770; font-size: 13px; line-height: 1.7; margin: 0 0 16px; }
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 14px;
+}
+button {
+  font: inherit;
+  font-size: 12px;
+  background: #e7e9db;
+  border: 1px solid #d5d9c5;
+  border-radius: 8px;
+  padding: 8px 11px;
+  color: #4d573c;
+  cursor: pointer;
+}
+button:hover { background: #dce2c8; }
+button[aria-pressed="true"] {
+  background: #cfd8a8;
+  border-color: #b7c07e;
+  color: #2f3824;
+}
+.live {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  background: #eef0e4;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: 0 0 16px;
+  color: #4a5240;
+  line-height: 1.65;
+}
+.live strong { color: #2f3824; }
+.section-title {
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: #6d7460;
+  margin: 18px 0 8px;
+  padding-top: 10px;
+  border-top: 1px solid #dcded0;
+}
+.setting {
+  margin: 0 0 14px;
+}
+.setting-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 12px;
+  color: #4d573c;
+}
+.setting .numeric {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #818769;
+}
+.setting input[type="number"] {
+  width: 4.5rem;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  border: 1px solid #d5d9c5;
+  border-radius: 6px;
+  padding: 2px 6px;
+  background: #f7f6ef;
+  color: #363b2d;
+}
+.setting input[type="range"] {
+  display: block;
+  width: 100%;
+  accent-color: #939c4e;
+  margin-top: 8px;
+}
+.setting .hint {
+  margin: 4px 0 0;
+  font-size: 10px;
+  color: #8a907a;
+  line-height: 1.4;
+}
+.note { margin-top: 16px; font-size: 11px; color: #858770; line-height: 1.55; }
+footer {
+  border-top: 1px solid #dcded0;
+  padding-top: 14px;
+  flex-wrap: wrap;
+}
+footer a { color: #5a6b3a; }
+@media (max-width: 900px) {
+  main { grid-template-columns: 1fr; }
+  aside { max-height: none; }
+  #viewport { height: 48vh; min-height: 300px; }
+}
