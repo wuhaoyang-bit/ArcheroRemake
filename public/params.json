@@ -251,7 +251,7 @@
       }
     ],
     "slimeTrailEnabled": 1,
-    "slimeTrailWidth": 1,
+    "slimeTrailWidth": 1.45,
     "slimeTrailLifetime": 3,
     "slimeTrailFade": 1.2,
     "slimeStrandEnabled": 1,
