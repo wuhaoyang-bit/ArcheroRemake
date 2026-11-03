@@ -60,6 +60,7 @@ export function parseSettingsDocument(raw: unknown, strict = false): Settings {
   settings.ringWaveCurve = validateProgressCurve(source.ringWaveCurve === undefined ? DEFAULTS.ringWaveCurve : source.ringWaveCurve);
   settings.ringSwitchCurve = validateSwitchCurve(source.ringSwitchCurve === undefined ? DEFAULTS.ringSwitchCurve : source.ringSwitchCurve);
   settings.ringCurve = validateProgressCurve(source.ringCurve === undefined ? DEFAULTS.ringCurve : source.ringCurve);
+  settings.hitKnockCurve = validateProgressCurve(source.hitKnockCurve === undefined ? DEFAULTS.hitKnockCurve : source.hitKnockCurve);
   for(const key of EYE_HIT_CURVE_KEYS)settings[key]=validateEyeHitCurve(source[key]??DEFAULTS[key]);
   settings.slimeEyeSpeedCurve=validateJuiceSpeedCurve(source.slimeEyeSpeedCurve ?? DEFAULTS.slimeEyeSpeedCurve);
   settings.liquidSpeedCurve=validateJuiceSpeedCurve(source.liquidSpeedCurve ?? source.slimeEyeSpeedCurve ?? DEFAULTS.liquidSpeedCurve);

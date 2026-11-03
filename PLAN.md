@@ -1584,3 +1584,12 @@ a = 本次更新的追赶比例
 - 构建、158 项单元测试、预览与游戏浏览器专项通过。比较同龄效果的网格变换和遮罩参数，检查三箭连发、池复用、重置与怪物训练场，用户 params.json 未改动。
 
 2026-10-22 更新：正式游戏与预览共用的环带持续时间改为 0.3 s；扩张继续使用 OutCubic（先快后慢，1−(1−u)³）。尖刺及其他默认参数保持不变。
+
+## 黄色史莱姆受击水平月牙弯曲（2026-11-03，NotebookLM 终审合格 · 未开工）
+
+- **执行 PLAN（终审定稿）**：`docs/specs/PLAN-PENDING_APPROVAL-hit-horizontal-bend.md`。
+- 想法对齐原稿（已加指针）：`docs/hit-horizontal-bend-plan.md`。
+- 已锁：8.1A smoothstep · 8.2A 腰线默认 0.5×peak · 8.3B `hitBendMax` 单位 u 默认 0.4；HIT_DEFAULTS 初值用户已同意。
+- 对齐：三拍成 C → 上半 A 再转后仰 → 过冲弹回；俯视水平 ⊂；仅黄史莱姆；与方向压缩叠加；整块网格顶点弯；脚底水平几乎不移；C 峰值对齐眼睛高度；眼睛仍走现有 eye-hit。
+- 预览：`/Users/racio/trr-boards/knockback-force-feel/`；选型页 `/Users/racio/trr-boards/hit-bend-tech-choices/`；NotebookLM `DIR-ArcheroRemake-20261103-Grok受击弯曲与击退读感`。
+- **未授权实现**：须用户明确「按这个做」后再改游戏代码。

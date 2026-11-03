@@ -287,6 +287,7 @@ export class MovementController {
   setRingWaveCurve(points:ProgressPoint[]){this.settings.ringWaveCurve=validateProgressCurve(points);}
   setRingSwitchCurve(points:ProgressPoint[]){this.settings.ringSwitchCurve=validateSwitchCurve(points);}
   setRingCurve(points: ProgressPoint[]) { this.settings.ringCurve = validateProgressCurve(points); }
+  setHitKnockCurve(points: ProgressPoint[]) { this.settings.hitKnockCurve = validateProgressCurve(points); }
 
   setAnchorCurve(points: AnchorCurvePoint[]) { this.settings.anchorCurve = validateAnchorCurve(points); }
 

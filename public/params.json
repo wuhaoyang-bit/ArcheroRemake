@@ -261,6 +261,45 @@
     "hitSquashCompensation": 1,
     "hitKnockTime": 0.2,
     "hitKnockDistance": 3,
+    "hitKnockCurveMode": 1,
+    "hitKnockCurve": [
+      {
+        "time": 0,
+        "progress": 0
+      },
+      {
+        "time": 7.74,
+        "progress": 28.47
+      },
+      {
+        "time": 19.62,
+        "progress": 50.86
+      },
+      {
+        "time": 34.48,
+        "progress": 72.54
+      },
+      {
+        "time": 48.28,
+        "progress": 82.52
+      },
+      {
+        "time": 61.58,
+        "progress": 90.64
+      },
+      {
+        "time": 73.49,
+        "progress": 95.13
+      },
+      {
+        "time": 89.24,
+        "progress": 98.26
+      },
+      {
+        "time": 100,
+        "progress": 100
+      }
+    ],
     "hitRimTime": 0.16,
     "hitRimFadeStart": 0.08,
     "hitRimStrength": 1,
@@ -487,7 +526,7 @@
     "monsterScale": 1,
     "monsterHitRadius": 0.47,
     "monsterHitSpeed": 2,
-    "monsterCount": 3,
+    "monsterCount": 1,
     "joystickSize": 0.95,
     "joystickRadius": 64,
     "unlockDistance": 20,

@@ -18,8 +18,9 @@ import { ARROW_TRAIL_CONTROLS, ARROW_PAINT_CONTROLS } from './arrow-trail-config
 import { DEFAULT_RECOIL_CURVE } from './shot-recoil.ts';
 import { validateJuiceSpeedCurve } from './juice-speed-curve.ts';
 import { JuiceCurveEditor } from './juice-curve-editor.ts';
-import { HIT_CONTROLS,HIT_SPLASH_SHEET_CONTROLS,HIT_SPLASH_PARTICLE_CONTROLS } from './hit-feedback-config.ts';
+import { HIT_CONTROLS,HIT_SPLASH_SHEET_CONTROLS,HIT_SPLASH_PARTICLE_CONTROLS,DEFAULT_HIT_KNOCK_CURVE } from './hit-feedback-config.ts';
 import { ProgressCurveEditor } from './progress-curve-editor.ts';
+import { validateProgressCurve } from './lock-rings.ts';
 import { AnchorCurveEditor } from './anchor-curve-editor.ts';
 import { TurnCurveEditor } from './turn-curve-editor.ts';
 import './styles.css';
@@ -127,6 +128,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         const [min, max, step] = LIMITS[key];
         if(key==='puddleRenderer')return `<div class="setting"><label for="value-${key}">${name}</label><select id="value-${key}" data-setting="${key}"><option value="0">旧版 · 平面粘液</option><option value="1">CurveFluid · 三维粘液</option><option value="2">融合液面 · 液滴与交互</option></select><p class="threshold-help">切换立即作用于现有液滩；大高光、渐变与噪声设置仅用于旧版。</p></div>`;
         if(key==='hitSquashMode')return `<div class="setting" title="${hint}"><label for="value-${key}">${name}</label><select id="value-${key}" data-setting="${key}"><option value="0">整体缩放</option><option value="1">沿命中方向压缩</option></select><p class="threshold-help">${hint}</p></div>`;
+        if(key==='hitKnockCurveMode')return `<div class="setting" title="${hint}"><label for="value-${key}">${name}</label><select id="value-${key}" data-setting="${key}"><option value="0">公式 · OutCubic</option><option value="1">手动关键点</option></select><p class="threshold-help">${hint}</p><div id="hit-knock-curve-editor" hidden></div></div>`;
         if(key==='juiceCurve')return `<div class="setting" title="${hint}"><label for="value-${key}">${name}</label><select id="value-${key}" data-setting="${key}">${['Linear','OutQuad','OutCubic · 截图方案','OutExpo','smoothstep','指数阻力','自定义曲线'].map((label,i)=>`<option value="${i}">${label}</option>`).join('')}</select><div id="juice-speed-curve-editor" hidden></div></div>`;
         if(key==='juiceColor'||key==='arrowTrailColor'||key==='arrowPaintColor')return `<div class="setting" title="${hint}"><label for="value-${key}">${name}</label><input id="value-${key}" data-setting="${key}" type="color" value="#${DEFAULTS[key].toString(16).padStart(6,'0')}"></div>`;
         return `<div class="setting" title="${hint}"><div class="setting-label"><label for="slider-${key}">${name}</label><div class="numeric"><input id="value-${key}" data-setting="${key}" type="number" min="${min}" max="${max}" step="${step}" value="${DEFAULTS[key]}" aria-label="${name}数值"><span>${unit}</span></div></div><input id="slider-${key}" data-setting="${key}" type="range" min="${min}" max="${max}" step="${step}" value="${DEFAULTS[key]}" aria-label="${name}"></div>`;
@@ -173,6 +175,7 @@ const cameraShakeEditor=new CameraShakeEditor(element('camera-shake-editor'),()=
 const shockwaveEditor=new ProgressCurveEditor(element('burst-shockwave-speed-editor'),()=>controller.settings.burstShockwaveSpeedCurve,points=>{controller.setShockwaveSpeedCurve(points);settingsChanged();},true,false,false,false,SHOCKWAVE_CURVE_OPTIONS);
 element('shockwave-preview').onclick=()=>{if(ready)game.previewShockwave();};
 const recoilEditor=new ProgressCurveEditor(element('recoil-speed-curve-editor'),()=>controller.settings.recoilSpeedCurve,points=>{controller.setRecoilSpeedCurve(points);settingsChanged();},true,false,false,false,{title:'射击后坐速度曲线',x:'后坐时间进度',y:'相对速度',max:300,defaults:DEFAULT_RECOIL_CURVE,validate:validateJuiceSpeedCurve,help:'横轴：后坐时间 0–100%；纵轴：相对速度权重。曲线决定快慢分布，总距离始终由后坐距离控制；全零曲线不产生位移。双击加点、拖动调整或编辑数值，下一支箭生效。'});
+const hitKnockEditor=new ProgressCurveEditor(element('hit-knock-curve-editor'),()=>controller.settings.hitKnockCurve,points=>{controller.setHitKnockCurve(points);settingsChanged();},false,false,false,false,{title:'击退位移曲线',x:'击退时间进度',y:'位移完成度',max:100,defaults:DEFAULT_HIT_KNOCK_CURVE,validate:validateProgressCurve,help:'横轴：击退时间 0–100%；纵轴：已完成击退总距离的比例。默认关键点采样自 OutCubic。双击加点、拖点或编辑数值；起终点固定。总距离与时长仍由上方参数控制。修改后下次命中生效。'});
 const eyeHitPreview=new EyeHitPreview(element('eye-hit-preview'),()=>controller.settings);
 const eyeHitEditors=EYE_HIT_CURVE_KEYS.map((key,i)=>new ProgressCurveEditor(element(['eye-hit-pull-editor','eye-hit-return-editor','eye-hit-absorb-editor'][i]),()=>controller.settings[key],points=>{controller.setEyeHitCurve(key,points);settingsChanged();},true,false,false,false,{title:['① 拉开速度曲线','② 拉回速度曲线','③ 入体吸能速度曲线'][i],x:'本阶段时间',y:'相对速度',max:300,defaults:EYE_HIT_CURVES[key],validate:validateEyeHitCurve,help:'横轴对应本阶段时长，纵轴越高运动越快。双击加点、拖点或输入数值；整体面积自动归一化，端点位置由拉开距离 / 入体深度决定。拉回终点接入入体起点；默认拉回末速高、入体逐渐减速。末段推出始终匀速。修改后下次命中生效。'}));
 const eyeEditor=new ProgressCurveEditor(element('eye-speed-curve-editor'),()=>controller.settings.slimeEyeSpeedCurve,points=>{controller.setEyeSpeedCurve(points);settingsChanged();},true,false,false,false,{title:'眼球弹出速度曲线',x:'弹出曲线时间进度',y:'初速度百分比',max:300,defaults:DEFAULT_EYE_SPEED_CURVE,validate:validateJuiceSpeedCurve,help:'横轴对应“弹出曲线时长”；100% 速度等于弹出速度。双击空白加点，拖动或编辑数值调整。结束后保持末端速度。眼球触地后按碰撞速度反弹，速度为 0 也会下落。修改后下次爆炸生效。'});
@@ -443,6 +446,7 @@ function syncSettings() {
   recoilEditor.render();shockwaveEditor.render();
   cameraShakeEditor.render();cameraZoomPreview.render();burstPreview.render();puddlePreview.render();
   element('juice-speed-curve-editor').hidden=controller.settings.juiceCurve!==6;juiceEditor.render();
+  element('hit-knock-curve-editor').hidden=controller.settings.hitKnockCurveMode!==1;hitKnockEditor.render();
   ringEditor.render();waveEditor.render();switchEditor.render();strokeEditor.render();
   element<HTMLInputElement>('anchor-follow').checked = !!controller.settings.anchorFollow;
   element<HTMLInputElement>('show-threshold').checked = !!controller.settings.showThreshold;
@@ -493,6 +497,7 @@ function applySettings(next: Settings) {
   controller.setLiquidSpeedCurve(next.liquidSpeedCurve);
   for(const key of EYE_HIT_CURVE_KEYS)controller.setEyeHitCurve(key,next[key]);
   controller.setJuiceSpeedCurve(next.juiceSpeedCurve);
+  controller.setHitKnockCurve(next.hitKnockCurve);
   controller.setCurve(next.turnCurve); controller.setLockCurve(next.lockTurnCurve);
   controller.setMoveCurve(next.moveCurve); controller.setAnchorCurve(next.anchorCurve);
   controller.setRingCurve(next.ringCurve); controller.setRingWaveCurve(next.ringWaveCurve);
@@ -623,6 +628,7 @@ async function start() {
     controller.setLiquidSpeedCurve(loaded.liquidSpeedCurve);
     for(const key of EYE_HIT_CURVE_KEYS)controller.setEyeHitCurve(key,loaded[key]);
     controller.setJuiceSpeedCurve(loaded.juiceSpeedCurve);
+    controller.setHitKnockCurve(loaded.hitKnockCurve);
     controller.setCurve(loaded.turnCurve);
     controller.setLockCurve(loaded.lockTurnCurve);
     controller.setMoveCurve(loaded.moveCurve);

@@ -86,6 +86,25 @@ public final class SettingsBridge {
                 }
                 canonical.put(curveKey, cleanCurve);
             }
+            // Time/speed curves have editable endpoints and may decelerate; they are not progress curves.
+            for (String curveKey : new String[]{"juiceSpeedCurve", "recoilSpeedCurve", "slimeEyeSpeedCurve", "liquidSpeedCurve", "eyeHitPullCurve", "eyeHitReturnCurve", "eyeHitAbsorbCurve", "burstShockwaveSpeedCurve"}) {
+                JSONArray curve = values.getJSONArray(curveKey);
+                if (curve.length() < 2 || curve.length() > 64) return failure("速度曲线控制点数量无效");
+                JSONArray cleanCurve = new JSONArray();
+                double previousTime = -1, previousSpeed = 0, area = 0;
+                for (int i = 0; i < curve.length(); i++) {
+                    JSONObject point = curve.getJSONObject(i);
+                    if (!(point.get("time") instanceof Number) || !(point.get("progress") instanceof Number)) return failure("速度曲线参数必须是数字");
+                    double time = point.getDouble("time"), speed = point.getDouble("progress");
+                    if (!Double.isFinite(time) || !Double.isFinite(speed) || time < 0 || time > 100 || time <= previousTime || speed < 0 || speed > 300) return failure("速度曲线参数无效");
+                    if ((i == 0 && time != 0) || (i == curve.length() - 1 && time != 100)) return failure("必须保留速度曲线端点");
+                    if (i > 0) area += (previousSpeed + speed) * .5 * (time - previousTime) / 10000;
+                    cleanCurve.put(new JSONObject().put("time", time).put("progress", speed));
+                    previousTime = time; previousSpeed = speed;
+                }
+                if (curveKey.startsWith("eyeHit") && area < .001) return failure("眼球受击速度曲线不能全为 0");
+                canonical.put(curveKey, cleanCurve);
+            }
             String content = new JSONObject().put("version", 1).put("settings", canonical).toString(2) + "\n";
             output = saved.startWrite();
             output.write(content.getBytes(StandardCharsets.UTF_8));

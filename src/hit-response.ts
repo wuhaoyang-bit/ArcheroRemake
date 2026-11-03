@@ -1,4 +1,5 @@
 import type { HitSettings } from './hit-feedback-config.ts';
+import { progressAt, type ProgressPoint } from './lock-rings.ts';
 export type Point = { x: number; z: number };
 export function spring(x:number,v:number,t:number,f:number,z:number) {
   const w=2*Math.PI*f;
@@ -9,14 +10,32 @@ export function spring(x:number,v:number,t:number,f:number,z:number) {
   return {x:A*Math.exp(r1*t)+B*Math.exp(r2*t),v:r1*A*Math.exp(r1*t)+r2*B*Math.exp(r2*t)};
 }
 function compress(start:number,t:number,c:HitSettings){const u=Math.min(1,Math.max(0,t/c.hitCompressTime));return {x:start+(c.hitSquashAmount-start)*u*u*(3-2*u),v:u>=1?0:(c.hitSquashAmount-start)*6*u*(1-u)/c.hitCompressTime};}
+/** Displacement progress 0–1 over knockback lifetime. Mode 0 = OutCubic; mode 1 = editable polyline. */
+export function knockProgress(t:number,c:Pick<HitSettings,'hitKnockTime'|'hitKnockCurveMode'|'hitKnockCurve'>){
+  const q=Math.min(1,Math.max(0,c.hitKnockTime>0?t/c.hitKnockTime:1));
+  return c.hitKnockCurveMode===1?progressAt(c.hitKnockCurve,q):1-(1-q)**3;
+}
+/** Initial knockback speed for a given travel budget (wall-clamped distance). */
+export function knockInitialSpeed(travel:number,c:Pick<HitSettings,'hitKnockEnabled'|'hitKnockTime'|'hitKnockCurveMode'|'hitKnockCurve'>){
+  if(!c.hitKnockEnabled||c.hitKnockTime<=0||travel<=0)return 0;
+  if(c.hitKnockCurveMode===1){
+    const curve=c.hitKnockCurve;if(curve.length<2)return 0;
+    const a=curve[0],b=curve[1],span=b.time-a.time;if(span<=0)return 0;
+    return (travel/c.hitKnockTime)*((b.progress-a.progress)/span);
+  }
+  return 3*travel/c.hitKnockTime;
+}
+function snapshotHit(c:HitSettings):HitSettings{
+  return {...c,hitKnockCurve:c.hitKnockCurve.map((p:ProgressPoint)=>({...p}))};
+}
 /** Visual scale and knockback have independent clocks; a wall never releases the spring. */
 export class HitResponse {
   age=Infinity; start=0; x=0; v=0; blocked=false; direction:Point={x:0,z:0};
   private config:HitSettings|null=null;
   constructor(readonly position:Point,readonly bounds:{x:number;z:number}){}
-  hit(direction:Point,c:HitSettings){this.start=this.x;this.age=0;this.blocked=false;this.config={...c};const length=Math.hypot(direction.x,direction.z);this.direction=length>1e-8?{x:direction.x/length,z:direction.z/length}:{x:0,z:0};}
+  hit(direction:Point,c:HitSettings){this.start=this.x;this.age=0;this.blocked=false;this.config=snapshotHit(c);const length=Math.hypot(direction.x,direction.z);this.direction=length>1e-8?{x:direction.x/length,z:direction.z/length}:{x:0,z:0};}
   update(dt:number,current:HitSettings){if(!this.config)return;const c=this.config,prev=this.age;this.age+=dt;
-    if(c.hitKnockEnabled&&current.hitKnockEnabled&&!this.blocked){const progress=(t:number)=>1-(1-Math.min(1,t/c.hitKnockTime))**3;const distance=c.hitKnockDistance*(progress(this.age)-progress(prev));const dx=this.direction.x*distance,dz=this.direction.z*distance;let fraction=1;
+    if(c.hitKnockEnabled&&current.hitKnockEnabled&&!this.blocked){const distance=c.hitKnockDistance*(knockProgress(this.age,c)-knockProgress(prev,c));const dx=this.direction.x*distance,dz=this.direction.z*distance;let fraction=1;
       for(const [p,d,b] of [[this.position.x,dx,this.bounds.x],[this.position.z,dz,this.bounds.z]]){if(d>0)fraction=Math.min(fraction,(b-p)/d);else if(d<0)fraction=Math.min(fraction,(-b-p)/d);}
       fraction=Math.max(0,Math.min(1,fraction));this.position.x+=dx*fraction;this.position.z+=dz*fraction;if(fraction<1)this.blocked=true;
     }

@@ -7,7 +7,7 @@ import { DEFAULTS } from './config.ts';
 import { monsterInstance, type MonsterInstance } from './training-monster.ts';
 import * as T from 'three/webgpu';
 import { normalView, positionView, uniform, float } from 'three/tsl';
-import { HitResponse, type Point } from './hit-response.ts';
+import { HitResponse, knockInitialSpeed, type Point } from './hit-response.ts';
 import type { HitSettings } from './hit-feedback-config.ts';
 import type {SlimeTrailBody} from './slime-ground-trail.ts';
 type FeedbackSettings = HitSettings & {monsterScale?:number;monsterHitSpeed?:number;monsterHitRadius?:number};
@@ -44,7 +44,7 @@ export class TrainingFeedback {
     const v=new T.Vector3(d.response.direction.x,0,d.response.direction.z),p=d.response.position,b=d.response.bounds;
     let travel=settings.hitKnockDistance;
     for(const [pos,dir,bound] of [[p.x,v.x,b.x],[p.z,v.z,b.z]])if(Math.abs(dir)>1e-8)travel=Math.min(travel,Math.max(0,((dir>0?bound:-bound)-pos)/dir));
-    const speed=settings.hitKnockEnabled?3*travel/settings.hitKnockTime:0,strength=Math.max(settings.eyeHitMinimumStrength,Math.min(1,speed/settings.eyeHitReferenceSpeed));
+    const speed=knockInitialSpeed(travel,settings),strength=Math.max(settings.eyeHitMinimumStrength,Math.min(1,speed/settings.eyeHitReferenceSpeed));
     d.monster?.inflation?.eyeHit.hit(v,strength,settings);this.apply(d,settings);
     if(d.monster?.inflation&&d.monster.inflation.state.amount>=settings.slimeCapacity&&d.burst.fill(settings))this.onFilled?.(id);return true;}
   private apply(d:Dummy,c:FeedbackSettings){

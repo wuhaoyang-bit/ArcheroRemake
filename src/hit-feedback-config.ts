@@ -5,12 +5,19 @@ import {SLIME_TRAIL_DEFAULTS,SLIME_TRAIL_LIMITS} from './slime-trail-config.ts';
 import { BURST_DEFAULTS, BURST_LIMITS } from './slime-burst-config.ts';
 import { SLIME_INFLATION_DEFAULTS, SLIME_INFLATION_LIMITS } from './slime-inflation-config.ts';
 import { DEFAULT_JUICE_SPEED_CURVE } from './juice-speed-curve.ts';
+import type { ProgressPoint } from './lock-rings.ts';
+
+/** OutCubic 1-(1-q)³ sampled as editable progress keypoints (matches formula mode). */
+export const DEFAULT_HIT_KNOCK_CURVE: ProgressPoint[] = [0, 10, 25, 50, 75, 90, 100].map(time =>
+  ({ time, progress: Number((100 * (1 - (1 - time / 100) ** 3)).toFixed(3)) }));
+
 /** Confirmed training feedback defaults. Existing settings files inherit these fields. */
 export const HIT_DEFAULTS = {
   ...SLIME_INFLATION_DEFAULTS,...BURST_DEFAULTS,...EYE_HIT_CURVES,...SLIME_TRAIL_DEFAULTS,
   hitKnockEnabled: 1, hitRimEnabled: 1, hitSquashEnabled: 1,
   hitSquashMode: 0, hitSquashCompensation: 1,
   hitKnockTime: .2, hitKnockDistance: 1.05,
+  hitKnockCurveMode: 0, hitKnockCurve: DEFAULT_HIT_KNOCK_CURVE,
   hitRimTime: .3, hitRimFadeStart: .2, hitRimStrength: 1, hitRimBrightness: 2, hitRimWidth: .6,
   hitSquashTime: 2, hitSquashAmount: .15, hitCompressTime: .06, hitReleaseTime: .2, hitSpringFrequency: 4, hitSpringDamping: .15,
   // Screenshot defaults, world units; independent delayed burst, additional to sparks.
@@ -28,7 +35,7 @@ export const HIT_LIMITS = {
   ...SLIME_INFLATION_LIMITS,...BURST_LIMITS,...SLIME_TRAIL_LIMITS,
   hitKnockEnabled:[0,1,1],hitRimEnabled:[0,1,1],hitSquashEnabled:[0,1,1],
   hitSquashMode:[0,1,1],hitSquashCompensation:[0,1,.05],
-  hitKnockTime:[.05,1,.01],hitKnockDistance:[0,3,.05],
+  hitKnockTime:[.05,1,.01],hitKnockDistance:[0,3,.05],hitKnockCurveMode:[0,1,1],
   hitRimTime:[.04,5,.01],hitRimFadeStart:[0,5,.01],hitRimStrength:[0,1,.05],hitRimBrightness:[0,5,.1],hitRimWidth:[.1,1,.05],
   hitSquashTime:[.05,5,.01],hitSquashAmount:[.02,.65,.01],hitCompressTime:[.01,.5,.01],hitReleaseTime:[0,2,.01],hitSpringFrequency:[.5,12,.1],hitSpringDamping:[.05,2,.05],
   hitSplashSheetsEnabled:[0,1,1],hitSplashSheetsScale:[.05,3,.05],hitSplashSheetsSpeed:[.1,5,.1],hitSplashSheetsDelay:[0,3,.01],hitSplashSheetsHeight:[-1,3,.05],
@@ -37,16 +44,17 @@ export const HIT_LIMITS = {
   juiceEnabled:[0,1,1],juiceDelay:[0,3,.01],juiceCount:[1,64,1],juiceSpeed:[0,20,.1],juiceSpeedJitter:[0,10,.1],juiceRadius:[0,1.5,.01],
   juiceLife:[.05,5,.05],juiceSize:[.01,2,.01],juiceSizeJitter:[0,1,.01],juiceColor:[0,0xffffff,1],
   juiceCurve:[0,6,1],juiceDragRel:[.05,1,.05],juiceDepthTest:[0,1,1],juiceHeight:[-.5,1,.01],
-} satisfies Record<Exclude<keyof typeof HIT_DEFAULTS,'juiceSpeedCurve'|'slimeEyeSpeedCurve'|'liquidSpeedCurve'|EyeHitCurveKey>,[number,number,number]>;
+} satisfies Record<Exclude<keyof typeof HIT_DEFAULTS,'hitKnockCurve'|'juiceSpeedCurve'|'slimeEyeSpeedCurve'|'liquidSpeedCurve'|EyeHitCurveKey>,[number,number,number]>;
 export type HitSettings = typeof HIT_DEFAULTS;
-export const HIT_CONTROLS: [Exclude<keyof HitSettings,'juiceSpeedCurve'|'slimeEyeSpeedCurve'|'liquidSpeedCurve'|EyeHitCurveKey>,string,string,string][] = [
+export const HIT_CONTROLS: [Exclude<keyof HitSettings,'hitKnockCurve'|'juiceSpeedCurve'|'slimeEyeSpeedCurve'|'liquidSpeedCurve'|EyeHitCurveKey>,string,string,string][] = [
  ['hitKnockEnabled','受击击退','0/1','0 关闭，1 开启；只阻挡场地边界。'],
  ['hitRimEnabled','白色边缘亮光','0/1','整座假人同步发亮；0 关闭，1 开启。'],
  ['hitSquashEnabled','受击缩放回弹','0/1','控制整体缩放和沿命中方向压缩；0 关闭，1 开启。'],
  ['hitSquashMode','受击缩放模式','','整体缩放 / 沿命中方向压缩，切换立即生效。方向取最近一次命中的箭，不随怪物转身改变。'],
  ['hitSquashCompensation','方向压缩 · 横向补偿','比例','仅方向模式生效；1 补偿另外两轴以保持体积，0 不补偿。与预览页方案 03 相同。'],
- ['hitKnockTime','击退时长','s','先快后慢。回弹何时开始由“开始回弹时间”独立控制。'],
+ ['hitKnockTime','击退时长','s','总时长；公式模式为先快后慢 OutCubic。回弹何时开始由“开始回弹时间”独立控制。'],
  ['hitKnockDistance','击退距离','u','每次从当前位置重新击退，不累加上次剩余距离。'],
+ ['hitKnockCurveMode','击退位移曲线','','0 公式 OutCubic；1 手动关键点。横轴时间进度，纵轴已完成击退距离比例。修改后下次命中生效。'],
  ['hitRimTime','边缘光总持续时间','s','从最近一次命中到完全消失，默认 0.30 秒；修改后下次命中生效。'],
  ['hitRimFadeStart','边缘光开始淡出时间','s','命中后先保持亮度，默认 0.20 秒开始淡出；0 表示立即淡出。若不小于总时长，则保持到结束时关闭。修改后下次命中生效。'],
  ['hitRimStrength','亮边总强度','倍','命中后的保持亮度，开始淡出后逐渐减弱。'],
