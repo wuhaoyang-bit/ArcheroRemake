@@ -5,6 +5,7 @@ import {SLIME_TRAIL_DEFAULTS,SLIME_TRAIL_LIMITS} from './slime-trail-config.ts';
 import { BURST_DEFAULTS, BURST_LIMITS } from './slime-burst-config.ts';
 import { SLIME_INFLATION_DEFAULTS, SLIME_INFLATION_LIMITS } from './slime-inflation-config.ts';
 import { DEFAULT_JUICE_SPEED_CURVE } from './juice-speed-curve.ts';
+import { HIT_BEND_CONTROLS, HIT_BEND_DEFAULTS, HIT_BEND_LIMITS } from './hit-bend-config.ts';
 import type { ProgressPoint } from './lock-rings.ts';
 
 /** OutCubic 1-(1-q)³ sampled as editable progress keypoints (matches formula mode). */
@@ -14,6 +15,7 @@ export const DEFAULT_HIT_KNOCK_CURVE: ProgressPoint[] = [0, 10, 25, 50, 75, 90, 
 /** Confirmed training feedback defaults. Existing settings files inherit these fields. */
 export const HIT_DEFAULTS = {
   ...SLIME_INFLATION_DEFAULTS,...BURST_DEFAULTS,...EYE_HIT_CURVES,...SLIME_TRAIL_DEFAULTS,
+  ...HIT_BEND_DEFAULTS,
   hitKnockEnabled: 1, hitRimEnabled: 1, hitSquashEnabled: 1,
   hitSquashMode: 0, hitSquashCompensation: 1,
   hitKnockTime: .2, hitKnockDistance: 1.05,
@@ -33,6 +35,7 @@ export const HIT_DEFAULTS = {
 };
 export const HIT_LIMITS = {
   ...SLIME_INFLATION_LIMITS,...BURST_LIMITS,...SLIME_TRAIL_LIMITS,
+  ...HIT_BEND_LIMITS,
   hitKnockEnabled:[0,1,1],hitRimEnabled:[0,1,1],hitSquashEnabled:[0,1,1],
   hitSquashMode:[0,1,1],hitSquashCompensation:[0,1,.05],
   hitKnockTime:[.05,1,.01],hitKnockDistance:[0,3,.05],hitKnockCurveMode:[0,1,1],
@@ -66,6 +69,7 @@ export const HIT_CONTROLS: [Exclude<keyof HitSettings,'hitKnockCurve'|'juiceSpee
  ['hitReleaseTime','开始回弹时间','s','从最近一次命中开始计时；默认 0.20 秒。独立于击退时长，碰墙不会提前释放；修改后下次命中生效。汁液发射时间独立设置。'],
  ['hitSpringFrequency','弹簧频率','Hz','越大回弹越快。'],
  ['hitSpringDamping','弹簧阻尼','比例','越小弹得越久；最晚在缩放总持续时间结束时恢复原大小。'],
+ ...HIT_BEND_CONTROLS,
 
  ['juiceEnabled','黄色汁液迸发','0/1','每次命中单独产生一波黄色汁液。'],
  ['juiceDelay','汁液迸发时机','s','从命中计时，默认 0.13 秒；独立于缩放回弹。连击各自计时，出生后不跟随敌人。'],

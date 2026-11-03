@@ -58,6 +58,13 @@ export class SlimeInflationVisual{
    this.eyeHit.normals[i].crossVectors(dx.sub(this.eyeHit.surfaces[i]),dy.sub(this.eyeHit.surfaces[i])).normalize();});
  }
  get eyes(){return this.model.face.children;}
+ /** Undeformed local positions (yBase source for hit-bend). */
+ get bendBase(){return this.base;}
+ /** Live body position attribute (post-inflation, pre/post bend). */
+ get bendPositions(){return this.positions;}
+ get bendFace(){return this.model.face;}
+ /** Force next apply() to rewrite positions from base (clears residual bend). */
+ invalidateShape(){this.key='';this.settledKey='';}
  /** Analytic low rounded-box surface, with the same inflation and world deformation as the body. */
  groundContact(ground:T.Vector3,out:T.Vector3){
   const body=this.model.body;body.updateWorldMatrix(true,false);

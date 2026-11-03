@@ -10,9 +10,11 @@ import { normalView, positionView, uniform, float } from 'three/tsl';
 import { HitResponse, knockInitialSpeed, type Point } from './hit-response.ts';
 import type { HitSettings } from './hit-feedback-config.ts';
 import type {SlimeTrailBody} from './slime-ground-trail.ts';
+import { snapshotHitBend, type HitBendSettings } from './hit-bend-config.ts';
+import { applyHorizontalBend, calculateBendWeights, horizontalBendAmount } from './hit-bend.ts';
 type FeedbackSettings = HitSettings & {monsterScale?:number;monsterHitSpeed?:number;monsterHitRadius?:number};
 const floatUniform=()=>uniform(0);
-type Dummy={walkFrom:Point;breath:SlimeWalkBreath;burst:SlimeBurstState;burstBase?:FeedbackSettings;monster?:MonsterInstance;lastPosition:Point;root:T.Object3D;visual:T.Group;proxy:T.Group;response:HitResponse;initial:Point;initialRotation:T.Quaternion;rim:ReturnType<typeof floatUniform>;brightness:ReturnType<typeof floatUniform>;power:ReturnType<typeof floatUniform>};
+type Dummy={walkFrom:Point;breath:SlimeWalkBreath;burst:SlimeBurstState;burstBase?:FeedbackSettings;monster?:MonsterInstance;lastPosition:Point;root:T.Object3D;visual:T.Group;proxy:T.Group;response:HitResponse;initial:Point;initialRotation:T.Quaternion;rim:ReturnType<typeof floatUniform>;brightness:ReturnType<typeof floatUniform>;power:ReturnType<typeof floatUniform>;bendSnap:HitBendSettings|null;bendApplied:boolean};
 /** One response per whole dummy; immutable-scale proxy meshes retain its original silhouette. */
 export class TrainingFeedback {
   private dummies:Dummy[]=[];
@@ -21,6 +23,8 @@ export class TrainingFeedback {
   onFilled?:(id:string)=>void;
   onBurst?:(center:T.Vector3,feet:T.Vector3,settings:BurstSettings,color?:T.Color)=>void;
   private worldRotation=new T.Quaternion();
+  private bendLocalDir=new T.Vector3();
+  private bendInverseRot=new T.Quaternion();
   constructor(group:T.Group,targets:({id:string}&Point)[],private width:number,private length:number){
     this.eyeDebris=new SlimeEyeDebris(group);
     for(const root of group.children.filter(o=>o.userData.practiceTarget)){
@@ -35,12 +39,33 @@ export class TrainingFeedback {
         if(original instanceof T.MeshPhysicalMaterial){material=new T.MeshPhysicalNodeMaterial({...properties,transmission:original.transmission,thickness:original.thickness,ior:original.ior,attenuationColor:original.attenuationColor,attenuationDistance:original.attenuationDistance,clearcoat:original.clearcoat,clearcoatRoughness:original.clearcoatRoughness,envMap:original.envMap});}
         else material=new T.MeshStandardNodeMaterial(properties);const edge=float(1).sub(normalView.normalize().dot(positionView.negate().normalize()).abs()).clamp().pow(power);material.emissiveNode=edge.mul(rim).mul(brightness);materials.set(original,material);}o.material=material;});
       const response=new HitResponse(target,{x:Math.max(0,width/2-.155-halfX),z:Math.max(0,length/2-.155-halfZ)});
-      this.dummies.push({walkFrom:{x:target.x,z:target.z},breath:new SlimeWalkBreath(),burst:new SlimeBurstState(),monster,lastPosition:{x:target.x,z:target.z},root,visual,proxy,response,initial:{x:target.x,z:target.z},initialRotation:root.quaternion.clone(),rim,brightness,power});
+      this.dummies.push({walkFrom:{x:target.x,z:target.z},breath:new SlimeWalkBreath(),burst:new SlimeBurstState(),monster,lastPosition:{x:target.x,z:target.z},root,visual,proxy,response,initial:{x:target.x,z:target.z},initialRotation:root.quaternion.clone(),rim,brightness,power,bendSnap:null,bendApplied:false});
       if(monster?.inflation){const inflation=monster.inflation;this.trailBodies.push({id:target.id,active:true,position:new T.Vector3(target.x,0,target.z),radius:1,color:new T.Color(),footToward:(ground,out)=>inflation.groundContact(ground,out)});}
     }
   }
+  private isYellowSlime(d:Dummy){return d.root.userData.monsterModel==='yellow-slime'&&!!d.monster?.inflation;}
+  /** PLAN §3: bend after inflation write, before hitDeformation matrix. */
+  private applyHitBend(d:Dummy,c:FeedbackSettings){
+    const inflation=d.monster?.inflation;if(!this.isYellowSlime(d)||!inflation)return;
+    if(!c.hitBendEnabled){
+      if(d.bendApplied){inflation.invalidateShape();d.bendApplied=false;d.bendSnap=null;inflation.bendFace.position.set(0,0,0);}
+      return;
+    }
+    if(!d.bendSnap||!Number.isFinite(d.response.age))return;
+    const snap=d.bendSnap;
+    const {belly,upper}=calculateBendWeights(d.response.age,snap);
+    d.root.getWorldQuaternion(this.worldRotation);
+    this.bendLocalDir.set(d.response.direction.x,0,d.response.direction.z).normalize()
+      .applyQuaternion(this.bendInverseRot.copy(this.worldRotation).invert());
+    this.bendLocalDir.y=0;
+    if(this.bendLocalDir.lengthSq()<1e-12)this.bendLocalDir.set(0,0,1);else this.bendLocalDir.normalize();
+    applyHorizontalBend(inflation.bendPositions,inflation.bendBase,this.bendLocalDir.x,this.bendLocalDir.z,belly,upper,snap);
+    const eyeHoriz=horizontalBendAmount(snap.hitBendPeakY,belly,upper,snap);
+    inflation.bendFace.position.set(this.bendLocalDir.x*eyeHoriz,0,this.bendLocalDir.z*eyeHoriz);
+    d.bendApplied=true;
+  }
   get proxies(){return this.dummies.filter(d=>d.burst.phase==='alive').map(d=>d.proxy);}
-  hit(id:string,direction:Point,settings:FeedbackSettings){const d=this.dummies.find(d=>d.root.userData.practiceTarget===id);if(!d||d.burst.phase!=='alive')return false;d.monster?.animation?.hit(settings.monsterHitSpeed ?? 1);d.monster?.inflation?.state.hit(settings);d.response.hit(direction,settings);d.response.update(0,settings);this.apply(d,settings);
+  hit(id:string,direction:Point,settings:FeedbackSettings){const d=this.dummies.find(d=>d.root.userData.practiceTarget===id);if(!d||d.burst.phase!=='alive')return false;d.monster?.animation?.hit(settings.monsterHitSpeed ?? 1);d.monster?.inflation?.state.hit(settings);d.response.hit(direction,settings);d.bendSnap=this.isYellowSlime(d)?snapshotHitBend(settings):null;d.response.update(0,settings);this.apply(d,settings);
     const v=new T.Vector3(d.response.direction.x,0,d.response.direction.z),p=d.response.position,b=d.response.bounds;
     let travel=settings.hitKnockDistance;
     for(const [pos,dir,bound] of [[p.x,v.x,b.x],[p.z,v.z,b.z]])if(Math.abs(dir)>1e-8)travel=Math.min(travel,Math.max(0,((dir>0?bound:-bound)-pos)/dir));
@@ -51,7 +76,15 @@ export class TrainingFeedback {
     let burstScale=1,colorLightness=0;let shape=c;
     if(d.burst.phase==='winding'||d.burst.phase==='gone'){const b=d.burst.config!,v=burstSample(d.burst.age,b),base=d.burstBase!;burstScale=v.scale;if(d.burst.phase==='winding')colorLightness=v.colorLightness;shape={...base,slimeBulge:base.slimeBulge+(Math.max(base.slimeBulge,b.burstBulge)-base.slimeBulge)*v.bulgeProgress};}
     else d.monster?.inflation?.state.update(0,c);
-    d.monster?.inflation?.apply(shape,colorLightness);d.root.position.set(d.response.position.x,0,d.response.position.z);const modelScale=d.monster ? (c.monsterScale ?? 1) : 1;d.proxy.scale.setScalar(modelScale*(d.monster?.inflation?.settledExtent??1));if(d.monster){const radius=c.monsterHitRadius??DEFAULTS.monsterHitRadius;d.monster.hitBody.scale.set(radius,1,radius);}const squash=(c.hitSquashEnabled?d.response.scale:1);
+    // Inflation caches shape writes; invalidate so each frame rebuilds from base then bend once (no accumulation).
+    if(this.isYellowSlime(d)){
+      const inflation=d.monster!.inflation!;
+      if(!c.hitBendEnabled&&d.bendApplied){inflation.invalidateShape();d.bendApplied=false;inflation.bendFace.position.set(0,0,0);}
+      else if(c.hitBendEnabled&&d.bendSnap)inflation.invalidateShape();
+    }
+    d.monster?.inflation?.apply(shape,colorLightness);
+    this.applyHitBend(d,c);
+    d.root.position.set(d.response.position.x,0,d.response.position.z);const modelScale=d.monster ? (c.monsterScale ?? 1) : 1;d.proxy.scale.setScalar(modelScale*(d.monster?.inflation?.settledExtent??1));if(d.monster){const radius=c.monsterHitRadius??DEFAULTS.monsterHitRadius;d.monster.hitBody.scale.set(radius,1,radius);}const squash=(c.hitSquashEnabled?d.response.scale:1);
     d.visual.scale.setScalar(modelScale*squash*burstScale*d.breath.scale);
     d.root.getWorldQuaternion(this.worldRotation);
     hitDeformation(d.visual.matrix,squash,modelScale*burstScale*d.breath.scale,c.hitSquashMode,c.hitSquashCompensation,d.response.direction,this.worldRotation);
@@ -103,6 +136,6 @@ export class TrainingFeedback {
   }
   prepareEyeDebris(c:FeedbackSettings){for(const d of this.dummies)if(d.monster?.inflation){const warm={...c,eyeHitEnabled:1,eyeHitTetherEnabled:1,eyeHitPull:2,eyeHitPullTime:.07,eyeHitMinimumStrength:1,slimeEyesEnabled:1};const direction=new T.Vector3(0,0,-1).applyQuaternion(d.root.getWorldQuaternion(new T.Quaternion()));this.hit(d.root.userData.practiceTarget,{x:direction.x,z:direction.z},warm);d.monster.inflation.eyeHit.update(.07);this.apply(d,warm);d.root.updateWorldMatrix(true,true);this.eyeDebris.emit(d.monster.inflation.eyes,new T.Box3().setFromObject(d.visual).getCenter(new T.Vector3()),{...c,slimeEyeEjectEnabled:1});}}
   dispose(){this.eyeDebris.clear();for(const d of this.dummies){d.monster?.animation?.dispose();d.visual.traverse(o=>{if(o instanceof T.SkinnedMesh)o.skeleton.dispose();});}}
-  reset(){this.eyeDebris.clear();for(const d of this.dummies){d.breath.reset();d.monster?.inflation?.eyeHit.reset();d.burst.reset();d.burstBase=undefined;d.root.visible=true;const baseScale=d.proxy.scale.x/(d.monster?.inflation?.settledExtent??1);d.proxy.scale.setScalar(baseScale);Object.assign(d.response.position,d.initial);d.response.reset();d.monster?.inflation?.state.reset();if(d.monster?.inflation)d.monster.inflation.apply(DEFAULTS);d.monster?.animation?.reset();Object.assign(d.lastPosition,d.initial);d.root.position.set(d.initial.x,0,d.initial.z);d.root.quaternion.copy(d.initialRotation);d.visual.scale.setScalar(d.proxy.scale.x);d.visual.matrix.makeScale(d.proxy.scale.x,d.proxy.scale.x,d.proxy.scale.x);d.visual.matrixWorldNeedsUpdate=true;d.rim.value=0;d.root.updateWorldMatrix(true,true);}}
+  reset(){this.eyeDebris.clear();for(const d of this.dummies){d.breath.reset();d.monster?.inflation?.eyeHit.reset();d.burst.reset();d.burstBase=undefined;d.bendSnap=null;d.bendApplied=false;if(d.monster?.inflation){d.monster.inflation.invalidateShape();d.monster.inflation.bendFace.position.set(0,0,0);}d.root.visible=true;const baseScale=d.proxy.scale.x/(d.monster?.inflation?.settledExtent??1);d.proxy.scale.setScalar(baseScale);Object.assign(d.response.position,d.initial);d.response.reset();d.monster?.inflation?.state.reset();if(d.monster?.inflation)d.monster.inflation.apply(DEFAULTS);d.monster?.animation?.reset();Object.assign(d.lastPosition,d.initial);d.root.position.set(d.initial.x,0,d.initial.z);d.root.quaternion.copy(d.initialRotation);d.visual.scale.setScalar(d.proxy.scale.x);d.visual.matrix.makeScale(d.proxy.scale.x,d.proxy.scale.x,d.proxy.scale.x);d.visual.matrixWorldNeedsUpdate=true;d.rim.value=0;d.root.updateWorldMatrix(true,true);}}
   snapshot(){return this.dummies.map(d=>({id:d.root.userData.practiceTarget as string,breathing:{scale:d.breath.scale,weight:d.breath.weight},burst:{phase:d.burst.phase,age:d.burst.age},model:d.root.userData.monsterModel ?? 'dummy',animation:d.monster?.animation?.snapshot(),inflation:d.monster?.inflation?.snapshot(),eyeHit:d.monster?.inflation?.eyeHit.snapshot(),aimHeight:d.monster ? d.monster.aimHeight*d.proxy.scale.y : undefined,modelScale:d.proxy.scale.x,hitRadius:d.monster ? d.monster.hitBody.scale.x*d.proxy.scale.x : undefined,position:{...d.response.position},age:Number.isFinite(d.response.age)?d.response.age:null,scale:d.visual.scale.x,rim:d.rim.value,compression:d.response.x,direction:{...d.response.direction},visualMatrix:d.visual.matrix.toArray(),blocked:d.response.blocked,bounds:{...d.response.bounds},proxyScale:d.proxy.scale.toArray(),parts:d.visual.children.length}));}
 }

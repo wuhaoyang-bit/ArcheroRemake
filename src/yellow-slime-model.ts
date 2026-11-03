@@ -7,7 +7,10 @@ export function createYellowSlimeModel(){
  const root=new T.Group();root.name='YellowSlimeModel';
  const material=new T.MeshPhysicalMaterial({color:0xffdd32,roughness:.19,metalness:0,transmission:.65,thickness:1.8,ior:1.36,attenuationColor:0xffcc20,attenuationDistance:2.6,clearcoat:.8,clearcoatRoughness:.15});
  const body=new T.Mesh(new RoundedBoxGeometry(2,2,2,6,.24),material);body.position.y=1;body.castShadow=true;body.receiveShadow=true;root.add(body);
+ const position=body.geometry.getAttribute('position') as T.BufferAttribute;
+ position.setUsage(T.DynamicDrawUsage);
+ const restPositions=new Float32Array(position.array as Float32Array);
  const face=new T.Group();face.name='Face';root.add(face);
  const updateEyes=createSlimeEyes(face);
- return {root,body,material,face,updateEyes};
+ return {root,body,material,face,updateEyes,restPositions};
 }
