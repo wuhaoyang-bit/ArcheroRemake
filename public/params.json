@@ -338,7 +338,7 @@
     "hitRimTime": 0.16,
     "hitRimFadeStart": 0.08,
     "hitRimStrength": 1,
-    "hitRimBrightness": 2,
+    "hitRimBrightness": 1.4,
     "hitRimWidth": 0.65,
     "hitSquashTime": 2,
     "hitSquashAmount": 0.45,
@@ -557,7 +557,7 @@
         "progress": 18.36
       }
     ],
-    "monsterSpeed": 3,
+    "monsterSpeed": 2.5,
     "monsterScale": 1,
     "monsterHitRadius": 0.47,
     "monsterHitSpeed": 2,
@@ -873,6 +873,7 @@
     "arrowScale": 2.4,
     "arrowSpeed": 115,
     "arrowPierce": 0,
+    "arrowHitLinger": 0.01,
     "arrowsPerAttack": 1,
     "arrowFireInterval": 0.1,
     "roomSize": 16,

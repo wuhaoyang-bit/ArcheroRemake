@@ -32,6 +32,7 @@ test('constant speed and direction are independent of update rate; wall recycles
 
 test('arrow tip hits the first surface, with no tunnelling at large time steps', () => {
   const { scene, arrows } = fixture();
+  arrows.setHitLinger(0);
   const first = enemy(scene, 5, 'near'), second = enemy(scene, 10, 'far');
   arrows.setRoomBounds(16, 38);
   arrows.setTargets([second, first]); arrows.fire(origin, aim, Infinity);
@@ -44,6 +45,7 @@ test('arrow tip hits the first surface, with no tunnelling at large time steps',
 
 test('pool reuses objects and shared resources; setTargets does not clear flying arrows', () => {
   const { scene, arrows } = fixture();
+  arrows.setHitLinger(0);
   const target = enemy(scene, 1, 'close'); arrows.setTargets([target]);
   arrows.setRoomBounds(16, 38);
   for (let i = 0; i < 40; i++) { arrows.fire(origin, aim, Infinity); arrows.update(.1); }
@@ -66,6 +68,7 @@ test('new arrow advances only by time remaining after release', () => {
 
 test('scaled arrows collide at the scaled tip and pooled arrows retain the new size', () => {
   const { scene, arrows } = fixture();
+  arrows.setHitLinger(0);
   arrows.setRoomBounds(16, 38);
   arrows.setTargets([enemy(scene, 5, 'near')]);
   arrows.setScale(6); arrows.fire(origin, aim, Infinity);
@@ -80,6 +83,7 @@ test('scaled arrows collide at the scaled tip and pooled arrows retain the new s
 
 test('speed changes apply to arrows already in flight and keep swept collision at maximum speed', () => {
   const { scene, arrows } = fixture();
+  arrows.setHitLinger(0);
   arrows.setRoomBounds(16, 38);
   arrows.setTargets([enemy(scene, 10, 'target')]);
   arrows.setSpeed(10); arrows.fire(origin, aim, Infinity); arrows.update(.2);
@@ -121,6 +125,7 @@ test('without pierce a mid-flight hit deals damage then the arrow disappears', (
   const hits: string[] = [];
   arrows.onHit = hit => hits.push(hit.id);
   arrows.setPierce(false);
+  arrows.setHitLinger(0);
   arrows.setRoomBounds(16, 38);
   arrows.setTargets([enemy(scene, 8, 'near'), enemy(scene, 14, 'far')]);
   arrows.fire(origin, aim, Infinity);
@@ -132,6 +137,33 @@ test('without pierce a mid-flight hit deals damage then the arrow disappears', (
   assert.equal(arrows.snapshot().lastHit, 'near');
   assert.equal(arrows.snapshot().hits, 1);
   assert.equal(arrows.snapshot().active.length, 0);
+});
+
+test('non-pierce linger pins the arrow at contact then recycles after the linger window', () => {
+  const { scene, arrows } = fixture();
+  const hits: string[] = [];
+  arrows.onHit = hit => hits.push(hit.id);
+  arrows.setPierce(false);
+  arrows.setHitLinger(1 / 60);
+  arrows.setRoomBounds(16, 38);
+  arrows.setTargets([enemy(scene, 8, 'near'), enemy(scene, 14, 'far')]);
+  arrows.fire(origin, aim, Infinity);
+  arrows.update(.1);
+  assert.equal(arrows.snapshot().active.length, 1);
+  arrows.update(.06);
+  assert.deepEqual(hits, ['near']);
+  assert.equal(arrows.snapshot().hits, 1);
+  const pinned = arrows.snapshot().active[0];
+  assert.ok(pinned);
+  assert.ok(pinned.lingerRemaining > 0);
+  const pinnedZ = pinned.position[2];
+  arrows.update(1 / 120);
+  const still = arrows.snapshot().active[0];
+  assert.ok(still);
+  near(still.position[2], pinnedZ);
+  arrows.update(1 / 60);
+  assert.equal(arrows.snapshot().active.length, 0);
+  assert.deepEqual(hits, ['near']);
 });
 
 test('arrow never despawns from range alone when walls are unbounded', () => {

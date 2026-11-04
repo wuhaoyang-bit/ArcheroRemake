@@ -14,6 +14,8 @@ type Arrow = {
   distance: number;
   active: boolean;
   pierce: boolean;
+  /** Seconds left pinned at the hit point before recycle; 0 means flying normally. */
+  lingerRemaining: number;
   /** Enemy ids already damaged by this arrow (pierce: once each; non-pierce: at most one). */
   hitIds: Set<string>;
 };
@@ -22,9 +24,10 @@ export type ArrowHit = { id: string; point: THREE.Vector3; direction: THREE.Vect
 
 /**
  * Straight-line arrows with a tip trigger.
- * Despawn rules (only these two):
- * 1. Hit an enemy while pierce is off
+ * Despawn rules (only these):
+ * 1. Non-pierce enemy hit — optional linger pin, then recycle
  * 2. Tip leaves the room boundary wall AABB
+ * 3. Explicit clear() on room rebuild / reset
  * Object-pool recycle never runs for any other reason while the arrow is flying.
  */
 export class ArrowProjectiles {
@@ -48,6 +51,8 @@ export class ArrowProjectiles {
   private scale = 1;
   private speed = ARROW_SPEED;
   private pierce = false;
+  /** Non-pierce hit linger before recycle (seconds). 0 = immediate despawn. */
+  private hitLinger = 1 / 60;
   /** Room boundary half-extents; tip outside this AABB despawns. */
   private wallX = Infinity;
   private wallZ = Infinity;
@@ -79,6 +84,7 @@ export class ArrowProjectiles {
       distance: 0,
       active: false,
       pierce: false,
+      lingerRemaining: 0,
       hitIds: new Set(),
     };
     this.pool.push(arrow);
@@ -92,6 +98,11 @@ export class ArrowProjectiles {
 
   setPierce(enabled: boolean) {
     this.pierce = !!enabled;
+  }
+
+  setHitLinger(seconds: number) {
+    if (!Number.isFinite(seconds) || seconds < 0) throw new Error('命中停顿时长必须为非负秒数。');
+    this.hitLinger = seconds;
   }
 
   /**
@@ -125,6 +136,7 @@ export class ArrowProjectiles {
   private recycle(arrow: Arrow) {
     arrow.trail.clear();
     arrow.active = false;
+    arrow.lingerRemaining = 0;
     arrow.object.visible = false;
     arrow.hitIds.clear();
   }
@@ -144,6 +156,7 @@ export class ArrowProjectiles {
     arrow.object.quaternion.setFromUnitVectors(this.forward, arrow.direction);
     arrow.distance = 0;
     arrow.pierce = this.pierce;
+    arrow.lingerRemaining = 0;
     arrow.hitIds.clear();
     arrow.active = true;
     arrow.object.visible = true;
@@ -196,10 +209,17 @@ export class ArrowProjectiles {
         point: intersection.point.clone(),
         direction: arrow.direction.clone(),
       };
-      // Non-pierce: recycle before onHit so callers see an inactive arrow at contact.
+      // Non-pierce: pin at contact, fire onHit, then linger (or recycle at once if linger is 0).
       if (!arrow.pierce) {
-        this.recycle(arrow);
-        this.onHit?.(hit);
+        arrow.object.position.copy(intersection.point).addScaledVector(arrow.direction, -this.tip * this.scale);
+        arrow.distance += intersection.distance;
+        if (this.hitLinger <= 0) {
+          this.recycle(arrow);
+          this.onHit?.(hit);
+        } else {
+          arrow.lingerRemaining = this.hitLinger;
+          this.onHit?.(hit);
+        }
         return true;
       }
       this.onHit?.(hit);
@@ -215,6 +235,14 @@ export class ArrowProjectiles {
 
   private advance(arrow: Arrow, dt: number) {
     if (!arrow.active || dt <= 0) return;
+
+    // Non-pierce linger: stay pinned; no sweep / no travel until timer ends.
+    if (arrow.lingerRemaining > 0) {
+      arrow.lingerRemaining -= dt;
+      if (arrow.lingerRemaining <= 0) this.recycle(arrow);
+      return;
+    }
+
     const travel = this.speed * dt;
 
     // Trigger starts at the current tip and sweeps along the flight direction.
@@ -253,6 +281,7 @@ export class ArrowProjectiles {
       scale: this.scale,
       speed: this.speed,
       pierce: this.pierce,
+      hitLinger: this.hitLinger,
       fired: this.fired,
       hits: this.hitCount,
       lastHit: this.lastHit,
@@ -264,6 +293,7 @@ export class ArrowProjectiles {
         direction: a.direction.toArray(),
         distance: a.distance,
         pierce: a.pierce,
+        lingerRemaining: a.lingerRemaining,
         hitIds: [...a.hitIds],
       })),
     };

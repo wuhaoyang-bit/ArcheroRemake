@@ -500,6 +500,7 @@ export class GameScene {
     this.arrows?.setScale(ctl.settings.arrowScale);
     this.arrows?.setSpeed(ctl.settings.arrowSpeed);
     this.arrows?.setPierce(!!ctl.settings.arrowPierce);
+    this.arrows?.setHitLinger(ctl.settings.arrowHitLinger);
     this.arrows?.setRoomBounds(ctl.settings.roomSize, ctl.settings.roomLength);
     if (!ctl.combatTraining || ctl.activeAttackRequest === null) this.pendingShots.length = 0;
     this.queuePendingShots(dt);
