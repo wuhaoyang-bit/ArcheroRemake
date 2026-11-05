@@ -591,7 +591,7 @@
     "sfxSlimeHitVolumeJitter": 0.1,
     "sfxSlimeHitDelay": 0.12,
     "sfxSlimeBurstWindupEnabled": 1,
-    "sfxSlimeBurstWindupVariant": 2,
+    "sfxSlimeBurstWindupVariant": 3,
     "sfxSlimeBurstWindupVolume": 0.85,
     "sfxSlimeBurstWindupPitchMin": 0.5,
     "sfxSlimeBurstWindupPitchMax": 1,
