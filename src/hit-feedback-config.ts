@@ -32,6 +32,14 @@ export const HIT_DEFAULTS = {
   juiceEnabled:1,juiceDelay:.13,juiceCount:16,juiceSpeed:4,juiceSpeedJitter:1,
   juiceRadius:.34,juiceLife:1.8,juiceSize:.6,juiceSizeJitter:.08,
   juiceColor:0xffdd32,juiceCurve:2,juiceDragRel:.55,juiceDepthTest:1,juiceHeight:.1,
+  // Directional cone spray (Blood / Arterial / quarks); lab refresh defaults.
+  spraySpeedCurve: DEFAULT_JUICE_SPEED_CURVE,
+  sprayEnabled:1,sprayDelay:0,sprayMode:0,sprayFlat:0,sprayGravity:9.8,
+  sprayDebugDir:0,
+  sprayCount:16,spraySpeed:7.6,spraySpeedJitter:1.5,
+  spraySize:.67,spraySizeJitter:.15,sprayLife:1.3,sprayLifeJitter:.2,
+  spraySpreadDeg:45,sprayRadius:.3,sprayHeight:.1,
+  sprayCurve:2,sprayDragRel:.55,
 };
 export const HIT_LIMITS = {
   ...SLIME_INFLATION_LIMITS,...BURST_LIMITS,...SLIME_TRAIL_LIMITS,
@@ -47,9 +55,15 @@ export const HIT_LIMITS = {
   juiceEnabled:[0,1,1],juiceDelay:[0,3,.01],juiceCount:[1,64,1],juiceSpeed:[0,20,.1],juiceSpeedJitter:[0,10,.1],juiceRadius:[0,1.5,.01],
   juiceLife:[.05,5,.05],juiceSize:[.01,2,.01],juiceSizeJitter:[0,1,.01],juiceColor:[0,0xffffff,1],
   juiceCurve:[0,6,1],juiceDragRel:[.05,1,.05],juiceDepthTest:[0,1,1],juiceHeight:[-.5,1,.01],
-} satisfies Record<Exclude<keyof typeof HIT_DEFAULTS,'hitKnockCurve'|'juiceSpeedCurve'|'slimeEyeSpeedCurve'|'liquidSpeedCurve'|EyeHitCurveKey>,[number,number,number]>;
+  sprayEnabled:[0,1,1],sprayDelay:[0,3,.01],sprayMode:[0,2,1],sprayFlat:[0,1,1],sprayGravity:[0,20,.1],
+  sprayDebugDir:[0,1,1],
+  sprayCount:[1,80,1],spraySpeed:[0,20,.1],spraySpeedJitter:[0,10,.1],
+  spraySize:[.01,2,.01],spraySizeJitter:[0,1,.01],sprayLife:[.05,5,.05],sprayLifeJitter:[0,2,.05],
+  spraySpreadDeg:[0,180,1],sprayRadius:[0,1.5,.01],sprayHeight:[-.5,1,.01],
+  sprayCurve:[0,6,1],sprayDragRel:[.05,1,.05],
+} satisfies Record<Exclude<keyof typeof HIT_DEFAULTS,'hitKnockCurve'|'juiceSpeedCurve'|'spraySpeedCurve'|'slimeEyeSpeedCurve'|'liquidSpeedCurve'|EyeHitCurveKey>,[number,number,number]>;
 export type HitSettings = typeof HIT_DEFAULTS;
-export const HIT_CONTROLS: [Exclude<keyof HitSettings,'hitKnockCurve'|'juiceSpeedCurve'|'slimeEyeSpeedCurve'|'liquidSpeedCurve'|EyeHitCurveKey>,string,string,string][] = [
+export const HIT_CONTROLS: [Exclude<keyof HitSettings,'hitKnockCurve'|'juiceSpeedCurve'|'spraySpeedCurve'|'slimeEyeSpeedCurve'|'liquidSpeedCurve'|EyeHitCurveKey>,string,string,string][] = [
  ['hitKnockEnabled','受击击退','0/1','0 关闭，1 开启；只阻挡场地边界。'],
  ['hitRimEnabled','白色边缘亮光','0/1','整座假人同步发亮；0 关闭，1 开启。'],
  ['hitSquashEnabled','受击缩放回弹','0/1','控制整体缩放和沿命中方向压缩；0 关闭，1 开启。'],
@@ -86,6 +100,27 @@ export const HIT_CONTROLS: [Exclude<keyof HitSettings,'hitKnockCurve'|'juiceSpee
  ['juiceDragRel','汁液指数阻力 Drel','比例','默认 0.55，仅指数阻力曲线生效，OutCubic 不使用此参数。'],
  ['juiceColor','汁液颜色','色值','默认 #ffdd32，与黄色史莱姆身体同色。'],
  ['juiceDepthTest','汁液深度遮挡','0/1','1：保留与地面、人物的遮挡，和 lab 相同。'],
+];
+
+export const SPRAY_CONTROLS: typeof HIT_CONTROLS = [
+ ['sprayEnabled','方向喷溅 · 开关','0/1','命中时在模型朝向背面（眼睛对面）中心锥形喷出；方向垂直于该面。'],
+ ['sprayDebugDir','方向粒子调试开关','0/1','1 时方向喷溅粒子强制红色，便于看清出生点与喷出方向；默认关。'],
+ ['sprayDelay','方向喷溅 · 延迟','s','从命中计时；默认 0。'],
+ ['sprayMode','方向喷溅 · 效果','0–2','0 Blood 宽锥，1 Arterial 窄锥，2 quarks 锥形发射。'],
+ ['sprayFlat','方向喷溅 · 俯视平铺','0/1','1 强制水平；0 竖直受重力（默认）。'],
+ ['sprayGravity','方向喷溅 · 重力','u/s²','向下加速度大小；仅平铺关闭时生效，默认 9.8。'],
+ ['sprayCount','方向喷溅 · 粒子数','个','默认 16。'],
+ ['spraySpeed','方向喷溅 · 初速','u/s','默认 7.6。'],
+ ['spraySpeedJitter','方向喷溅 · 初速±','u/s','默认 ±1.5。'],
+ ['spraySize','方向喷溅 · 大小','u','默认 0.67。'],
+ ['spraySizeJitter','方向喷溅 · 大小±','u','默认 ±0.15。'],
+ ['sprayLife','方向喷溅 · 寿命','s','默认 1.30。'],
+ ['sprayLifeJitter','方向喷溅 · 寿命±','s','默认 ±0.20。'],
+ ['spraySpreadDeg','方向喷溅 · 锥角','°','半角/最大锥角；默认 45。'],
+ ['sprayRadius','方向喷溅 · 盘半径','u','主要影响 quarks 出生盘；默认 0.30。'],
+ ['sprayHeight','方向喷溅 · 高度偏移','u','相对敌人 aimHeight；默认 +0.10。'],
+ ['sprayCurve','方向喷溅 · 水平曲线','0–6','仅水平位移；与汁液同一套曲线编号。自定义时编辑下方速度曲线。'],
+ ['sprayDragRel','方向喷溅 · 指数阻力','比例','仅指数阻力曲线生效；默认 0.55。'],
 ];
 
 export const HIT_SPLASH_SHEET_CONTROLS: typeof HIT_CONTROLS = [

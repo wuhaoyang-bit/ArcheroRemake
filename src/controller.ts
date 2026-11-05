@@ -169,7 +169,7 @@ export class MovementController {
   }
 
   constructor(settings: Settings = { ...DEFAULTS }) {
-    this.settings = { ...settings, burstShockwaveSpeedCurve:validateJuiceSpeedCurve(settings.burstShockwaveSpeedCurve), recoilSpeedCurve:validateJuiceSpeedCurve(settings.recoilSpeedCurve), ringWaveCurve:validateProgressCurve(settings.ringWaveCurve), ringSwitchCurve:validateSwitchCurve(settings.ringSwitchCurve), ringLinkAttackCurve:validateStrokeCurve(settings.ringLinkAttackCurve), ringStrokeCurve:validateStrokeCurve(settings.ringStrokeCurve), ringCurve: validateProgressCurve(settings.ringCurve), turnCurve: validateCurve(settings.turnCurve), lockTurnCurve: validateCurve(settings.lockTurnCurve), anchorCurve: validateAnchorCurve(settings.anchorCurve), moveCurve: validateMoveCurve(settings.moveCurve) };
+    this.settings = { ...settings, burstShockwaveSpeedCurve:validateJuiceSpeedCurve(settings.burstShockwaveSpeedCurve), recoilSpeedCurve:validateJuiceSpeedCurve(settings.recoilSpeedCurve), juiceSpeedCurve:validateJuiceSpeedCurve(settings.juiceSpeedCurve ?? DEFAULTS.juiceSpeedCurve), spraySpeedCurve:validateJuiceSpeedCurve(settings.spraySpeedCurve ?? DEFAULTS.spraySpeedCurve), ringWaveCurve:validateProgressCurve(settings.ringWaveCurve), ringSwitchCurve:validateSwitchCurve(settings.ringSwitchCurve), ringLinkAttackCurve:validateStrokeCurve(settings.ringLinkAttackCurve), ringStrokeCurve:validateStrokeCurve(settings.ringStrokeCurve), ringCurve: validateProgressCurve(settings.ringCurve), turnCurve: validateCurve(settings.turnCurve), lockTurnCurve: validateCurve(settings.lockTurnCurve), anchorCurve: validateAnchorCurve(settings.anchorCurve), moveCurve: validateMoveCurve(settings.moveCurve) };
     this.position = { x: 0, z: settings.roomSize * 0.27 };
   }
   get anchorVisible() { return this.mode !== 'idle'; }
@@ -299,6 +299,7 @@ export class MovementController {
   setEyeSpeedCurve(points:JuiceSpeedPoint[]){this.settings.slimeEyeSpeedCurve=validateJuiceSpeedCurve(points);}
   setLiquidSpeedCurve(points:JuiceSpeedPoint[]){this.settings.liquidSpeedCurve=validateJuiceSpeedCurve(points);}
   setJuiceSpeedCurve(points:JuiceSpeedPoint[]){this.settings.juiceSpeedCurve=validateJuiceSpeedCurve(points);}
+  setSpraySpeedCurve(points:JuiceSpeedPoint[]){this.settings.spraySpeedCurve=validateJuiceSpeedCurve(points);}
   setCurve(points: TurnCurvePoint[]) { this.settings.turnCurve = validateCurve(points); }
   setLockCurve(points: TurnCurvePoint[]) { this.settings.lockTurnCurve = validateCurve(points); }
 

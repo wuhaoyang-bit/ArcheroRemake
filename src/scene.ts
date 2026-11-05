@@ -10,6 +10,7 @@ import { HitDebug } from './hit-debug.ts';
 import type { ArrowHit } from './arrow-projectiles.ts';
 import { TrainingMonsterFactory, createTrainingCube } from './training-monster.ts';
 import { JuiceParticles } from './juice-particles.ts';
+import { DirectionalSpray } from './directional-spray.ts';
 import { TrainingFeedback } from './training-feedback.ts';
 import { ArrowProjectiles } from './arrow-projectiles.ts';
 import { ArrowFireSfx, BodyHitSfx, SlimeHitSfx } from './sfx.ts';
@@ -158,6 +159,7 @@ export class GameScene {
   private deferredDebugHits:ArrowHit[]=[];
   private applyArrowHit?:(hit:ArrowHit)=>void;
   juice?: JuiceParticles;
+  spray?: DirectionalSpray;
   hitSplash?: HitSplashEffects;
   burstEffects?: LushBurstEffects;
   private practiceRevision=-1;
@@ -216,14 +218,17 @@ export class GameScene {
     outside.rotation.x = -Math.PI / 2; outside.position.y = -0.22; outside.receiveShadow = true;
     this.scene.add(outside);
     report(.08,'正在加载角色、箭矢与特效资源');
-    const progress=[0,0,0,0,0,0],weights=[.06,.5,.2,.08,.1,.06];
+    const progress=[0,0,0,0,0,0,0],weights=[.05,.05,.45,.18,.08,.1,.05];
     const loaded=(i:number,value=1)=>{progress[i]=value;report(.08+.52*progress.reduce((n,p,j)=>n+p*weights[j],0),'正在加载角色、箭矢与特效资源');};
     const track=<V,>(i:number,promise:Promise<V>)=>promise.then(value=>{loaded(i);return value;});
-    const [juice,burstEffects,character,arrows,monsters,bowRelease,hitSplash]=await Promise.all([
-      track(0,JuiceParticles.load(this.scene)),track(1,LushBurstEffects.load(this.scene,p=>loaded(1,p),this.slimeEnvironment)),
-      track(2,loadCharacter()),track(3,ArrowProjectiles.load(this.scene)),track(4,TrainingMonsterFactory.load()),track(5,BowReleaseEffects.load(this.scene)),HitSplashEffects.load(this.scene),
+    const [juice,spray,burstEffects,character,arrows,monsters,bowRelease,hitSplash]=await Promise.all([
+      track(0,JuiceParticles.load(this.scene)),
+      track(1,DirectionalSpray.load(this.scene)),
+      track(2,LushBurstEffects.load(this.scene,p=>loaded(2,p),this.slimeEnvironment)),
+      track(3,loadCharacter()),track(4,ArrowProjectiles.load(this.scene)),track(5,TrainingMonsterFactory.load()),track(6,BowReleaseEffects.load(this.scene)),
+      HitSplashEffects.load(this.scene),
     ]);
-    this.hitSplash=hitSplash;this.juice=juice;
+    this.hitSplash=hitSplash;this.juice=juice;this.spray=spray;spray.follow=false;
     juice.resolveColor=hitSplash.resolveColor=(id,out)=>this.feedback?.currentColor(id,out)??null;this.burstEffects=burstEffects;this.monsterFactory=monsters;
     report(.6,'正在准备场景');await breathe();
     this.setRoom();
@@ -283,6 +288,8 @@ export class GameScene {
       this.cameraZoom.trigger('hit',settings);
       const feet=this.feedback.feetOrigin(hit.id,this.juiceScratch);if(feet)this.hitSplash?.emit(hit.id,feet,settings);
       this.juice?.schedule(hit.id,settings,id=>this.juiceOriginFor(id));
+      // Back face of model facing (opposite eyes); cone outward ⊥ that face.
+      this.spray?.schedule(hit.id,settings,(id,origin,dir)=>!!this.feedback?.sprayBackAnchor(id,origin,dir));
     };
     this.arrows.onHit=hit=>{
       if(this.hitDebug.enabled&&this.hitDebug.paused){this.deferredDebugHits.push(hit);return;}
@@ -307,9 +314,9 @@ export class GameScene {
       // Warm actual pooled objects, including effects disabled in the current settings.
       // The loading overlay stays opaque until GPU work has completed and these are cleared.
       report(.7,'正在准备射箭与命中特效');await breathe();
-      this.hitSplash.warmup(this.camera,this.controller.settings);this.arrows.prepareWarmup(32,this.camera);this.bowRelease.prepareWarmup(16);this.juice.prepareWarmup(16,this.controller.settings,this.camera);
+      this.hitSplash.warmup(this.camera,this.controller.settings);this.arrows.prepareWarmup(32,this.camera);this.bowRelease.prepareWarmup(16);this.juice.prepareWarmup(16,this.controller.settings,this.camera);this.spray?.prepareWarmup(8,this.controller.settings,this.camera);
       await compile(.7,.82,'正在准备射箭与命中特效');
-    }finally{this.arrows.clear();this.bowRelease.finishWarmup();this.juice.finishWarmup();this.hitSplash.clear();}
+    }finally{this.arrows.clear();this.bowRelease.finishWarmup();this.juice.finishWarmup();this.spray?.finishWarmup();this.hitSplash.clear();}
     const eyeWarmTargets=[{id:'eye-warmup',label:'Eye warmup',x:0,z:0}],eyeWarmGroup=buildLockingTraining(this.roomSize,this.roomLength,eyeWarmTargets,()=>createTrainingCube(this.slimeEnvironment));
     this.scene.add(eyeWarmGroup);const eyeWarmFeedback=new TrainingFeedback(eyeWarmGroup,eyeWarmTargets,this.roomSize,this.roomLength);eyeWarmFeedback.prepareEyeDebris(this.controller.settings);
     try{
@@ -347,7 +354,7 @@ export class GameScene {
   private setRoom() {
     this.controller.resetTargetExclusions();
     this.hitDebug.clear();this.deferredDebugHits=[];
-    this.hitSplash?.clear();this.juice?.clear();this.burstEffects?.clear();
+    this.hitSplash?.clear();this.juice?.clear();this.spray?.clear();this.burstEffects?.clear();
     this.bowRelease?.clear();
     this.shockwave?.clear();
     this.cameraZoom.reset();this.cameraShake.reset();this.applyCameraFeedback();
@@ -384,7 +391,7 @@ export class GameScene {
     this.controller.cancel();
     this.pendingShots.length=0;
     this.arrows?.clear();
-    this.hitSplash?.clear();this.juice?.clear();this.burstEffects?.clear();
+    this.hitSplash?.clear();this.juice?.clear();this.spray?.clear();this.burstEffects?.clear();
     this.bowRelease?.clear();
     this.shockwave?.clear();
     this.cameraZoom.reset();this.cameraShake.reset();this.applyCameraFeedback();
@@ -409,6 +416,7 @@ export class GameScene {
     if(this.controller.training==='monsters'){this.feedback?.pursue(dt,this.controller.position,this.controller.settings.monsterSpeed,this.controller.settings,()=>this.controller.resolveMonsterContacts());}
     this.hitSplash?.update(dt,this.camera,(id,out)=>this.feedback?.feetOrigin(id,out)??null,this.controller.settings);
     this.juice?.update(dt,id=>this.juiceOriginFor(id));
+    this.spray?.update(dt,(id,origin,dir)=>!!this.feedback?.sprayBackAnchor(id,origin,dir));
     this.burstEffects?.setSlimeTrailBodies(this.feedback?.slimeTrailBodies()??[]);
     this.burstEffects?.update(dt,this.controller.settings,this.roomSize,this.roomLength,this.camera);
   }
@@ -550,6 +558,7 @@ export class GameScene {
     this.bowRelease?.update(0,this.controller.settings);
     this.hitDebug.update(this.hitDebug.enabled?(this.arrows?.snapshot().active.map(a=>a.tip)??[]):[]);
     this.juice?.prepare(this.camera,this.controller.settings);
+    this.spray?.prepare(this.camera);
     this.arrows?.prepare(this.camera,this.controller.settings);
     if(this.shockwave)this.shockwave.render(this.controller.settings);else this.renderer.render(this.scene,this.camera);
   }

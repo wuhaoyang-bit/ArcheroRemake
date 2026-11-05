@@ -427,6 +427,62 @@
     "juiceDragRel": 0.6,
     "juiceDepthTest": 1,
     "juiceHeight": 0.4,
+    "spraySpeedCurve": [
+      {
+        "time": 0,
+        "progress": 102.33
+      },
+      {
+        "time": 8.1,
+        "progress": 102.13
+      },
+      {
+        "time": 18.47,
+        "progress": 90.71
+      },
+      {
+        "time": 29.52,
+        "progress": 65.35
+      },
+      {
+        "time": 36.64,
+        "progress": 36.19
+      },
+      {
+        "time": 41.91,
+        "progress": 12.87
+      },
+      {
+        "time": 48.52,
+        "progress": 8.73
+      },
+      {
+        "time": 60,
+        "progress": 8
+      },
+      {
+        "time": 100,
+        "progress": 4
+      }
+    ],
+    "sprayEnabled": 1,
+    "sprayDelay": 0.12,
+    "sprayMode": 0,
+    "sprayFlat": 0,
+    "sprayGravity": 18,
+    "sprayDebugDir": 0,
+    "sprayCount": 6,
+    "spraySpeed": 11.3,
+    "spraySpeedJitter": 1.5,
+    "spraySize": 0.83,
+    "spraySizeJitter": 0.15,
+    "sprayLife": 0.7,
+    "sprayLifeJitter": 0.2,
+    "spraySpreadDeg": 65,
+    "sprayRadius": 0.3,
+    "sprayHeight": 0.1,
+    "sprayCurve": 6,
+    "sprayDragRel": 0.55,
     "burstShockwaveEnabled": 1,
     "burstShockwaveRadius": 3.5,
     "burstShockwaveDuration": 0.7,
@@ -886,7 +942,7 @@
     "bowScale": 2.2,
     "arrowScale": 2.4,
     "arrowSpeed": 110,
-    "arrowPierce": 1,
+    "arrowPierce": 0,
     "arrowHitLinger": 0.01,
     "arrowsPerAttack": 1,
     "arrowFireInterval": 0.1,

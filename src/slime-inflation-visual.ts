@@ -58,6 +58,8 @@ export class SlimeInflationVisual{
    this.eyeHit.normals[i].crossVectors(dx.sub(this.eyeHit.surfaces[i]),dy.sub(this.eyeHit.surfaces[i])).normalize();});
  }
  get eyes(){return this.model.face.children;}
+ /** Soft cube body mesh (local ±1 box; eyes on +Z). */
+ get body(){return this.model.body;}
  /** Undeformed local positions (yBase source for hit-bend). */
  get bendBase(){return this.base;}
  /** Live body position attribute (post-inflation, pre/post bend). */

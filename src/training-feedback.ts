@@ -32,6 +32,8 @@ export class TrainingFeedback {
   private bendLocalDir=new T.Vector3();
   private bendInverseRot=new T.Quaternion();
   private walkScaleMatrix=new T.Matrix4();
+  private sprayFwd=new T.Vector3();
+  private sprayLocal=new T.Vector3();
   constructor(group:T.Group,targets:({id:string}&Point)[],private width:number,private length:number){
     this.eyeDebris=new SlimeEyeDebris(group);
     for(const root of group.children.filter(o=>o.userData.practiceTarget)){
@@ -228,6 +230,44 @@ export class TrainingFeedback {
   /** Enemy foot anchor slightly above the ground plane for hit FX. */
   currentColor(id:string,out:T.Color){return this.dummies.find(d=>d.root.userData.practiceTarget===id)?.monster?.inflation?.copyColor(out)??null;}
   feetOrigin(id:string,out:T.Vector3){const d=this.dummies.find(d=>d.root.userData.practiceTarget===id);if(!d)return null;const p=d.response.position;return out.set(p.x,.05,p.z);}
+  /**
+   * Model cube back-face center for directional spray (yellow slime).
+   * Eyes on body local +Z; outDir = −facing from root.rotation.y (slime-local, XZ).
+   * outOrigin = body −Z face center in world (follows cube + squash), not hit capsule.
+   * Check: root.rotation.y=0 → outDir (0,0,−1); y=π/2 → outDir (−1,0,0).
+   * Non-slime fallback: hit-cylinder radius along −facing at aimHeight.
+   */
+  sprayBackAnchor(id:string,outOrigin:T.Vector3,outDir:T.Vector3){
+    const d=this.dummies.find(d=>d.root.userData.practiceTarget===id);if(!d)return false;
+    d.root.updateWorldMatrix(true,true);
+    // Facing from root yaw only — same basis as walk lean; independent of hit squash matrix.
+    const fy=d.root.rotation.y;
+    this.sprayFwd.set(Math.sin(fy),0,Math.cos(fy));
+    if(this.sprayFwd.lengthSq()<1e-12)this.sprayFwd.set(0,0,1);else this.sprayFwd.normalize();
+    outDir.set(-this.sprayFwd.x,0,-this.sprayFwd.z);
+    if(this.isYellowSlime(d)&&d.monster?.inflation){
+      const body=d.monster.inflation.body;
+      body.updateWorldMatrix(true,false);
+      const geo=body.geometry;
+      if(!geo.boundingBox)geo.computeBoundingBox();
+      const box=geo.boundingBox!;
+      // Face center of the −Z side (opposite eyes on +Z), in body local → world.
+      this.sprayLocal.set(
+        (box.min.x+box.max.x)*.5,
+        (box.min.y+box.max.y)*.5,
+        box.min.z,
+      );
+      outOrigin.copy(this.sprayLocal).applyMatrix4(body.matrixWorld);
+      return true;
+    }
+    const radius=d.monster
+      ? d.monster.hitBody.scale.x*d.proxy.scale.x
+      : DEFAULTS.monsterHitRadius;
+    const p=d.response.position;
+    const y=this.aimHeight(id);
+    outOrigin.set(p.x+outDir.x*radius,y,p.z+outDir.z*radius);
+    return true;
+  }
   /** World-space center of the visible model (for juice burst origin). */
   modelCenter(id:string,out:T.Vector3){
     const d=this.dummies.find(d=>d.root.userData.practiceTarget===id);if(!d)return null;

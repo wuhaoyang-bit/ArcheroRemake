@@ -63,7 +63,11 @@ document.querySelector('#app')!.innerHTML = `
     <label class="field">命中方向 <output id="yawOut">180°</output>
       <input id="yaw" type="range" min="0" max="360" step="1" value="180">
     </label>
+    <label class="field">模型朝向 <output id="facingOut">0°</output>
+      <input id="facing" type="range" min="0" max="360" step="1" value="0">
+    </label>
     <label class="field"><span><input type="checkbox" id="sprayOn" checked> 启用方向喷溅</span></label>
+    <label class="field"><span><input type="checkbox" id="sprayDebugDir"> 方向粒子调试开关（红）</span></label>
     <label class="field">喷溅延迟 <output id="sprayDelayOut">0.00s</output>
       <input id="sprayDelay" type="range" min="0" max="0.5" step="0.01" value="0">
     </label>
@@ -132,7 +136,9 @@ document.querySelector('#app')!.innerHTML = `
     </div>
     <p class="hint">
       刷新默认：数量 16、初速 7.6±1.5、大小 0.67±0.15、寿命 1.30±0.20、锥角 45°、盘半径 0.30、平铺关闭、延迟 0s。
-      切换效果仍可载入该模式预设；水平走速度曲线，竖直受重力。本页改动只影响预览。
+      喷溅在立方体模型背面（眼睛对面）面心生成，锥轴跟随「模型朝向」（史莱姆自身 −facing），不是世界轴。
+      命中 yaw 只影响击退。打开「方向粒子调试开关」后粒子变红；转「模型朝向」可核对喷溅是否跟着转。
+      切换效果仍可载入该模式预设。本页改动只影响预览。
     </p>
     <p id="status" role="status"></p>
   </aside>
@@ -278,9 +284,27 @@ async function main() {
   let cooldown = 0;
   let rate = 1;
   let yaw = 180;
+  let facingDeg = 0;
   let sprayDelay = 0;
-  /** Directional spray armed at hit start; fires after sprayDelay. */
-  let pendingSpray: { remaining: number; dir: T.Vector3 } | null = null;
+
+  function applyFacing() {
+    const rad = (facingDeg * Math.PI) / 180;
+    slime.rotation.y = rad;
+    // Keep feedback root in sync (TrainingFeedback wraps the same object).
+    slime.updateMatrixWorld(true);
+  }
+  applyFacing();
+  /** Directional spray armed at hit start; fires after sprayDelay from live back face. */
+  let pendingSpray: { remaining: number } | null = null;
+  const sprayOrigin = new T.Vector3();
+  const sprayDir = new T.Vector3();
+
+  function emitSprayFromBack() {
+    if (!feedback.sprayBackAnchor('slime', sprayOrigin, sprayDir)) return;
+    const height = (settings as HitSettings).sprayHeight ?? 0.1;
+    sprayOrigin.y += height;
+    spray.emit(sprayOrigin, sprayDir);
+  }
   let autoLoop = true;
   let playing = true;
   let elapsed = 0;
@@ -304,6 +328,7 @@ async function main() {
 
   function fireHit() {
     feedback.reset();
+    applyFacing(); // reset() restores initial quaternion; re-apply model facing
     juice.clear();
     spray.clear();
     pendingSpray = null;
@@ -331,6 +356,7 @@ async function main() {
     }
 
     spray.enabled = el<HTMLInputElement>('sprayOn').checked;
+    spray.setDebugDir(el<HTMLInputElement>('sprayDebugDir').checked);
     spray.flatXZ = el<HTMLInputElement>('flat').checked;
     spray.mode = el<HTMLSelectElement>('mode').value as SprayMode;
     spray.params = readSprayParams();
@@ -341,12 +367,9 @@ async function main() {
     spray.speedCurve = spraySpeedCurve;
     sprayDelay = Number(el<HTMLInputElement>('sprayDelay').value);
     if (spray.enabled) {
-      // Exit side = attack direction; emit after delay from then-current follow origin
-      if (sprayDelay <= 0 && emitAt) {
-        spray.emit(emitAt, dir);
-      } else if (sprayDelay > 0) {
-        pendingSpray = { remaining: sprayDelay, dir };
-      }
+      // Model back face center, outward ⊥ face (independent of hit yaw).
+      if (sprayDelay <= 0) emitSprayFromBack();
+      else pendingSpray = { remaining: sprayDelay };
     }
     cooldown = 1.8;
     elapsed = 0;
@@ -356,6 +379,7 @@ async function main() {
   el('hit').onclick = () => fireHit();
   el('reset').onclick = () => {
     feedback.reset();
+    applyFacing();
     juice.clear();
     spray.clear();
     pendingSpray = null;
@@ -370,6 +394,11 @@ async function main() {
   el('yaw').oninput = () => {
     yaw = Number(el<HTMLInputElement>('yaw').value);
     el('yawOut').textContent = `${yaw}°`;
+  };
+  el('facing').oninput = () => {
+    facingDeg = Number(el<HTMLInputElement>('facing').value);
+    el('facingOut').textContent = `${facingDeg}°`;
+    applyFacing();
   };
   el('sprayDelay').oninput = () => {
     sprayDelay = Number(el<HTMLInputElement>('sprayDelay').value);
@@ -403,6 +432,9 @@ async function main() {
   };
   el('flat').onchange = () => {
     spray.flatXZ = el<HTMLInputElement>('flat').checked;
+  };
+  el('sprayDebugDir').onchange = () => {
+    spray.setDebugDir(el<HTMLInputElement>('sprayDebugDir').checked);
   };
   el('gravity').oninput = () => {
     const mag = Number(el<HTMLInputElement>('gravity').value);
@@ -464,8 +496,7 @@ async function main() {
     if (pendingSpray) {
       pendingSpray.remaining -= dt;
       if (pendingSpray.remaining <= 0) {
-        const at = juiceFollowOrigin('slime', originScratch);
-        if (at && spray.enabled) spray.emit(at, pendingSpray.dir);
+        if (spray.enabled) emitSprayFromBack();
         pendingSpray = null;
       }
     }
@@ -483,8 +514,17 @@ async function main() {
   Object.assign(window, {
     __SLIME_HIT_SPRAY_LAB__: {
       fire: fireHit,
+      sprayBackAnchor: (outO?: number[], outD?: number[]) => {
+        const o = sprayOrigin.set(0, 0, 0);
+        const d = sprayDir.set(0, 0, 0);
+        const ok = feedback.sprayBackAnchor('slime', o, d);
+        if (outO) { outO[0] = o.x; outO[1] = o.y; outO[2] = o.z; }
+        if (outD) { outD[0] = d.x; outD[1] = d.y; outD[2] = d.z; }
+        return ok ? { origin: [o.x, o.y, o.z], dir: [d.x, d.y, d.z] } : null;
+      },
       snapshot: () => ({
         yaw,
+        facingDeg,
         sprayDelay,
         pendingSpray: pendingSpray ? pendingSpray.remaining : null,
         sprayActive: spray.activeCount(),
@@ -493,6 +533,9 @@ async function main() {
         sprayDragRel: spray.dragRel,
         sprayGravity: spray.gravity,
         sprayFlat: spray.flatXZ,
+        sprayDebugDir: spray.debugDir,
+        sprayColor: spray.liveColorHex(),
+        lastEmit: spray.lastEmit,
         sprayParams: { ...spray.params },
         mode: spray.mode,
         juice: juice.snapshot(),

@@ -9,6 +9,7 @@
  */
 import * as T from 'three/webgpu';
 import {
+  JUICE_CURVE_IDS,
   juiceCurveFromSettings,
   juiceIntegrateRemain,
   juiceRemain,
@@ -18,6 +19,31 @@ import { DEFAULT_JUICE_SPEED_CURVE, type JuiceSpeedPoint } from './juice-speed-c
 import type { HitSettings } from './hit-feedback-config.ts';
 
 export type SprayMode = 'blood' | 'arterial' | 'quarks';
+export const SPRAY_MODE_IDS: SprayMode[] = ['blood', 'arterial', 'quarks'];
+
+export function sprayModeFromSettings(c: Pick<HitSettings, 'sprayMode'>): SprayMode {
+  const i = Math.round(c.sprayMode);
+  return SPRAY_MODE_IDS[Math.max(0, Math.min(SPRAY_MODE_IDS.length - 1, i))] ?? 'blood';
+}
+
+export function sprayParamsFromSettings(c: HitSettings): SprayEmitParams {
+  return {
+    count: c.sprayCount,
+    speed: c.spraySpeed,
+    speedJitter: c.spraySpeedJitter,
+    size: c.spraySize,
+    sizeJitter: c.spraySizeJitter,
+    life: c.sprayLife,
+    lifeJitter: c.sprayLifeJitter,
+    spreadDeg: c.spraySpreadDeg,
+    radius: c.sprayRadius,
+  };
+}
+
+export function sprayCurveFromSettings(c: Pick<HitSettings, 'sprayCurve'>): JuiceCurveId {
+  const i = Math.round(c.sprayCurve);
+  return JUICE_CURVE_IDS[Math.max(0, Math.min(JUICE_CURVE_IDS.length - 1, i))] ?? 'easeOutCubic';
+}
 
 /** Tunables for directional spray (lab / future game wiring). */
 export type SprayEmitParams = {
@@ -97,6 +123,27 @@ function normalize(v: T.Vector3) {
   return v.multiplyScalar(1 / L);
 }
 
+const WORLD_UP = new T.Vector3(0, 1, 0);
+
+/**
+ * Orthonormal frame for a spray cone around `dir` (slime back-face outward).
+ * axisZ = cone axis; axisX = right; axisY ≈ world-up projected orthogonal to axisZ.
+ * Check: dir=(0,0,-1) → axisX=(1,0,0), axisY=(0,1,0); dir=(-1,0,0) → axisX=(0,0,-1).
+ * Never rotate around fixed world Z — that made Blood ignore slime yaw.
+ */
+function coneBasis(dir: T.Vector3, flat: boolean) {
+  const axisZ = dir.clone();
+  if (flat) axisZ.y = 0;
+  normalize(axisZ);
+  // forward × up = right
+  const axisX = new T.Vector3().crossVectors(axisZ, WORLD_UP);
+  if (axisX.lengthSq() < 1e-8) axisX.set(1, 0, 0);
+  else normalize(axisX);
+  const axisY = new T.Vector3().crossVectors(axisX, axisZ);
+  normalize(axisY);
+  return { axisX, axisY, axisZ };
+}
+
 function pushParticle(
   out: Particle[],
   origin: T.Vector3,
@@ -125,21 +172,36 @@ function pushParticle(
   });
 }
 
+/** Unit direction inside a cone around axisZ (local spherical). */
+function coneDir(
+  axisX: T.Vector3,
+  axisY: T.Vector3,
+  axisZ: T.Vector3,
+  phi: number,
+  theta: number,
+  out: T.Vector3,
+) {
+  const s = Math.sin(phi);
+  return out
+    .set(0, 0, 0)
+    .addScaledVector(axisX, s * Math.cos(theta))
+    .addScaledVector(axisY, s * Math.sin(theta))
+    .addScaledVector(axisZ, Math.cos(phi));
+}
+
 function spawnBlood(origin: T.Vector3, dir: T.Vector3, p: SprayEmitParams, flat: boolean): Particle[] {
-  const base = dir.clone();
-  if (flat) { base.y = 0; normalize(base); }
-  else normalize(base);
-  const yAxis = new T.Vector3(0, 1, 0);
-  const zAxis = new T.Vector3(0, 0, 1);
+  const { axisX, axisY, axisZ } = coneBasis(dir, flat);
   const spread = (Math.max(0, p.spreadDeg) * Math.PI) / 180;
   const out: Particle[] = [];
   const d = new T.Vector3();
   const n = Math.max(1, Math.round(p.count));
   for (let i = 0; i < n; i++) {
+    // Uniform-ish in cone: |phi| ≤ spread/2 (half-angle), full spin.
     const phi = (Math.random() - 0.5) * spread;
     const theta = Math.random() * Math.PI * 2;
-    d.copy(base).applyAxisAngle(yAxis, phi).applyAxisAngle(zAxis, theta);
+    coneDir(axisX, axisY, axisZ, Math.abs(phi), theta, d);
     if (flat) { d.y = 0; normalize(d); }
+    else normalize(d);
     pushParticle(
       out, origin, d,
       randAround(p.speed, p.speedJitter),
@@ -152,13 +214,7 @@ function spawnBlood(origin: T.Vector3, dir: T.Vector3, p: SprayEmitParams, flat:
 }
 
 function spawnArterial(origin: T.Vector3, dir: T.Vector3, p: SprayEmitParams, flat: boolean): Particle[] {
-  const base = dir.clone();
-  if (flat) { base.y = 0; normalize(base); }
-  else normalize(base);
-  const up = new T.Vector3(0, 1, 0);
-  const axis = new T.Vector3().crossVectors(up, base);
-  if (axis.lengthSq() < 1e-8) axis.set(1, 0, 0);
-  else normalize(axis);
+  const { axisX, axisY, axisZ } = coneBasis(dir, flat);
   const cone = (Math.max(0, p.spreadDeg) * Math.PI) / 180;
   const out: Particle[] = [];
   const d = new T.Vector3();
@@ -166,8 +222,9 @@ function spawnArterial(origin: T.Vector3, dir: T.Vector3, p: SprayEmitParams, fl
   for (let i = 0; i < n; i++) {
     const theta = Math.random() * Math.PI * 2;
     const phi = Math.random() * cone;
-    d.copy(base).applyAxisAngle(axis, phi).applyAxisAngle(base, theta);
+    coneDir(axisX, axisY, axisZ, phi, theta, d);
     if (flat) { d.y = 0; normalize(d); }
+    else normalize(d);
     pushParticle(
       out, origin, d,
       randAround(p.speed, p.speedJitter),
@@ -180,15 +237,7 @@ function spawnArterial(origin: T.Vector3, dir: T.Vector3, p: SprayEmitParams, fl
 }
 
 function spawnQuarks(origin: T.Vector3, dir: T.Vector3, p: SprayEmitParams, flat: boolean): Particle[] {
-  let axisZ = dir.clone();
-  if (flat) { axisZ.y = 0; }
-  normalize(axisZ);
-  let axisY = new T.Vector3().crossVectors(axisZ, new T.Vector3(0, 0, 1));
-  if (axisY.lengthSq() < 1e-8) axisY.set(1, 0, 0);
-  else normalize(axisY);
-  const axisX = new T.Vector3().crossVectors(axisY, axisZ).normalize();
-  axisY.crossVectors(axisZ, axisX).normalize();
-
+  const { axisX, axisY, axisZ } = coneBasis(dir, flat);
   const radius = Math.max(0, p.radius);
   const angle = (Math.max(0, p.spreadDeg) * Math.PI) / 180;
   const out: Particle[] = [];
@@ -233,15 +282,35 @@ function spawnQuarks(origin: T.Vector3, dir: T.Vector3, p: SprayEmitParams, flat
   return out;
 }
 
+const SPRAY_DEBUG_COLOR = 0xff2020;
+
+function sprayModeColor(mode: SprayMode) {
+  return mode === 'blood' ? 0xffdd55
+    : mode === 'arterial' ? 0xffe070
+    : 0x9fe8ff;
+}
+
 type Wave = {
   mesh: T.InstancedMesh;
   particles: Particle[];
   color: number;
+  mode: SprayMode;
   followLast?: T.Vector3;
   curve: JuiceCurveId;
   dragRel: number;
   speedCurve: JuiceSpeedPoint[];
+  gravity: number;
+  flat: boolean;
 };
+
+type Pending = {
+  id: string;
+  remaining: number;
+  settings: HitSettings;
+};
+
+/** Fills back-face origin (aimHeight) and outward normal; return false if target gone. */
+export type SprayAnchorResolve = (id: string, outOrigin: T.Vector3, outDir: T.Vector3) => boolean;
 
 function sampleSpray(
   p: Particle,
@@ -269,9 +338,14 @@ function sampleSpray(
 /** Extra directional spray layered on top of radial JuiceParticles. */
 export class DirectionalSpray {
   private waves: Wave[] = [];
+  private pending: Pending[] = [];
   private dummy = new T.Object3D();
   private followScratch = new T.Vector3();
+  private originScratch = new T.Vector3();
+  private dirScratch = new T.Vector3();
   private texture: T.Texture;
+  /** Last emit anchor for debug snapshots. */
+  lastEmit: { origin: [number, number, number]; dir: [number, number, number] } | null = null;
   mode: SprayMode = 'blood';
   flatXZ = false;
   enabled = true;
@@ -285,9 +359,16 @@ export class DirectionalSpray {
   curve: JuiceCurveId = 'easeOutCubic';
   dragRel = 0.55;
   speedCurve: JuiceSpeedPoint[] = DEFAULT_JUICE_SPEED_CURVE.map((p) => ({ ...p }));
-  /** Shift active particles with the slime each frame (preview). */
-  follow = true;
+  /** Shift active particles with the slime each frame (preview on; game default off). */
+  follow = false;
   resolveFollow?: (out: T.Vector3) => T.Vector3 | null;
+  /** When on, force spray particles bright red so spawn side / cone are obvious. */
+  debugDir = false;
+
+  setDebugDir(on: boolean) {
+    this.debugDir = on;
+    this.refreshWaveColors();
+  }
 
   get count() { return this.params.count; }
   set count(n: number) { this.params.count = n; }
@@ -302,11 +383,32 @@ export class DirectionalSpray {
     return new DirectionalSpray(scene, texture);
   }
 
-  /** Seed curve knobs from juice HitSettings (optional sync). */
+  /** Seed curve knobs from juice HitSettings (lab sync). */
   applyCurveSettings(c: Pick<HitSettings, 'juiceCurve' | 'juiceDragRel' | 'juiceSpeedCurve'>) {
     this.curve = juiceCurveFromSettings(c as HitSettings);
     this.dragRel = c.juiceDragRel;
     this.speedCurve = c.juiceSpeedCurve.map((p) => ({ ...p }));
+  }
+
+  /** Apply all spray knobs from game HitSettings. */
+  applyFromSettings(c: HitSettings) {
+    this.enabled = !!c.sprayEnabled;
+    this.mode = sprayModeFromSettings(c);
+    this.flatXZ = !!c.sprayFlat;
+    this.gravity = -Math.abs(c.sprayGravity);
+    this.params = sprayParamsFromSettings(c);
+    this.curve = sprayCurveFromSettings(c);
+    this.dragRel = c.sprayDragRel;
+    this.speedCurve = c.spraySpeedCurve.map((p) => ({ ...p }));
+    this.debugDir = !!c.sprayDebugDir;
+    this.refreshWaveColors();
+  }
+
+  private refreshWaveColors() {
+    for (const w of this.waves) {
+      w.color = this.debugDir ? SPRAY_DEBUG_COLOR : sprayModeColor(w.mode);
+      (w.mesh.material as T.MeshBasicMaterial).color.set(w.color);
+    }
   }
 
   applyModePreset(mode: SprayMode = this.mode) {
@@ -314,14 +416,46 @@ export class DirectionalSpray {
     this.params = { ...SPRAY_MODE_PRESETS[mode] };
   }
 
+  /**
+   * Arm delayed / immediate spray from the model back face.
+   * `resolve` must fill back-face center (at aimHeight) and outward normal (−facing).
+   * `sprayHeight` is added on Y at emit time.
+   */
+  schedule(id: string, c: HitSettings, resolve: SprayAnchorResolve) {
+    if (!c.sprayEnabled) return;
+    const snap: HitSettings = {
+      ...c,
+      juiceSpeedCurve: c.juiceSpeedCurve.map((p) => ({ ...p })),
+      spraySpeedCurve: c.spraySpeedCurve.map((p) => ({ ...p })),
+    };
+    if (c.sprayDelay <= 0) {
+      this.fireResolved(id, snap, resolve);
+      return;
+    }
+    this.pending.push({ id, remaining: c.sprayDelay, settings: snap });
+  }
+
+  private fireResolved(id: string, snap: HitSettings, resolve: SprayAnchorResolve) {
+    if (!resolve(id, this.originScratch, this.dirScratch)) return;
+    this.applyFromSettings(snap);
+    const at = this.originScratch.clone();
+    at.y += snap.sprayHeight;
+    this.emit(at, this.dirScratch);
+  }
+
   emit(origin: T.Vector3, direction: T.Vector3) {
     if (!this.enabled) return;
+    this.lastEmit = {
+      origin: [origin.x, origin.y, origin.z],
+      dir: [direction.x, direction.y, direction.z],
+    };
     let wave = this.waves.find((w) => w.particles.every((p) => p.age >= p.life));
     if (!wave) {
       const material = new T.MeshBasicMaterial({
         map: this.texture, transparent: true, depthWrite: false, side: T.DoubleSide,
       });
       const mesh = new T.InstancedMesh(new T.PlaneGeometry(1, 1), material, MAX);
+      mesh.name = 'Directional spray';
       mesh.frustumCulled = false;
       mesh.renderOrder = 10;
       mesh.count = 0;
@@ -330,9 +464,12 @@ export class DirectionalSpray {
         mesh,
         particles: [],
         color: 0xffe066,
+        mode: this.mode,
         curve: this.curve,
         dragRel: this.dragRel,
         speedCurve: this.speedCurve.map((p) => ({ ...p })),
+        gravity: this.gravity,
+        flat: this.flatXZ,
       };
       this.waves.push(wave);
     }
@@ -348,10 +485,10 @@ export class DirectionalSpray {
     wave.curve = this.curve;
     wave.dragRel = this.dragRel;
     wave.speedCurve = this.speedCurve.map((pt) => ({ ...pt }));
-    wave.color =
-      this.mode === 'blood' ? 0xffdd55
-      : this.mode === 'arterial' ? 0xffe070
-      : 0x9fe8ff;
+    wave.gravity = this.gravity;
+    wave.flat = flat;
+    wave.mode = this.mode;
+    wave.color = this.debugDir ? SPRAY_DEBUG_COLOR : sprayModeColor(this.mode);
     (wave.mesh.material as T.MeshBasicMaterial).color.set(wave.color);
   }
 
@@ -381,11 +518,22 @@ export class DirectionalSpray {
     }
   }
 
-  update(dt: number) {
+  update(dt: number, resolve?: SprayAnchorResolve) {
+    const ready: Pending[] = [];
+    for (const p of this.pending) {
+      p.remaining -= dt;
+      if (p.remaining <= 1e-9) ready.push(p);
+    }
+    this.pending = this.pending.filter((p) => p.remaining > 1e-9);
+    for (const p of ready) {
+      if (!resolve) continue;
+      this.fireResolved(p.id, p.settings, resolve);
+    }
+
     this.shiftFollowers();
-    const flat = this.flatXZ;
-    const g = this.gravity;
     for (const w of this.waves) {
+      const flat = w.flat;
+      const g = w.gravity;
       for (const p of w.particles) {
         if (p.age >= p.life) continue;
         p.age += dt;
@@ -406,12 +554,11 @@ export class DirectionalSpray {
   }
 
   prepare(camera: T.Camera) {
-    const flat = this.flatXZ;
     for (const w of this.waves) {
       let count = 0;
       for (const p of w.particles) {
         if (p.age >= p.life) continue;
-        const sample = sampleSpray(p, w.curve, w.dragRel, w.speedCurve, flat);
+        const sample = sampleSpray(p, w.curve, w.dragRel, w.speedCurve, w.flat);
         this.dummy.position.set(sample.x, sample.y, sample.z);
         this.dummy.quaternion.copy(camera.quaternion);
         this.dummy.scale.setScalar(sample.size);
@@ -424,11 +571,25 @@ export class DirectionalSpray {
   }
 
   clear() {
+    this.pending = [];
     for (const w of this.waves) {
       w.particles = [];
       w.mesh.count = 0;
       w.followLast = undefined;
     }
+  }
+
+  prepareWarmup(count: number, c: HitSettings, camera: T.Camera) {
+    const warm = { ...c, sprayEnabled: 1, sprayDelay: 0, sprayCount: 64, sprayLife: 1.8 };
+    this.applyFromSettings(warm);
+    for (let i = 0; i < count; i++) {
+      this.emit(new T.Vector3(), new T.Vector3(0, 0, 1));
+    }
+    this.prepare(camera);
+  }
+
+  finishWarmup() {
+    this.clear();
   }
 
   activeCount() {
@@ -439,6 +600,14 @@ export class DirectionalSpray {
       }
     }
     return n;
+  }
+
+  /** Current tint of the first live wave (debug / snapshots). */
+  liveColorHex() {
+    for (const w of this.waves) {
+      if (w.particles.some((p) => p.age < p.life)) return w.color;
+    }
+    return this.debugDir ? SPRAY_DEBUG_COLOR : sprayModeColor(this.mode);
   }
 
   /** Debug: horizontal speed remain + vertical state for first live particle. */
