@@ -1,0 +1,113 @@
+:root {
+  font: 14px/1.55 system-ui, sans-serif;
+  color: #e8ebdc;
+  background: #11170f;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 20px; }
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  max-width: 1400px;
+  margin: 0 auto 16px;
+}
+h1 { font-size: 26px; margin: 4px 0; }
+small { color: #d5c483; letter-spacing: 0.06em; }
+p { color: #aeb7a2; margin: 6px 0; }
+a { color: #e4ce85; }
+main {
+  max-width: 1400px;
+  margin: auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 16px;
+}
+.panel {
+  background: #1c2518;
+  border: 1px solid #3c4932;
+  border-radius: 14px;
+  padding: 16px;
+}
+aside.panel {
+  max-height: calc(68vh + 72px);
+  overflow: auto;
+}
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+h3.section {
+  margin: 14px 0 8px;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  color: #d5c483;
+  border-top: 1px solid #3c4932;
+  padding-top: 12px;
+}
+#spray-speed-curve-editor {
+  margin-top: 6px;
+  min-height: 120px;
+}
+.stage {
+  height: 68vh;
+  min-height: 380px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #e5e5ca;
+  color: #303b2a;
+  position: relative;
+}
+.stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+#loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: #e5e5ca;
+}
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+label.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  margin-bottom: 10px;
+  color: #c5cdb8;
+  font-size: 13px;
+}
+button, select, input[type="number"], input[type="range"] {
+  font: inherit;
+  background: #283320;
+  color: inherit;
+  border: 1px solid #526043;
+  border-radius: 7px;
+  padding: 8px 10px;
+}
+button { cursor: pointer; }
+button.primary { background: #ddc67e; color: #202617; border-color: #ddc67e; }
+button:hover { border-color: #e5cf87; }
+input[type="range"] { width: 100%; accent-color: #d9c17a; padding: 0; }
+input[type="checkbox"] { accent-color: #d9c17a; }
+output { color: #e2cd8c; font-variant-numeric: tabular-nums; }
+.hint {
+  font-size: 12px;
+  color: #8f9a84;
+  border-top: 1px solid #303d28;
+  padding-top: 10px;
+  margin-top: 8px;
+}
+@media (max-width: 900px) {
+  main { grid-template-columns: 1fr; }
+  .stage { height: 52vh; min-height: 300px; }
+  body { padding: 12px; }
+}

@@ -16,6 +16,7 @@ import { CameraZoomPreview } from './camera-zoom-preview.ts';
 import { CAMERA_ZOOM_CONTROLS } from './camera-zoom-config.ts';
 import { BOW_FX_CONTROLS } from './bow-release-config.ts';
 import { ARROW_TRAIL_CONTROLS, ARROW_PAINT_CONTROLS } from './arrow-trail-config.ts';
+import { SFX_CONTROLS } from './sfx-config.ts';
 import { DEFAULT_RECOIL_CURVE } from './shot-recoil.ts';
 import { validateJuiceSpeedCurve } from './juice-speed-curve.ts';
 import { JuiceCurveEditor } from './juice-curve-editor.ts';
@@ -34,6 +35,7 @@ import type { Settings } from './config.ts';
 
 const arrow = '<svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M8 24 24 8M9 8h15v15M7 17l8 8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const settings: { title: string; items: [SettingKey, string, string, string][] }[] = [
+  {title:'音频 · 音效',items:SFX_CONTROLS},
   {title:'爆炸 · 空间扭曲冲击波',items:SHOCKWAVE_CONTROLS},
   {title:'爆炸 · 屏幕震动',items:[]},
   {title:'史莱姆 · 移动液路与黏丝',items:SLIME_TRAIL_CONTROLS},
@@ -662,9 +664,17 @@ async function start() {
     if (import.meta.env.DEV) {
       Object.assign(window, { __ARCHERO__: {
         pauseForInspection: (paused:boolean) => {game.renderer.setAnimationLoop(paused?null:frame);lastFrame=0;if(paused)game.render();},
-        testSlimeHit: (id:string) => game.feedback?.hit(id,{x:0,z:-1},controller.settings),
+        testArrowFire: () => game.arrowFireSfx.play(controller.settings),
+            testSlimeHit: (id:string) => {
+          const ok = game.feedback?.hit(id,{x:0,z:-1},controller.settings);
+          if (ok && game.feedback?.isYellowSlimeTarget(id)) {
+            game.bodyHitSfx.play(controller.settings);
+            game.slimeHitSfx.play(controller.settings);
+          }
+          return !!ok;
+        },
         stepInspection: (dt:number) => {game.advanceFeedback(dt);game.sync(dt);game.render();},
-        snapshot: () => ({ ...controller.snapshot(), settings: { ...controller.settings }, center: { ...controller.center }, cameraZoom:game.cameraZoom.snapshot(controller.settings), cameraShake:game.cameraShake.snapshot(), shockwave:game.shockwave?.snapshot(), cameraView:game.camera.view?{...game.camera.view}:null, cameraZ: game.cameraZ, cameraX: game.camera.position.x, footNdc: game.player.position.clone().project(game.camera).toArray(), anchorNdc: game.anchor.position.clone().project(game.camera).toArray(), trainingTargets: game.trainingTargetsSnapshot(), feedback: game.feedback?.snapshot() ?? [], bowRelease:game.bowRelease?.snapshot(), juice:game.juice?.snapshot(), burstEffects:game.burstEffects?.snapshot(), attack: game.animation.snapshot(), arrows: game.arrows?.snapshot(), runWeight: game.blend.weight, runTime: game.run.time, runTimeScale: game.run.getEffectiveTimeScale(), idleTimeScale: game.idle.getEffectiveTimeScale(), debug: { hit:game.hitDebug.snapshot(), headingVisible: game.headingGuide.visible, heading: game.headingGuide.rotation.y, anchorVisible: game.anchor.visible, anchorOutlineVisible: game.anchor.visible && game.anchorOutline.visible, lockRangeVisible: game.lockRangeGuide.visible, lockRangeRadius: game.lockRangeGuide.scale.x, rings: game.rings.state.snapshot(), candidateMarkerVisible: game.candidateMarker.visible }, gpuMemory:{...game.renderer.info.memory}, startup:{...game.startup}, renderer: 'webgpu', ready }),
+        snapshot: () => ({ ...controller.snapshot(), settings: { ...controller.settings }, center: { ...controller.center }, cameraZoom:game.cameraZoom.snapshot(controller.settings), cameraShake:game.cameraShake.snapshot(), shockwave:game.shockwave?.snapshot(), cameraView:game.camera.view?{...game.camera.view}:null, cameraZ: game.cameraZ, cameraX: game.camera.position.x, footNdc: game.player.position.clone().project(game.camera).toArray(), anchorNdc: game.anchor.position.clone().project(game.camera).toArray(), trainingTargets: game.trainingTargetsSnapshot(), feedback: game.feedback?.snapshot() ?? [], bowRelease:game.bowRelease?.snapshot(), juice:game.juice?.snapshot(), burstEffects:game.burstEffects?.snapshot(), attack: game.animation.snapshot(), arrows: game.arrows?.snapshot(), arrowFireSfx: { active: game.arrowFireSfx.activeCount }, bodyHitSfx: { active: game.bodyHitSfx.activeCount }, slimeHitSfx: { active: game.slimeHitSfx.activeCount, pending: game.slimeHitSfx.pendingCount }, runWeight: game.blend.weight, runTime: game.run.time, runTimeScale: game.run.getEffectiveTimeScale(), idleTimeScale: game.idle.getEffectiveTimeScale(), debug: { hit:game.hitDebug.snapshot(), headingVisible: game.headingGuide.visible, heading: game.headingGuide.rotation.y, anchorVisible: game.anchor.visible, anchorOutlineVisible: game.anchor.visible && game.anchorOutline.visible, lockRangeVisible: game.lockRangeGuide.visible, lockRangeRadius: game.lockRangeGuide.scale.x, rings: game.rings.state.snapshot(), candidateMarkerVisible: game.candidateMarker.visible }, gpuMemory:{...game.renderer.info.memory}, startup:{...game.startup}, renderer: 'webgpu', ready }),
       } });
     }
   } catch (error) {

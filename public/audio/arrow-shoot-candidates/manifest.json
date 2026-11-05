@@ -1,0 +1,471 @@
+{
+  "generated": "arrow-shoot-sfx-candidates",
+  "count": 27,
+  "clips": [
+    {
+      "id": "fs-394185",
+      "file": "fs-394185-arrow-loose.mp3",
+      "title": "Arrow Loose",
+      "author": "saturdaysoundguy",
+      "source": "Freesound",
+      "license": "CC0",
+      "url": "https://freesound.org/s/394185/",
+      "tags": [
+        "release",
+        "short",
+        "twang"
+      ],
+      "note": "长弓松弦短促声，很适合连射",
+      "exists": true,
+      "duration": 0.48,
+      "bytes": 13536
+    },
+    {
+      "id": "fs-394180",
+      "file": "fs-394180-arrow-loose-flyby.mp3",
+      "title": "Arrow Loose and Flyby",
+      "author": "saturdaysoundguy",
+      "source": "Freesound",
+      "license": "CC0",
+      "url": "https://freesound.org/s/394180/",
+      "tags": [
+        "release",
+        "whoosh",
+        "short"
+      ],
+      "note": "松弦+飞过，一体感强",
+      "exists": true,
+      "duration": 0.672,
+      "bytes": 17664
+    },
+    {
+      "id": "fs-391444",
+      "file": "fs-391444-arrow-whoosh-2.mp3",
+      "title": "Arrow Whoosh 2",
+      "author": "saturdaysoundguy",
+      "source": "Freesound",
+      "license": "CC0",
+      "url": "https://freesound.org/s/391444/",
+      "tags": [
+        "whoosh",
+        "flight"
+      ],
+      "note": "箭矢破空",
+      "exists": true,
+      "duration": 2.832,
+      "bytes": 66576
+    },
+    {
+      "id": "fs-384915",
+      "file": "fs-384915-bow-release-1.mp3",
+      "title": "Bow Release 1",
+      "author": "Ali_6868",
+      "source": "Freesound",
+      "license": "CC0",
+      "url": "https://freesound.org/s/384915/",
+      "tags": [
+        "release",
+        "short"
+      ],
+      "note": "放弓本声 1",
+      "exists": true,
+      "duration": 0.783673,
+      "bytes": 15549
+    },
+    {
+      "id": "fs-384916",
+      "file": "fs-384916-bow-release-2.mp3",
+      "title": "Bow Release 2",
+      "author": "Ali_6868",
+      "source": "Freesound",
+      "license": "CC0",
+      "url": "https://freesound.org/s/384916/",
+      "tags": [
+        "release",
+        "short"
+      ],
+      "note": "放弓本声 2",
+      "exists": true,
+      "duration": 0.783673,
+      "bytes": 12936
+    },
+    {
+      "id": "fs-384918",
+      "file": "fs-384918-bow-release-3.mp3",
+      "title": "Bow Release 3",
+      "author": "Ali_6868",
+      "source": "Freesound",
+      "license": "CC0",
+      "url": "https://freesound.org/s/384918/",
+      "tags": [
+        "release"
+      ],
+      "note": "放弓本声 3",
+      "exists": true,
+      "duration": 1.044898,
+      "bytes": 20611
+    },
+    {
+      "id": "fs-384917",
+      "file": "fs-384917-bow-release-4.mp3",
+      "title": "Bow Release 4",
+      "author": "Ali_6868",
+      "source": "Freesound",
+      "license": "CC0",
+      "url": "https://freesound.org/s/384917/",
+      "tags": [
+        "release"
+      ],
+      "note": "放弓本声 4",
+      "exists": true,
+      "duration": 1.854694,
+      "bytes": 36266
+    },
+    {
+      "id": "fs-178872",
+      "file": "fs-178872-20lb-bow.mp3",
+      "title": "20 Pound Bow",
+      "author": "martian",
+      "source": "Freesound",
+      "license": "CC0",
+      "url": "https://freesound.org/s/178872/",
+      "tags": [
+        "release",
+        "short",
+        "dry"
+      ],
+      "note": "轻磅弓，干、短",
+      "exists": true,
+      "duration": 0.548571,
+      "bytes": 13437
+    },
+    {
+      "id": "fs-511490",
+      "file": "fs-511490-fx-bow-arrow.mp3",
+      "title": "FX Bow & Arrow",
+      "author": "DWOBoyle",
+      "source": "Freesound",
+      "license": "CC0",
+      "url": "https://freesound.org/s/511490/",
+      "tags": [
+        "release",
+        "short",
+        "gamey"
+      ],
+      "note": "偏游戏设计感的短射",
+      "exists": true,
+      "duration": 0.576,
+      "bytes": 11808
+    },
+    {
+      "id": "fs-511489",
+      "file": "fs-511489-fx-bow-arrow-2.mp3",
+      "title": "FX Bow & Arrow 2",
+      "author": "DWOBoyle",
+      "source": "Freesound",
+      "license": "CC0",
+      "url": "https://freesound.org/s/511489/",
+      "tags": [
+        "release",
+        "gamey"
+      ],
+      "note": "游戏感变体",
+      "exists": true,
+      "duration": 2.4,
+      "bytes": 50160
+    },
+    {
+      "id": "fs-65733",
+      "file": "fs-65733-bow01.mp3",
+      "title": "bow01",
+      "author": "Erdie",
+      "source": "Freesound",
+      "license": "CC BY 4.0",
+      "url": "https://freesound.org/s/65733/",
+      "tags": [
+        "release",
+        "gamey",
+        "classic"
+      ],
+      "note": "经典游戏弓射（需署名）",
+      "exists": true,
+      "duration": 0.862041,
+      "bytes": 21707
+    },
+    {
+      "id": "fs-321552",
+      "file": "fs-321552-regular-arrow-shot.mp3",
+      "title": "Regular Arrow Shot",
+      "author": "brendan89",
+      "source": "Freesound",
+      "license": "CC BY 3.0",
+      "url": "https://freesound.org/s/321552/",
+      "tags": [
+        "release",
+        "realistic"
+      ],
+      "note": "写实木弓（需署名）",
+      "exists": true,
+      "duration": 1.536,
+      "bytes": 31392
+    },
+    {
+      "id": "fs-209399",
+      "file": "fs-209399-bow-release.mp3",
+      "title": "Bow Release (40lb recurve)",
+      "author": "sgossner",
+      "source": "Freesound",
+      "license": "CC BY 4.0",
+      "url": "https://freesound.org/s/209399/",
+      "tags": [
+        "release",
+        "short",
+        "realistic"
+      ],
+      "note": "40磅反曲弓干射（需署名）",
+      "exists": true,
+      "duration": 0.626939,
+      "bytes": 15968
+    },
+    {
+      "id": "fs-179996",
+      "file": "fs-179996-arrow-release-hit.mp3",
+      "title": "Arrow Release and Hit",
+      "author": "calvarychurchatlanta",
+      "source": "Freesound",
+      "license": "CC0",
+      "url": "https://freesound.org/s/179996/",
+      "tags": [
+        "release",
+        "hit"
+      ],
+      "note": "射出+命中一体",
+      "exists": true,
+      "duration": 1.224,
+      "bytes": 30048
+    },
+    {
+      "id": "fs-410751",
+      "file": "fs-410751-arrow-strike.mp3",
+      "title": "Arrow Strike",
+      "author": "plantmonkey",
+      "source": "Freesound",
+      "license": "CC0",
+      "url": "https://freesound.org/s/410751/",
+      "tags": [
+        "hit",
+        "strike"
+      ],
+      "note": "偏命中/打击，可作对照",
+      "exists": true,
+      "duration": 2.716735,
+      "bytes": 59536
+    },
+    {
+      "id": "fs-561475",
+      "file": "fs-561475-crossbow-firing.mp3",
+      "title": "Crossbow Firing",
+      "author": "qubodup",
+      "source": "Freesound",
+      "license": "CC0",
+      "url": "https://freesound.org/s/561475/",
+      "tags": [
+        "crossbow",
+        "mechanical"
+      ],
+      "note": "弩机感，可作对照",
+      "exists": true,
+      "duration": 1.436735,
+      "bytes": 36318
+    },
+    {
+      "id": "fs-249160",
+      "file": "fs-249160-compound-bow.mp3",
+      "title": "CompoundBow CloseTarget",
+      "author": "MHockett",
+      "source": "Freesound",
+      "license": "CC0",
+      "url": "https://freesound.org/s/249160/",
+      "tags": [
+        "compound",
+        "long",
+        "field"
+      ],
+      "note": "复合弓近距实录，偏长，不适合连射默认",
+      "exists": true,
+      "duration": 12.288,
+      "bytes": 288576
+    },
+    {
+      "id": "fs-527435",
+      "file": "fs-527435-arrow-cutting-air.mp3",
+      "title": "Arrow Cutting Through Air",
+      "author": "florianreichelt",
+      "source": "Freesound",
+      "license": "CC0",
+      "url": "https://freesound.org/s/527435/",
+      "tags": [
+        "whoosh",
+        "long",
+        "flight"
+      ],
+      "note": "破空长尾，适合层叠而非主射",
+      "exists": true,
+      "duration": 10.56,
+      "bytes": 247488
+    },
+    {
+      "id": "mixkit-1491",
+      "file": "mixkit-arrow-whoosh.wav",
+      "title": "Arrow whoosh",
+      "author": "Mixkit",
+      "source": "Mixkit",
+      "license": "Mixkit License",
+      "url": "https://mixkit.co/free-sound-effects/download/1491/",
+      "tags": [
+        "whoosh",
+        "flight"
+      ],
+      "note": "箭矢嗖声",
+      "exists": true,
+      "duration": 1.099365,
+      "bytes": 193972
+    },
+    {
+      "id": "mixkit-2771",
+      "file": "mixkit-arrow-shot-through-air.wav",
+      "title": "Arrow shot through air",
+      "author": "Mixkit",
+      "source": "Mixkit",
+      "license": "Mixkit License",
+      "url": "https://mixkit.co/free-sound-effects/download/2771/",
+      "tags": [
+        "shot",
+        "whoosh"
+      ],
+      "note": "射出穿空",
+      "exists": true,
+      "duration": 1.043129,
+      "bytes": 184052
+    },
+    {
+      "id": "mixkit-2767",
+      "file": "mixkit-arrow-whizz-in-battle.wav",
+      "title": "Arrow whizz in battle",
+      "author": "Mixkit",
+      "source": "Mixkit",
+      "license": "Mixkit License",
+      "url": "https://mixkit.co/free-sound-effects/download/2767/",
+      "tags": [
+        "whoosh",
+        "battle"
+      ],
+      "note": "战场箭矢呼啸",
+      "exists": true,
+      "duration": 1.259773,
+      "bytes": 222268
+    },
+    {
+      "id": "mixkit-2769",
+      "file": "mixkit-metal-arrow-hit.wav",
+      "title": "Metal arrow hit",
+      "author": "Mixkit",
+      "source": "Mixkit",
+      "license": "Mixkit License",
+      "url": "https://mixkit.co/free-sound-effects/download/2769/",
+      "tags": [
+        "hit",
+        "metal"
+      ],
+      "note": "金属箭命中（对照）",
+      "exists": true,
+      "duration": 1.188027,
+      "bytes": 209612
+    },
+    {
+      "id": "mixkit-2770",
+      "file": "mixkit-metal-arrow-fast-hit.wav",
+      "title": "Metal arrow fast hit",
+      "author": "Mixkit",
+      "source": "Mixkit",
+      "license": "Mixkit License",
+      "url": "https://mixkit.co/free-sound-effects/download/2770/",
+      "tags": [
+        "hit",
+        "metal",
+        "fast"
+      ],
+      "note": "金属箭快命中（对照）",
+      "exists": true,
+      "duration": 1.241542,
+      "bytes": 219052
+    },
+    {
+      "id": "mixkit-1485",
+      "file": "mixkit-air-woosh.wav",
+      "title": "Air woosh",
+      "author": "Mixkit",
+      "source": "Mixkit",
+      "license": "Mixkit License",
+      "url": "https://mixkit.co/free-sound-effects/download/1485/",
+      "tags": [
+        "whoosh",
+        "short",
+        "layer"
+      ],
+      "note": "短空气嗖，可作层",
+      "exists": true,
+      "duration": 0.479388,
+      "bytes": 126926
+    },
+    {
+      "id": "mixkit-1490",
+      "file": "mixkit-fast-whoosh-transition.wav",
+      "title": "Fast whoosh transition",
+      "author": "Mixkit",
+      "source": "Mixkit",
+      "license": "Mixkit License",
+      "url": "https://mixkit.co/free-sound-effects/download/1490/",
+      "tags": [
+        "whoosh"
+      ],
+      "note": "快过渡 whoosh",
+      "exists": true,
+      "duration": 1.756712,
+      "bytes": 309928
+    },
+    {
+      "id": "mixkit-1489",
+      "file": "mixkit-cinematic-whoosh-fast.wav",
+      "title": "Cinematic whoosh fast",
+      "author": "Mixkit",
+      "source": "Mixkit",
+      "license": "Mixkit License",
+      "url": "https://mixkit.co/free-sound-effects/download/1489/",
+      "tags": [
+        "whoosh",
+        "cinematic"
+      ],
+      "note": "电影感 whoosh，偏长",
+      "exists": true,
+      "duration": 2.320658,
+      "bytes": 614126
+    },
+    {
+      "id": "mixkit-787",
+      "file": "mixkit-whoosh-787.wav",
+      "title": "Whoosh 787",
+      "author": "Mixkit",
+      "source": "Mixkit",
+      "license": "Mixkit License",
+      "url": "https://mixkit.co/free-sound-effects/download/787/",
+      "tags": [
+        "whoosh"
+      ],
+      "note": "通用 whoosh",
+      "exists": true,
+      "duration": 2.516984,
+      "bytes": 666074
+    }
+  ]
+}

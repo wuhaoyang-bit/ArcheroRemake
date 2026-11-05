@@ -1,0 +1,746 @@
+[
+  {
+    "id": "sonilo-balloon-stretch",
+    "title": "气球橡胶拉伸吱吱",
+    "group": "stretch",
+    "groupLabel": "① 橡胶撑起 · 拉伸吱吱",
+    "source": "Sonilo",
+    "url": "https://sonilo.com/royalty-free-sound-effects/rubber/squeaky-rubber-balloon-stretching",
+    "license": "Sonilo free (credit)",
+    "tags": [
+      "stretch",
+      "squeak",
+      "balloon"
+    ],
+    "file": "sonilo_balloon_stretch.wav",
+    "durationMs": 5015
+  },
+  {
+    "id": "sonilo-inflate-stretch",
+    "title": "充气时橡胶撑开",
+    "group": "inflate",
+    "groupLabel": "② 撑胀充气 · 膜面拉紧",
+    "source": "Sonilo",
+    "url": "https://sonilo.com/",
+    "license": "Sonilo free (credit)",
+    "tags": [
+      "inflate",
+      "stretch",
+      "balloon"
+    ],
+    "file": "sonilo_inflate_stretch.wav",
+    "durationMs": 2972
+  },
+  {
+    "id": "sonilo-balloon-inflate",
+    "title": "吱吱充气气球",
+    "group": "inflate",
+    "groupLabel": "② 撑胀充气 · 膜面拉紧",
+    "source": "Sonilo",
+    "url": "https://sonilo.com/",
+    "license": "Sonilo free (credit)",
+    "tags": [
+      "inflate",
+      "squeak",
+      "balloon"
+    ],
+    "file": "sonilo_balloon_inflate.wav",
+    "durationMs": 2972
+  },
+  {
+    "id": "sonilo-blow-up",
+    "title": "吹胀吱吱气球（长）",
+    "group": "inflate",
+    "groupLabel": "② 撑胀充气 · 膜面拉紧",
+    "source": "Sonilo",
+    "url": "https://sonilo.com/",
+    "license": "Sonilo free (credit)",
+    "tags": [
+      "inflate",
+      "squeak",
+      "long"
+    ],
+    "file": "sonilo_blow_up_squeaky.wav",
+    "durationMs": 9009
+  },
+  {
+    "id": "sonilo-cartoon-stretch",
+    "title": "卡通橡胶拉伸",
+    "group": "stretch",
+    "groupLabel": "① 橡胶撑起 · 拉伸吱吱",
+    "source": "Sonilo",
+    "url": "https://sonilo.com/",
+    "license": "Sonilo free (credit)",
+    "tags": [
+      "stretch",
+      "cartoon",
+      "squeak"
+    ],
+    "file": "sonilo_cartoon_stretch.wav",
+    "durationMs": 2043
+  },
+  {
+    "id": "sonilo-cartoon-inflate",
+    "title": "卡通气球充气吱吱",
+    "group": "inflate",
+    "groupLabel": "② 撑胀充气 · 膜面拉紧",
+    "source": "Sonilo",
+    "url": "https://sonilo.com/",
+    "license": "Sonilo free (credit)",
+    "tags": [
+      "inflate",
+      "cartoon",
+      "squeak"
+    ],
+    "file": "sonilo_cartoon_inflate.wav",
+    "durationMs": 2043
+  },
+  {
+    "id": "sonilo-twist",
+    "title": "扭气球橡胶吱吱",
+    "group": "rub",
+    "groupLabel": "③ 摩擦扭拧 · 膜面张力",
+    "source": "Sonilo",
+    "url": "https://sonilo.com/",
+    "license": "Sonilo free (credit)",
+    "tags": [
+      "twist",
+      "squeak",
+      "balloon"
+    ],
+    "file": "sonilo_twist_balloon.wav",
+    "durationMs": 2043
+  },
+  {
+    "id": "sonilo-balloon-rub",
+    "title": "气球橡胶摩擦",
+    "group": "rub",
+    "groupLabel": "③ 摩擦扭拧 · 膜面张力",
+    "source": "Sonilo",
+    "url": "https://sonilo.com/",
+    "license": "Sonilo free (credit)",
+    "tags": [
+      "rub",
+      "squeak",
+      "balloon"
+    ],
+    "file": "sonilo_balloon_rub.wav",
+    "durationMs": 2043
+  },
+  {
+    "id": "sonilo-rubbing-squeaks",
+    "title": "气球摩擦连串吱吱",
+    "group": "rub",
+    "groupLabel": "③ 摩擦扭拧 · 膜面张力",
+    "source": "Sonilo",
+    "url": "https://sonilo.com/",
+    "license": "Sonilo free (credit)",
+    "tags": [
+      "rub",
+      "squeak"
+    ],
+    "file": "sonilo_rubbing_squeaks.wav",
+    "durationMs": 2043
+  },
+  {
+    "id": "sonilo-leather-stretch",
+    "title": "仿皮/橡胶拉伸",
+    "group": "stretch",
+    "groupLabel": "① 橡胶撑起 · 拉伸吱吱",
+    "source": "Sonilo",
+    "url": "https://sonilo.com/",
+    "license": "Sonilo free (credit)",
+    "tags": [
+      "stretch",
+      "leather"
+    ],
+    "file": "sonilo_leather_stretch.wav",
+    "durationMs": 2043
+  },
+  {
+    "id": "sonilo-latex-glove",
+    "title": "乳胶手套拉伸",
+    "group": "stretch",
+    "groupLabel": "① 橡胶撑起 · 拉伸吱吱",
+    "source": "Sonilo",
+    "url": "https://sonilo.com/",
+    "license": "Sonilo free (credit)",
+    "tags": [
+      "stretch",
+      "latex",
+      "glove"
+    ],
+    "file": "sonilo_latex_glove.wav",
+    "durationMs": 2043
+  },
+  {
+    "id": "sonilo-elastic",
+    "title": "弹性材料拉紧再松",
+    "group": "elastic",
+    "groupLabel": "④ 橡皮筋/弹性 · 拉紧",
+    "source": "Sonilo",
+    "url": "https://sonilo.com/",
+    "license": "Sonilo free (credit)",
+    "tags": [
+      "elastic",
+      "stretch",
+      "release"
+    ],
+    "file": "sonilo_elastic_release.wav",
+    "durationMs": 3993
+  },
+  {
+    "id": "sonilo-rubber-band",
+    "title": "橡皮筋拉紧弹响",
+    "group": "elastic",
+    "groupLabel": "④ 橡皮筋/弹性 · 拉紧",
+    "source": "Sonilo",
+    "url": "https://sonilo.com/",
+    "license": "Sonilo free (credit)",
+    "tags": [
+      "elastic",
+      "snap"
+    ],
+    "file": "sonilo_rubber_band.wav",
+    "durationMs": 2043
+  },
+  {
+    "id": "sonilo-deflate-squeal",
+    "title": "放气尖啸（膜面紧绷）",
+    "group": "tension",
+    "groupLabel": "⑤ 紧绷尖啸 · 即将撑爆感",
+    "source": "Sonilo",
+    "url": "https://sonilo.com/",
+    "license": "Sonilo free (credit)",
+    "tags": [
+      "squeal",
+      "tension",
+      "deflate"
+    ],
+    "file": "sonilo_deflate_squeal.wav",
+    "durationMs": 2972
+  },
+  {
+    "id": "sonilo-ball-squeak",
+    "title": "篮球橡胶摩擦短吱",
+    "group": "rub",
+    "groupLabel": "③ 摩擦扭拧 · 膜面张力",
+    "source": "Sonilo",
+    "url": "https://sonilo.com/",
+    "license": "Sonilo free (credit)",
+    "tags": [
+      "rub",
+      "squeak",
+      "short"
+    ],
+    "file": "sonilo_ball_squeak.wav",
+    "durationMs": 534
+  },
+  {
+    "id": "sonilo-heavy-snap",
+    "title": "厚橡胶拍打撕裂感",
+    "group": "tension",
+    "groupLabel": "⑤ 紧绷尖啸 · 即将撑爆感",
+    "source": "Sonilo",
+    "url": "https://sonilo.com/",
+    "license": "Sonilo free (credit)",
+    "tags": [
+      "snap",
+      "rubber",
+      "heavy"
+    ],
+    "file": "sonilo_heavy_snap.wav",
+    "durationMs": 10959
+  },
+  {
+    "id": "budget-stretchy",
+    "title": "吱吱拉伸 · 沙哑透气",
+    "group": "stretch",
+    "groupLabel": "① 橡胶撑起 · 拉伸吱吱",
+    "source": "BudgetPixel AI",
+    "url": "https://budgetpixel.com/sfx/squeaky-balloon-stretch-64a84bec",
+    "license": "CC BY 4.0",
+    "tags": [
+      "stretch",
+      "squeak",
+      "balloon"
+    ],
+    "file": "budget_stretchy_raspy.wav",
+    "durationMs": 2971
+  },
+  {
+    "id": "budget-stretchy-short",
+    "title": "短促橡胶拉伸",
+    "group": "stretch",
+    "groupLabel": "① 橡胶撑起 · 拉伸吱吱",
+    "source": "BudgetPixel AI",
+    "url": "https://budgetpixel.com/",
+    "license": "CC BY 4.0",
+    "tags": [
+      "stretch",
+      "short",
+      "rubbery"
+    ],
+    "file": "budget_stretchy_short.wav",
+    "durationMs": 2010
+  },
+  {
+    "id": "budget-scratchy-rubbery",
+    "title": "刮擦橡胶短吱",
+    "group": "rub",
+    "groupLabel": "③ 摩擦扭拧 · 膜面张力",
+    "source": "BudgetPixel AI",
+    "url": "https://budgetpixel.com/",
+    "license": "CC BY 4.0",
+    "tags": [
+      "rub",
+      "scratch",
+      "rubbery"
+    ],
+    "file": "budget_scratchy_rubbery.wav",
+    "durationMs": 2042
+  },
+  {
+    "id": "budget-screech",
+    "title": "尖锐橡胶尖叫",
+    "group": "tension",
+    "groupLabel": "⑤ 紧绷尖啸 · 即将撑爆感",
+    "source": "BudgetPixel AI",
+    "url": "https://budgetpixel.com/",
+    "license": "CC BY 4.0",
+    "tags": [
+      "screech",
+      "tension",
+      "rubbery"
+    ],
+    "file": "budget_screech_rubbery.wav",
+    "durationMs": 1920
+  },
+  {
+    "id": "budget-twist",
+    "title": "干涩扭拧拉紧",
+    "group": "rub",
+    "groupLabel": "③ 摩擦扭拧 · 膜面张力",
+    "source": "BudgetPixel AI",
+    "url": "https://budgetpixel.com/",
+    "license": "CC BY 4.0",
+    "tags": [
+      "twist",
+      "tight"
+    ],
+    "file": "budget_twist_tight.wav",
+    "durationMs": 2042
+  },
+  {
+    "id": "budget-scratchy-dry",
+    "title": "近距干刮吱吱",
+    "group": "rub",
+    "groupLabel": "③ 摩擦扭拧 · 膜面张力",
+    "source": "BudgetPixel AI",
+    "url": "https://budgetpixel.com/",
+    "license": "CC BY 4.0",
+    "tags": [
+      "scratch",
+      "squeak"
+    ],
+    "file": "budget_scratchy_dry.wav",
+    "durationMs": 1666
+  },
+  {
+    "id": "budget-sustained",
+    "title": "持续沙哑吱吱",
+    "group": "tension",
+    "groupLabel": "⑤ 紧绷尖啸 · 即将撑爆感",
+    "source": "BudgetPixel AI",
+    "url": "https://budgetpixel.com/",
+    "license": "CC BY 4.0",
+    "tags": [
+      "sustained",
+      "squeak"
+    ],
+    "file": "budget_sustained_raspy.wav",
+    "durationMs": 1887
+  },
+  {
+    "id": "bsb-inflate-01",
+    "title": "BSB 气球充气 01",
+    "group": "inflate",
+    "groupLabel": "② 撑胀充气 · 膜面拉紧",
+    "source": "BigSoundBank · Joseph Sardin",
+    "url": "https://bigsoundbank.com/s1129.html",
+    "license": "CC0",
+    "tags": [
+      "inflate",
+      "balloon"
+    ],
+    "file": "bsb_balloon_inflate_01.wav",
+    "durationMs": 9729
+  },
+  {
+    "id": "bsb-inflate-02",
+    "title": "BSB 气球充气 02",
+    "group": "inflate",
+    "groupLabel": "② 撑胀充气 · 膜面拉紧",
+    "source": "BigSoundBank · Joseph Sardin",
+    "url": "https://bigsoundbank.com/s1130.html",
+    "license": "CC0",
+    "tags": [
+      "inflate",
+      "balloon"
+    ],
+    "file": "bsb_balloon_inflate_02.wav",
+    "durationMs": 8489
+  },
+  {
+    "id": "bsb-inflate-03",
+    "title": "BSB 气球充气 03",
+    "group": "inflate",
+    "groupLabel": "② 撑胀充气 · 膜面拉紧",
+    "source": "BigSoundBank · Joseph Sardin",
+    "url": "https://bigsoundbank.com/s1131.html",
+    "license": "CC0",
+    "tags": [
+      "inflate",
+      "balloon"
+    ],
+    "file": "bsb_balloon_inflate_03.wav",
+    "durationMs": 10683
+  },
+  {
+    "id": "bsb-inflate-04",
+    "title": "BSB 气球充气 04",
+    "group": "inflate",
+    "groupLabel": "② 撑胀充气 · 膜面拉紧",
+    "source": "BigSoundBank · Joseph Sardin",
+    "url": "https://bigsoundbank.com/s1132.html",
+    "license": "CC0",
+    "tags": [
+      "inflate",
+      "balloon"
+    ],
+    "file": "bsb_balloon_inflate_04.wav",
+    "durationMs": 8585
+  },
+  {
+    "id": "bsb-wall-01",
+    "title": "BSB 气球蹭墙 01",
+    "group": "rub",
+    "groupLabel": "③ 摩擦扭拧 · 膜面张力",
+    "source": "BigSoundBank · Joseph Sardin",
+    "url": "https://bigsoundbank.com/s1825.html",
+    "license": "CC0",
+    "tags": [
+      "rub",
+      "balloon",
+      "short"
+    ],
+    "file": "bsb_balloon_wall_01.wav",
+    "durationMs": 524
+  },
+  {
+    "id": "bsb-wall-02",
+    "title": "BSB 气球蹭墙 02",
+    "group": "rub",
+    "groupLabel": "③ 摩擦扭拧 · 膜面张力",
+    "source": "BigSoundBank · Joseph Sardin",
+    "url": "https://bigsoundbank.com/s1826.html",
+    "license": "CC0",
+    "tags": [
+      "rub",
+      "balloon",
+      "short"
+    ],
+    "file": "bsb_balloon_wall_02.wav",
+    "durationMs": 305
+  },
+  {
+    "id": "bsb-rebounds",
+    "title": "BSB 球弹跳（橡胶感）",
+    "group": "elastic",
+    "groupLabel": "④ 橡皮筋/弹性 · 拉紧",
+    "source": "BigSoundBank · Joseph Sardin",
+    "url": "https://bigsoundbank.com/s1045.html",
+    "license": "CC0",
+    "tags": [
+      "elastic",
+      "ball"
+    ],
+    "file": "bsb_ball_rebounds.wav",
+    "durationMs": 7821
+  },
+  {
+    "id": "mix-rubber-squeaking",
+    "title": "Mixkit 橡胶吱吱（长）",
+    "group": "stretch",
+    "groupLabel": "① 橡胶撑起 · 拉伸吱吱",
+    "source": "Mixkit",
+    "url": "https://mixkit.co/free-sound-effects/rubber/",
+    "license": "Mixkit License",
+    "tags": [
+      "squeak",
+      "rubber"
+    ],
+    "file": "mix_rubber_squeaking.wav",
+    "durationMs": 5637
+  },
+  {
+    "id": "mix-rubber-fast",
+    "title": "Mixkit 快速橡胶吱吱",
+    "group": "stretch",
+    "groupLabel": "① 橡胶撑起 · 拉伸吱吱",
+    "source": "Mixkit",
+    "url": "https://mixkit.co/free-sound-effects/rubber/",
+    "license": "Mixkit License",
+    "tags": [
+      "squeak",
+      "short"
+    ],
+    "file": "mix_rubber_fast_squeak.wav",
+    "durationMs": 1651
+  },
+  {
+    "id": "fs-417433",
+    "title": "FS 高清气球刮擦拉伸",
+    "group": "rub",
+    "groupLabel": "③ 摩擦扭拧 · 膜面张力",
+    "source": "Freesound · RokZRooM",
+    "url": "https://freesound.org/people/RokZRooM/sounds/417433/",
+    "license": "CC0",
+    "tags": [
+      "scratch",
+      "stretch",
+      "balloon"
+    ],
+    "file": "fs_balloon_scratch_hires.wav",
+    "durationMs": 81087
+  },
+  {
+    "id": "fs-876909",
+    "title": "FS 橡胶拉伸（充气+拉）",
+    "group": "stretch",
+    "groupLabel": "① 橡胶撑起 · 拉伸吱吱",
+    "source": "Freesound · ottoojala",
+    "url": "https://freesound.org/s/876909/",
+    "license": "CC0",
+    "tags": [
+      "stretch",
+      "balloon"
+    ],
+    "file": "fs_rubber_stretch.wav",
+    "durationMs": 21619
+  },
+  {
+    "id": "fs-876917",
+    "title": "FS 橡胶拉伸 2（Crocs）",
+    "group": "stretch",
+    "groupLabel": "① 橡胶撑起 · 拉伸吱吱",
+    "source": "Freesound · ottoojala",
+    "url": "https://freesound.org/s/876917/",
+    "license": "CC0",
+    "tags": [
+      "stretch",
+      "rubber"
+    ],
+    "file": "fs_rubber_stretch_2.wav",
+    "durationMs": 14907
+  },
+  {
+    "id": "fs-766341",
+    "title": "FS 拉扯移动气球",
+    "group": "rub",
+    "groupLabel": "③ 摩擦扭拧 · 膜面张力",
+    "source": "Freesound",
+    "url": "https://freesound.org/s/766341/",
+    "license": "CC0",
+    "tags": [
+      "pull",
+      "balloon"
+    ],
+    "file": "fs_balloon_pull.wav",
+    "durationMs": 23500
+  },
+  {
+    "id": "fs-253327",
+    "title": "FS 橡胶拉扯撕裂",
+    "group": "tension",
+    "groupLabel": "⑤ 紧绷尖啸 · 即将撑爆感",
+    "source": "Freesound · mickdow",
+    "url": "https://freesound.org/s/253327/",
+    "license": "CC0",
+    "tags": [
+      "stretch",
+      "rip",
+      "tension"
+    ],
+    "file": "fs_rubber_stretch_rip.wav",
+    "durationMs": 88000
+  },
+  {
+    "id": "fs-858623",
+    "title": "FS 气球拉伸再松回",
+    "group": "stretch",
+    "groupLabel": "① 橡胶撑起 · 拉伸吱吱",
+    "source": "Freesound",
+    "url": "https://freesound.org/s/858623/",
+    "license": "CC0",
+    "tags": [
+      "stretch",
+      "balloon"
+    ],
+    "file": "fs_stretch_unstretch.wav",
+    "durationMs": 9609
+  },
+  {
+    "id": "fs-569256",
+    "title": "FS 气球吱吱合集（长）",
+    "group": "rub",
+    "groupLabel": "③ 摩擦扭拧 · 膜面张力",
+    "source": "Freesound · Nakhas",
+    "url": "https://freesound.org/s/569256/",
+    "license": "CC0",
+    "tags": [
+      "squeak",
+      "balloon",
+      "long"
+    ],
+    "file": "fs_balloon_squeaks_long.wav",
+    "durationMs": 180438
+  },
+  {
+    "id": "fs-707726",
+    "title": "FS 气球拉伸短音",
+    "group": "stretch",
+    "groupLabel": "① 橡胶撑起 · 拉伸吱吱",
+    "source": "Freesound",
+    "url": "https://freesound.org/s/707726/",
+    "license": "CC0",
+    "tags": [
+      "stretch",
+      "short"
+    ],
+    "file": "fs_balloon_stretching.wav",
+    "durationMs": 3500
+  },
+  {
+    "id": "fs-869536",
+    "title": "FS 手指划过气球",
+    "group": "rub",
+    "groupLabel": "③ 摩擦扭拧 · 膜面张力",
+    "source": "Freesound · swagween",
+    "url": "https://freesound.org/s/869536/",
+    "license": "CC0",
+    "tags": [
+      "rub",
+      "balloon"
+    ],
+    "file": "fs_balloon_finger.wav",
+    "durationMs": 20294
+  },
+  {
+    "id": "fs-569533",
+    "title": "FS 湿橡胶面具拉伸",
+    "group": "stretch",
+    "groupLabel": "① 橡胶撑起 · 拉伸吱吱",
+    "source": "Freesound · bmacph",
+    "url": "https://freesound.org/s/569533/",
+    "license": "CC0",
+    "tags": [
+      "stretch",
+      "wet",
+      "rubber"
+    ],
+    "file": "fs_rubber_mask_wet.wav",
+    "durationMs": 24496
+  },
+  {
+    "id": "fs-125160",
+    "title": "FS 橡胶揉皱拉伸",
+    "group": "stretch",
+    "groupLabel": "① 橡胶撑起 · 拉伸吱吱",
+    "source": "Freesound · alienistcog",
+    "url": "https://freesound.org/s/125160/",
+    "license": "CC0",
+    "tags": [
+      "rubber",
+      "crumple"
+    ],
+    "file": "fs_rubbery_crumple.wav",
+    "durationMs": 78885
+  },
+  {
+    "id": "fs-649325",
+    "title": "FS 气球吱吱 HQ（长）",
+    "group": "rub",
+    "groupLabel": "③ 摩擦扭拧 · 膜面张力",
+    "source": "Freesound",
+    "url": "https://freesound.org/s/649325/",
+    "license": "CC0",
+    "tags": [
+      "squeak",
+      "balloon",
+      "long"
+    ],
+    "file": "fs_balloon_squeaks_hq.wav",
+    "durationMs": 211358
+  },
+  {
+    "id": "fs-833467",
+    "title": "FS 充气/放气/手持",
+    "group": "inflate",
+    "groupLabel": "② 撑胀充气 · 膜面拉紧",
+    "source": "Freesound",
+    "url": "https://freesound.org/s/833467/",
+    "license": "CC0",
+    "tags": [
+      "inflate",
+      "handle"
+    ],
+    "file": "fs_blow_deflate_handle.wav",
+    "durationMs": 74963
+  },
+  {
+    "id": "fs-76802",
+    "title": "FS 气球摩擦 01",
+    "group": "rub",
+    "groupLabel": "③ 摩擦扭拧 · 膜面张力",
+    "source": "Freesound · carlSablowE",
+    "url": "https://freesound.org/s/76802/",
+    "license": "CC0",
+    "tags": [
+      "rub",
+      "balloon"
+    ],
+    "file": "fs_balloon_rubbing_01.wav",
+    "durationMs": 18906
+  },
+  {
+    "id": "fs-235535",
+    "title": "FS 气球摩擦短音",
+    "group": "rub",
+    "groupLabel": "③ 摩擦扭拧 · 膜面张力",
+    "source": "Freesound · simosco",
+    "url": "https://freesound.org/s/235535/",
+    "license": "CC0",
+    "tags": [
+      "rub",
+      "short"
+    ],
+    "file": "fs_balloon_rub_short.wav",
+    "durationMs": 1131
+  },
+  {
+    "id": "fs-511673",
+    "title": "FS 气球搞怪声",
+    "group": "tension",
+    "groupLabel": "⑤ 紧绷尖啸 · 即将撑爆感",
+    "source": "Freesound · jerry.beru",
+    "url": "https://freesound.org/s/511673/",
+    "license": "CC0",
+    "tags": [
+      "balloon",
+      "funny"
+    ],
+    "file": "fs_balloon_funny.wav",
+    "durationMs": 44614
+  }
+]

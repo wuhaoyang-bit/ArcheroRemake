@@ -46,6 +46,12 @@ GLB 自带贴图与骨骼动画，运行时无需 Blender、FBX 或网络素材�
 
 旧脚本 `tools/prepare-character.py` 仅用于重建历史 KayKit 资源；当前角色请使用上面的新脚本。
 
+## 箭射音效：Erdie bow01（已接入）
+
+`public/audio/bow01.wav` 来自 Freesound [bow01.wav](https://freesound.org/people/Erdie/sounds/65733/)（作者 Erdie），许可 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)。运行时由 `ArrowFireSfx` 在每支箭 `fire()` 时播放；致谢文案见 [ERDIE-BOW01-LICENSE.txt](public/licenses/ERDIE-BOW01-LICENSE.txt)。
+
+建议游戏致谢一行：`"bow01" by Erdie (https://freesound.org/s/65733/) — CC BY 4.0`
+
 ## 原版箭矢（已接入）
 
 原版 `game/bulletmodels/1001_01` 已定向提取到 [assets/archero-arrow](assets/archero-arrow/README.md)，包含 GLB、Blender、贴图、原始组件与验证记录。提取目录保留原始存档；运行时使用其副本 `public/models/archero-arrow.glb`，在释放点生成匀速箭矢。命中当前训练敌人的网格即隐藏并回收，对象池复用网格与材质，不添加命中特效。网格 resources.assets / 6847，材质 142，贴图 3625；此素材来自本机商业游戏，不属于 CC0。

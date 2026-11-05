@@ -4,6 +4,7 @@ import { CAMERA_SHAKE_DEFAULTS, CAMERA_SHAKE_LIMITS } from './camera-shake-confi
 import { CAMERA_ZOOM_DEFAULTS, CAMERA_ZOOM_LIMITS } from './camera-zoom-config.ts';
 import { BOW_FX_DEFAULTS, BOW_FX_LIMITS } from './bow-release-config.ts';
 import { ARROW_TRAIL_DEFAULTS, ARROW_TRAIL_LIMITS } from './arrow-trail-config.ts';
+import { SFX_DEFAULTS, SFX_LIMITS } from './sfx-config.ts';
 import { DEFAULT_RECOIL_CURVE } from './shot-recoil.ts';
 import { HIT_DEFAULTS, HIT_LIMITS } from './hit-feedback-config.ts';
 import { DEFAULT_RING_CURVE, DEFAULT_STROKE_CURVE, DEFAULT_LINK_ATTACK_CURVE, DEFAULT_SWITCH_CURVE } from './lock-rings.ts';
@@ -20,6 +21,7 @@ export const DEFAULTS = {
   ...CAMERA_SHAKE_DEFAULTS,
   ...BOW_FX_DEFAULTS,
   ...ARROW_TRAIL_DEFAULTS,
+  ...SFX_DEFAULTS,
   recoilEnabled:1,recoilDistance:.16,recoilDuration:.12,recoilSpeedCurve:DEFAULT_RECOIL_CURVE,
   monsterSpeed: 3,
   monsterScale: 1,
@@ -95,6 +97,7 @@ export const LIMITS: Record<SettingKey, [number, number, number]> = {
   ...CAMERA_SHAKE_LIMITS,
   ...BOW_FX_LIMITS,
   ...ARROW_TRAIL_LIMITS,
+  ...SFX_LIMITS,
   recoilEnabled:[0,1,1],recoilDistance:[0,2,.01],recoilDuration:[.01,1,.01],
   monsterSpeed: [0,10,.1],
   monsterScale: [0.1,6,0.1],
@@ -138,7 +141,7 @@ export function sanitize(key: SettingKey, value: number): number {
   if(key==='cameraZoomShotEnabled'||key==='cameraZoomHitEnabled')return value>=.5?1:0;
   if (key.startsWith('bowFx') && (key.endsWith('Enabled') || key==='bowFxRingCurve')) return value>=.5?1:0;
   if (key==='bowFxSpikeCount')value=Math.round(value);
-  if (key === 'arrowTrailEnabled' || key === 'arrowPaintEnabled' || key === 'recoilEnabled' || key === 'arrowPierce' || key === 'juiceDepthTest') return value >= .5 ? 1 : 0;
+  if (key === 'arrowTrailEnabled' || key === 'arrowPaintEnabled' || key === 'recoilEnabled' || key === 'arrowPierce' || key === 'juiceDepthTest' || key === 'sfxArrowFireEnabled' || key === 'sfxBodyHitEnabled' || key === 'sfxSlimeHitEnabled') return value >= .5 ? 1 : 0;
   if (key === 'monsterCount' || key === 'arrowsPerAttack' || key === 'juiceCount' || key === 'juiceCurve' || key === 'juiceColor' || key === 'arrowTrailColor' || key === 'arrowPaintColor') value = Math.round(value);
   if (key === 'puddleShape' || key === 'slimeStrandCount') value=Math.round(value);
   if ((key.startsWith('burst')||key.startsWith('puddle'))&&key.endsWith('Enabled')) return value>=.5?1:0;

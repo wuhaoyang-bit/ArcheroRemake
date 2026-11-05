@@ -51,6 +51,8 @@ export class TrainingFeedback {
     }
   }
   private isYellowSlime(d:Dummy){return d.root.userData.monsterModel==='yellow-slime'&&!!d.monster?.inflation;}
+  /** True when the live practice target is a yellow slime with inflation. */
+  isYellowSlimeTarget(id:string){const d=this.dummies.find(d=>d.root.userData.practiceTarget===id);return !!d&&this.isYellowSlime(d);}
   /** PLAN §3: bend after inflation write, before hitDeformation matrix. */
   private applyHitBend(d:Dummy,c:FeedbackSettings){
     const inflation=d.monster?.inflation;if(!this.isYellowSlime(d)||!inflation)return;

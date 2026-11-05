@@ -12,6 +12,7 @@ import { TrainingMonsterFactory, createTrainingCube } from './training-monster.t
 import { JuiceParticles } from './juice-particles.ts';
 import { TrainingFeedback } from './training-feedback.ts';
 import { ArrowProjectiles } from './arrow-projectiles.ts';
+import { ArrowFireSfx, BodyHitSfx, SlimeHitSfx } from './sfx.ts';
 import { LockRingView } from './lock-ring-view.ts';
 import { buildTraining } from './training-scene.ts';
 import { buildLockingTraining } from './locking-training-scene.ts';
@@ -138,6 +139,9 @@ export class GameScene {
   cameraZ: number;
   animation!: CharacterAnimation;
   arrows?: ArrowProjectiles;
+  arrowFireSfx = new ArrowFireSfx();
+  bodyHitSfx = new BodyHitSfx();
+  slimeHitSfx = new SlimeHitSfx();
   bowRelease?: BowReleaseEffects;
   private bowGrip!: THREE.Object3D;
   private shotOrigin = new THREE.Vector3();
@@ -255,7 +259,14 @@ export class GameScene {
     this.bowRelease=bowRelease;
     this.monsterFactory=monsters;
     this.arrows = arrows;
+    this.arrowFireSfx.preload();
+    this.bodyHitSfx.preload();
+    this.slimeHitSfx.preload();
+    this.arrowFireSfx.bindUnlock(this.viewport);
+    this.bodyHitSfx.bindUnlock(this.viewport);
+    this.slimeHitSfx.bindUnlock(this.viewport);
     this.arrows.onFire=(origin,direction,elapsed)=>{
+      this.arrowFireSfx.play(this.controller.settings);
       this.bowRelease?.emit(origin,direction,elapsed,this.controller.settings);
       this.cameraZoom.trigger('shot',this.controller.settings,elapsed);
     };
@@ -265,6 +276,10 @@ export class GameScene {
       if(!this.controller.combatTraining||!this.feedback)return;
       if(!this.feedback.hit(hit.id,hit.direction,this.controller.settings))return;
       const settings=this.controller.settings;
+      if(this.feedback.isYellowSlimeTarget(hit.id)){
+        this.bodyHitSfx.play(settings);
+        this.slimeHitSfx.play(settings);
+      }
       this.cameraZoom.trigger('hit',settings);
       const feet=this.feedback.feetOrigin(hit.id,this.juiceScratch);if(feet)this.hitSplash?.emit(hit.id,feet,settings);
       this.juice?.schedule(hit.id,settings,id=>this.juiceOriginFor(id));
