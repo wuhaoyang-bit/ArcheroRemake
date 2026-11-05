@@ -1,6 +1,7 @@
 import {
   SFX_ARROW_FIRE_MAX_VOICES,
   SFX_BODY_HIT_MAX_VOICES,
+  SFX_SLIME_BURST_WINDUP_MAX_VOICES,
   SFX_SLIME_HIT_MAX_VOICES,
   type SfxSettings,
 } from './sfx-config.ts';
@@ -12,6 +13,13 @@ const sfxSlimeHitUrls = () =>
   [
     `${import.meta.env.BASE_URL}audio/slime_10.wav`,
     `${import.meta.env.BASE_URL}audio/slime_11.wav`,
+  ] as const;
+const sfxSlimeBurstWindupUrls = () =>
+  [
+    `${import.meta.env.BASE_URL}audio/slime-burst-windup/windup_gurg_a.wav`,
+    `${import.meta.env.BASE_URL}audio/slime-burst-windup/windup_gurg_b.wav`,
+    `${import.meta.env.BASE_URL}audio/slime-burst-windup/windup_pour.wav`,
+    `${import.meta.env.BASE_URL}audio/slime-burst-windup/windup_vamp.wav`,
   ] as const;
 
 type Voice = {
@@ -87,13 +95,40 @@ export class OneShotBank {
     });
   }
 
+  /** Play a fixed buffer index (0-based). Out-of-range indices wrap via modulo. */
+  playIndex(index: number, params: PitchVolume) {
+    if (!params.enabled) return;
+    const baseVolume = Math.max(0, Math.min(1, params.volume));
+    if (baseVolume <= 1e-6) return;
+
+    const ctx = this.ensureContext();
+    if (ctx.state === 'suspended') void ctx.resume();
+
+    const run = () => {
+      if (!this.buffers.length || !params.enabled) return;
+      const n = this.buffers.length;
+      const i = ((Math.floor(index) % n) + n) % n;
+      this.startVoice(params, baseVolume, i);
+    };
+
+    if (this.buffers.length) {
+      run();
+      return;
+    }
+    void this.ensureBuffers().then(run);
+  }
+
+  stopAll() {
+    for (const v of this.voices) this.stopVoice(v);
+    this.voices.length = 0;
+  }
+
   get activeCount() {
     return this.voices.length;
   }
 
   dispose() {
-    for (const v of this.voices) this.stopVoice(v);
-    this.voices.length = 0;
+    this.stopAll();
     if (this.ctx) void this.ctx.close();
     this.ctx = null;
     this.buffers = [];
@@ -101,7 +136,7 @@ export class OneShotBank {
     this.lastIndex = -1;
   }
 
-  private startVoice(params: PitchVolume, baseVolume: number) {
+  private startVoice(params: PitchVolume, baseVolume: number, forcedIndex?: number) {
     if (!this.buffers.length) return;
     const ctx = this.ensureContext();
     this.pruneVoices(ctx.currentTime);
@@ -111,7 +146,7 @@ export class OneShotBank {
       if (oldest) this.stopVoice(oldest);
     }
 
-    const index = this.pickIndex();
+    const index = forcedIndex === undefined ? this.pickIndex() : forcedIndex;
     this.lastIndex = index;
     const buffer = this.buffers[index]!;
 
@@ -311,5 +346,41 @@ export class SlimeHitSfx {
       this.bank.play(snap);
     }, delay * 1000);
     this.pending.push(id);
+  }
+}
+
+type SlimeBurstWindupPlaySettings = Pick<
+  SfxSettings,
+  | 'sfxSlimeBurstWindupEnabled'
+  | 'sfxSlimeBurstWindupVariant'
+  | 'sfxSlimeBurstWindupVolume'
+  | 'sfxSlimeBurstWindupPitchMin'
+  | 'sfxSlimeBurstWindupPitchMax'
+>;
+
+/**
+ * Yellow-slime winding one-shot. Plays the selected variant (1–4) once on
+ * feedback→winding; call stop() when the burst reaches gone.
+ */
+export class SlimeBurstWindupSfx {
+  private bank = new OneShotBank(sfxSlimeBurstWindupUrls(), SFX_SLIME_BURST_WINDUP_MAX_VOICES, false);
+
+  preload() { this.bank.preload(); }
+  unlock() { this.bank.unlock(); }
+  bindUnlock(root?: HTMLElement | Document) { this.bank.bindUnlock(root); }
+  get activeCount() { return this.bank.activeCount; }
+  dispose() { this.bank.dispose(); }
+  stop() { this.bank.stopAll(); }
+
+  play(settings: SlimeBurstWindupPlaySettings) {
+    if (!settings.sfxSlimeBurstWindupEnabled) return;
+    const variant = Math.max(1, Math.min(4, Math.round(settings.sfxSlimeBurstWindupVariant || 1)));
+    this.bank.playIndex(variant - 1, {
+      enabled: true,
+      volume: settings.sfxSlimeBurstWindupVolume,
+      pitchMin: settings.sfxSlimeBurstWindupPitchMin,
+      pitchMax: settings.sfxSlimeBurstWindupPitchMax,
+      volumeJitter: 0,
+    });
   }
 }
