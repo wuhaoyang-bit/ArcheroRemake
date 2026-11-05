@@ -1,6 +1,9 @@
 import {
   SFX_ARROW_FIRE_MAX_VOICES,
   SFX_BODY_HIT_MAX_VOICES,
+  SFX_SLIME_BURST_DEATH_COUNT,
+  SFX_SLIME_BURST_DEATH_DELAY_KEYS,
+  SFX_SLIME_BURST_DEATH_MAX_VOICES,
   SFX_SLIME_BURST_WINDUP_MAX_VOICES,
   SFX_SLIME_HIT_MAX_VOICES,
   type SfxSettings,
@@ -20,6 +23,17 @@ const sfxSlimeBurstWindupUrls = () =>
     `${import.meta.env.BASE_URL}audio/slime-burst-windup/windup_gurg_b.wav`,
     `${import.meta.env.BASE_URL}audio/slime-burst-windup/windup_pour.wav`,
     `${import.meta.env.BASE_URL}audio/slime-burst-windup/windup_vamp.wav`,
+  ] as const;
+const sfxSlimeBurstDeathUrls = () =>
+  [
+    `${import.meta.env.BASE_URL}audio/slime-burst-death/death_burst_small_2.wav`,
+    `${import.meta.env.BASE_URL}audio/slime-burst-death/death_burst_small_3.wav`,
+    `${import.meta.env.BASE_URL}audio/slime-burst-death/meaty_deaths_0.wav`,
+    `${import.meta.env.BASE_URL}audio/slime-burst-death/meaty_deaths_1.wav`,
+    `${import.meta.env.BASE_URL}audio/slime-burst-death/meaty_deaths_2.wav`,
+    `${import.meta.env.BASE_URL}audio/slime-burst-death/meaty_deaths_3.wav`,
+    `${import.meta.env.BASE_URL}audio/slime-burst-death/meaty_deaths_4.wav`,
+    `${import.meta.env.BASE_URL}audio/slime-burst-death/mushroom_poof_2.wav`,
   ] as const;
 
 type Voice = {
@@ -79,7 +93,7 @@ export class OneShotBank {
 
   play(params: PitchVolume) {
     if (!params.enabled) return;
-    const baseVolume = Math.max(0, Math.min(1, params.volume));
+    const baseVolume = Math.max(0, Math.min(2, params.volume));
     if (baseVolume <= 1e-6) return;
 
     const ctx = this.ensureContext();
@@ -95,10 +109,13 @@ export class OneShotBank {
     });
   }
 
-  /** Play a fixed buffer index (0-based). Out-of-range indices wrap via modulo. */
-  playIndex(index: number, params: PitchVolume) {
+  /**
+   * Play a fixed buffer index (0-based). Out-of-range indices wrap via modulo.
+   * `delaySec` schedules `AudioBufferSourceNode.start` in the future (Web Audio clock).
+   */
+  playIndex(index: number, params: PitchVolume, delaySec = 0) {
     if (!params.enabled) return;
-    const baseVolume = Math.max(0, Math.min(1, params.volume));
+    const baseVolume = Math.max(0, Math.min(2, params.volume));
     if (baseVolume <= 1e-6) return;
 
     const ctx = this.ensureContext();
@@ -108,7 +125,7 @@ export class OneShotBank {
       if (!this.buffers.length || !params.enabled) return;
       const n = this.buffers.length;
       const i = ((Math.floor(index) % n) + n) % n;
-      this.startVoice(params, baseVolume, i);
+      this.startVoice(params, baseVolume, i, delaySec);
     };
 
     if (this.buffers.length) {
@@ -136,7 +153,7 @@ export class OneShotBank {
     this.lastIndex = -1;
   }
 
-  private startVoice(params: PitchVolume, baseVolume: number, forcedIndex?: number) {
+  private startVoice(params: PitchVolume, baseVolume: number, forcedIndex?: number, delaySec = 0) {
     if (!this.buffers.length) return;
     const ctx = this.ensureContext();
     this.pruneVoices(ctx.currentTime);
@@ -160,7 +177,7 @@ export class OneShotBank {
     let volume = baseVolume;
     if (jitter > 0) {
       volume = baseVolume * (1 - jitter + Math.random() * jitter * 2);
-      volume = Math.max(0.05, Math.min(1, volume));
+      volume = Math.max(0.05, Math.min(2, volume));
     }
 
     const gain = ctx.createGain();
@@ -171,13 +188,13 @@ export class OneShotBank {
     source.buffer = buffer;
     source.playbackRate.value = rate;
     source.connect(gain);
-    const startedAt = ctx.currentTime;
-    const voice: Voice = { source, gain, startedAt, duration: buffer.duration, rate };
+    const when = ctx.currentTime + Math.max(0, delaySec);
+    const voice: Voice = { source, gain, startedAt: when, duration: buffer.duration, rate };
     source.onended = () => {
       this.voices = this.voices.filter(v => v !== voice);
       this.disconnectVoice(voice);
     };
-    source.start(0);
+    source.start(when);
     this.voices.push(voice);
   }
 
@@ -382,5 +399,47 @@ export class SlimeBurstWindupSfx {
       pitchMax: settings.sfxSlimeBurstWindupPitchMax,
       volumeJitter: 0,
     });
+  }
+}
+
+type SlimeBurstDeathPlaySettings = Pick<
+  SfxSettings,
+  | 'sfxSlimeBurstDeathEnabled'
+  | 'sfxSlimeBurstDeathVolume'
+  | 'sfxSlimeBurstDeathMask'
+  | (typeof SFX_SLIME_BURST_DEATH_DELAY_KEYS)[number]
+>;
+
+/**
+ * Yellow-slime burst (gone) layered one-shots. Plays every mask-selected clip
+ * at once (each with its own delay); call stop() on reset.
+ */
+export class SlimeBurstDeathSfx {
+  private bank = new OneShotBank(sfxSlimeBurstDeathUrls(), SFX_SLIME_BURST_DEATH_MAX_VOICES, false);
+
+  preload() { this.bank.preload(); }
+  unlock() { this.bank.unlock(); }
+  bindUnlock(root?: HTMLElement | Document) { this.bank.bindUnlock(root); }
+  get activeCount() { return this.bank.activeCount; }
+  dispose() { this.bank.dispose(); }
+  stop() { this.bank.stopAll(); }
+
+  play(settings: SlimeBurstDeathPlaySettings) {
+    if (!settings.sfxSlimeBurstDeathEnabled) return;
+    const mask = Math.max(0, Math.round(settings.sfxSlimeBurstDeathMask)) & ((1 << SFX_SLIME_BURST_DEATH_COUNT) - 1);
+    if (!mask) return;
+    const params = {
+      enabled: true,
+      volume: settings.sfxSlimeBurstDeathVolume,
+      pitchMin: 0,
+      pitchMax: 0,
+      volumeJitter: 0,
+    };
+    for (let i = 0; i < SFX_SLIME_BURST_DEATH_COUNT; i++) {
+      if (!(mask & (1 << i))) continue;
+      const delayKey = SFX_SLIME_BURST_DEATH_DELAY_KEYS[i]!;
+      const delay = Math.max(0, settings[delayKey] || 0);
+      this.bank.playIndex(i, params, delay);
+    }
   }
 }

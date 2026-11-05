@@ -1,4 +1,10 @@
-/** Combat SFX: arrow fire + Body (instant) + slime pool (delayed) + slime burst windup. */
+/** Combat SFX: arrow fire + Body (instant) + slime pool (delayed) + slime burst windup/death. */
+
+export const SFX_SLIME_BURST_DEATH_COUNT = 8;
+
+/** Bitmask defaults: 小爆 A + 肉感 0 + 蘑菇噗 (bits 0, 2, 7). */
+export const SFX_SLIME_BURST_DEATH_DEFAULT_MASK =
+  (1 << 0) | (1 << 2) | (1 << 7);
 
 export const SFX_DEFAULTS = {
   sfxArrowFireEnabled: 1,
@@ -24,9 +30,43 @@ export const SFX_DEFAULTS = {
   sfxSlimeBurstWindupVolume: 0.85,
   sfxSlimeBurstWindupPitchMin: 0,
   sfxSlimeBurstWindupPitchMax: 0,
+
+  /** Yellow-slime burst (gone) layered one-shots; mask bit i ↔ death clip i. */
+  sfxSlimeBurstDeathEnabled: 1,
+  sfxSlimeBurstDeathVolume: 1.2,
+  sfxSlimeBurstDeathMask: SFX_SLIME_BURST_DEATH_DEFAULT_MASK,
+  sfxSlimeBurstDeathDelay0: 0,
+  sfxSlimeBurstDeathDelay1: 0,
+  sfxSlimeBurstDeathDelay2: 0,
+  sfxSlimeBurstDeathDelay3: 0,
+  sfxSlimeBurstDeathDelay4: 0,
+  sfxSlimeBurstDeathDelay5: 0,
+  sfxSlimeBurstDeathDelay6: 0,
+  sfxSlimeBurstDeathDelay7: 0,
 };
 
 export type SfxSettings = typeof SFX_DEFAULTS;
+
+export type SfxSlimeBurstDeathDelayKey =
+  | 'sfxSlimeBurstDeathDelay0'
+  | 'sfxSlimeBurstDeathDelay1'
+  | 'sfxSlimeBurstDeathDelay2'
+  | 'sfxSlimeBurstDeathDelay3'
+  | 'sfxSlimeBurstDeathDelay4'
+  | 'sfxSlimeBurstDeathDelay5'
+  | 'sfxSlimeBurstDeathDelay6'
+  | 'sfxSlimeBurstDeathDelay7';
+
+export const SFX_SLIME_BURST_DEATH_DELAY_KEYS: readonly SfxSlimeBurstDeathDelayKey[] = [
+  'sfxSlimeBurstDeathDelay0',
+  'sfxSlimeBurstDeathDelay1',
+  'sfxSlimeBurstDeathDelay2',
+  'sfxSlimeBurstDeathDelay3',
+  'sfxSlimeBurstDeathDelay4',
+  'sfxSlimeBurstDeathDelay5',
+  'sfxSlimeBurstDeathDelay6',
+  'sfxSlimeBurstDeathDelay7',
+];
 
 export const SFX_LIMITS: Record<keyof SfxSettings, [number, number, number]> = {
   sfxArrowFireEnabled: [0, 1, 1],
@@ -51,6 +91,19 @@ export const SFX_LIMITS: Record<keyof SfxSettings, [number, number, number]> = {
   sfxSlimeBurstWindupVolume: [0, 1, 0.01],
   sfxSlimeBurstWindupPitchMin: [-12, 12, 0.1],
   sfxSlimeBurstWindupPitchMax: [-12, 12, 0.1],
+
+  sfxSlimeBurstDeathEnabled: [0, 1, 1],
+  /** Allow >1 so the explosion layer can sit louder than hit one-shots. */
+  sfxSlimeBurstDeathVolume: [0, 2, 0.01],
+  sfxSlimeBurstDeathMask: [0, (1 << SFX_SLIME_BURST_DEATH_COUNT) - 1, 1],
+  sfxSlimeBurstDeathDelay0: [0, 2, 0.01],
+  sfxSlimeBurstDeathDelay1: [0, 2, 0.01],
+  sfxSlimeBurstDeathDelay2: [0, 2, 0.01],
+  sfxSlimeBurstDeathDelay3: [0, 2, 0.01],
+  sfxSlimeBurstDeathDelay4: [0, 2, 0.01],
+  sfxSlimeBurstDeathDelay5: [0, 2, 0.01],
+  sfxSlimeBurstDeathDelay6: [0, 2, 0.01],
+  sfxSlimeBurstDeathDelay7: [0, 2, 0.01],
 };
 
 export const SFX_CONTROLS: [keyof SfxSettings, string, string, string][] = [
@@ -76,6 +129,10 @@ export const SFX_CONTROLS: [keyof SfxSettings, string, string, string][] = [
   ['sfxSlimeBurstWindupVolume', '蓄爆音量', '比例', '蓄爆 one-shot 基准音量。默认 0.85。'],
   ['sfxSlimeBurstWindupPitchMin', '蓄爆音高下限', '半音', '相对原调最低半音；默认 0（不偏调，便于比版本）。'],
   ['sfxSlimeBurstWindupPitchMax', '蓄爆音高上限', '半音', '相对原调最高半音；默认 0。'],
+
+  ['sfxSlimeBurstDeathEnabled', '启用死亡音效', '0/1', '黄史莱姆爆开（gone）瞬间按勾选同时播放；可叠加多条。0 关闭，1 开启。'],
+  ['sfxSlimeBurstDeathVolume', '死亡音量', '比例', '死亡层总音量，可大于 1。默认 1.2。'],
+  ['sfxSlimeBurstDeathMask', '死亡音效多选', '勾选', '下拉勾选要同时播放的死亡样本；每条可设播放延迟（默认 0s）。'],
 ];
 
 /** Labels for the windup variant select (1-based index matches sfxSlimeBurstWindupVariant). */
@@ -86,7 +143,35 @@ export const SFX_SLIME_BURST_WINDUP_VARIANT_LABELS = [
   '4 · 吸血感',
 ] as const;
 
+/** Labels for death multi-select (0-based index matches mask bit / delay key). */
+export const SFX_SLIME_BURST_DEATH_LABELS = [
+  '0 · 小爆 A',
+  '1 · 小爆 B',
+  '2 · 肉感 0',
+  '3 · 肉感 1',
+  '4 · 肉感 2',
+  '5 · 肉感 3',
+  '6 · 肉感 4',
+  '7 · 蘑菇噗',
+] as const;
+
 export const SFX_ARROW_FIRE_MAX_VOICES = 2;
 export const SFX_BODY_HIT_MAX_VOICES = 2;
 export const SFX_SLIME_HIT_MAX_VOICES = 2;
 export const SFX_SLIME_BURST_WINDUP_MAX_VOICES = 2;
+/** All 8 death clips may layer at once (plus pending delayed starts). */
+export const SFX_SLIME_BURST_DEATH_MAX_VOICES = 16;
+
+export function sfxSlimeBurstDeathDelayKey(index: number): SfxSlimeBurstDeathDelayKey {
+  return SFX_SLIME_BURST_DEATH_DELAY_KEYS[Math.max(0, Math.min(SFX_SLIME_BURST_DEATH_COUNT - 1, index))]!;
+}
+
+export function countDeathMaskBits(mask: number): number {
+  let n = 0;
+  let m = Math.max(0, Math.round(mask)) & ((1 << SFX_SLIME_BURST_DEATH_COUNT) - 1);
+  while (m) {
+    n += m & 1;
+    m >>= 1;
+  }
+  return n;
+}

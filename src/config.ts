@@ -141,8 +141,9 @@ export function sanitize(key: SettingKey, value: number): number {
   if(key==='cameraZoomShotEnabled'||key==='cameraZoomHitEnabled')return value>=.5?1:0;
   if (key.startsWith('bowFx') && (key.endsWith('Enabled') || key==='bowFxRingCurve')) return value>=.5?1:0;
   if (key==='bowFxSpikeCount')value=Math.round(value);
-  if (key === 'arrowTrailEnabled' || key === 'arrowPaintEnabled' || key === 'recoilEnabled' || key === 'arrowPierce' || key === 'juiceDepthTest' || key === 'sprayFlat' || key === 'sprayDebugDir' || key === 'sfxArrowFireEnabled' || key === 'sfxBodyHitEnabled' || key === 'sfxSlimeHitEnabled' || key === 'sfxSlimeBurstWindupEnabled') return value >= .5 ? 1 : 0;
+  if (key === 'arrowTrailEnabled' || key === 'arrowPaintEnabled' || key === 'recoilEnabled' || key === 'arrowPierce' || key === 'juiceDepthTest' || key === 'sprayFlat' || key === 'sprayDebugDir' || key === 'sfxArrowFireEnabled' || key === 'sfxBodyHitEnabled' || key === 'sfxSlimeHitEnabled' || key === 'sfxSlimeBurstWindupEnabled' || key === 'sfxSlimeBurstDeathEnabled') return value >= .5 ? 1 : 0;
   if (key === 'sfxSlimeBurstWindupVariant') return Math.max(1, Math.min(4, Math.round(value)));
+  if (key === 'sfxSlimeBurstDeathMask') return Math.max(0, Math.min(255, Math.round(value)));
   if (key === 'monsterCount' || key === 'arrowsPerAttack' || key === 'juiceCount' || key === 'juiceCurve' || key === 'juiceColor' || key === 'sprayCount' || key === 'sprayMode' || key === 'sprayCurve' || key === 'spraySpreadDeg' || key === 'arrowTrailColor' || key === 'arrowPaintColor') value = Math.round(value);
   if (key === 'puddleShape' || key === 'slimeStrandCount') value=Math.round(value);
   if ((key.startsWith('burst')||key.startsWith('puddle'))&&key.endsWith('Enabled')) return value>=.5?1:0;

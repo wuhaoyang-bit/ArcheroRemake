@@ -13,7 +13,7 @@ import { JuiceParticles } from './juice-particles.ts';
 import { DirectionalSpray } from './directional-spray.ts';
 import { TrainingFeedback } from './training-feedback.ts';
 import { ArrowProjectiles } from './arrow-projectiles.ts';
-import { ArrowFireSfx, BodyHitSfx, SlimeBurstWindupSfx, SlimeHitSfx } from './sfx.ts';
+import { ArrowFireSfx, BodyHitSfx, SlimeBurstDeathSfx, SlimeBurstWindupSfx, SlimeHitSfx } from './sfx.ts';
 import { LockRingView } from './lock-ring-view.ts';
 import { buildTraining } from './training-scene.ts';
 import { buildLockingTraining } from './locking-training-scene.ts';
@@ -144,6 +144,7 @@ export class GameScene {
   bodyHitSfx = new BodyHitSfx();
   slimeHitSfx = new SlimeHitSfx();
   slimeBurstWindupSfx = new SlimeBurstWindupSfx();
+  slimeBurstDeathSfx = new SlimeBurstDeathSfx();
   bowRelease?: BowReleaseEffects;
   private bowGrip!: THREE.Object3D;
   private shotOrigin = new THREE.Vector3();
@@ -269,10 +270,12 @@ export class GameScene {
     this.bodyHitSfx.preload();
     this.slimeHitSfx.preload();
     this.slimeBurstWindupSfx.preload();
+    this.slimeBurstDeathSfx.preload();
     this.arrowFireSfx.bindUnlock(this.viewport);
     this.bodyHitSfx.bindUnlock(this.viewport);
     this.slimeHitSfx.bindUnlock(this.viewport);
     this.slimeBurstWindupSfx.bindUnlock(this.viewport);
+    this.slimeBurstDeathSfx.bindUnlock(this.viewport);
     this.arrows.onFire=(origin,direction,elapsed)=>{
       this.arrowFireSfx.play(this.controller.settings);
       this.bowRelease?.emit(origin,direction,elapsed,this.controller.settings);
@@ -382,6 +385,7 @@ export class GameScene {
       };
       this.feedback.onBurst=(center,feet,c,color)=>{
         this.slimeBurstWindupSfx.stop();
+        this.slimeBurstDeathSfx.play(this.controller.settings);
         this.cameraShake.trigger(this.controller.settings);
         this.shockwave?.emit(center,this.controller.settings);
         this.burstEffects?.emit(center,feet,c,Math.random,color);
@@ -399,6 +403,7 @@ export class GameScene {
     this.pendingShots.length=0;
     this.arrows?.clear();
     this.slimeBurstWindupSfx.stop();
+    this.slimeBurstDeathSfx.stop();
     this.hitSplash?.clear();this.juice?.clear();this.spray?.clear();this.burstEffects?.clear();
     this.bowRelease?.clear();
     this.shockwave?.clear();

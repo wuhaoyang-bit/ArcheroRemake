@@ -16,7 +16,14 @@ import { CameraZoomPreview } from './camera-zoom-preview.ts';
 import { CAMERA_ZOOM_CONTROLS } from './camera-zoom-config.ts';
 import { BOW_FX_CONTROLS } from './bow-release-config.ts';
 import { ARROW_TRAIL_CONTROLS, ARROW_PAINT_CONTROLS } from './arrow-trail-config.ts';
-import { SFX_CONTROLS, SFX_SLIME_BURST_WINDUP_VARIANT_LABELS } from './sfx-config.ts';
+import {
+  SFX_CONTROLS,
+  SFX_SLIME_BURST_DEATH_COUNT,
+  SFX_SLIME_BURST_DEATH_DELAY_KEYS,
+  SFX_SLIME_BURST_DEATH_LABELS,
+  SFX_SLIME_BURST_WINDUP_VARIANT_LABELS,
+  countDeathMaskBits,
+} from './sfx-config.ts';
 import { DEFAULT_RECOIL_CURVE } from './shot-recoil.ts';
 import { validateJuiceSpeedCurve } from './juice-speed-curve.ts';
 import { JuiceCurveEditor } from './juice-curve-editor.ts';
@@ -138,6 +145,15 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         if(key==='sprayCurve')return `<div class="setting" title="${hint}"><label for="value-${key}">${name}</label><select id="value-${key}" data-setting="${key}">${['Linear','OutQuad','OutCubic','OutExpo','smoothstep','指数阻力','自定义曲线'].map((label,i)=>`<option value="${i}">${label}</option>`).join('')}</select><div id="spray-speed-curve-editor" hidden></div></div>`;
         if(key==='sprayMode')return `<div class="setting" title="${hint}"><label for="value-${key}">${name}</label><select id="value-${key}" data-setting="${key}"><option value="0">0 · Blood 宽锥</option><option value="1">1 · Arterial 窄锥</option><option value="2">2 · quarks 锥形</option></select><p class="threshold-help">${hint}</p></div>`;
         if(key==='sfxSlimeBurstWindupVariant')return `<div class="setting" title="${hint}"><label for="value-${key}">${name}</label><select id="value-${key}" data-setting="${key}">${SFX_SLIME_BURST_WINDUP_VARIANT_LABELS.map((label,i)=>`<option value="${i+1}">${label}</option>`).join('')}</select><p class="threshold-help">${hint}</p></div>`;
+        if(key==='sfxSlimeBurstDeathMask'){
+          const rows=SFX_SLIME_BURST_DEATH_LABELS.map((label,i)=>{
+            const delayKey=SFX_SLIME_BURST_DEATH_DELAY_KEYS[i]!;
+            const [dMin,dMax,dStep]=LIMITS[delayKey];
+            const checked=(DEFAULTS.sfxSlimeBurstDeathMask&(1<<i))? ' checked' : '';
+            return `<div class="sfx-multi-row"><label class="sfx-multi-check"><input type="checkbox" data-death-bit="${i}"${checked}><span>${label}</span></label><label class="sfx-multi-delay">延迟<input type="number" data-death-delay="${i}" data-setting="${delayKey}" id="value-${delayKey}" min="${dMin}" max="${dMax}" step="${dStep}" value="${DEFAULTS[delayKey]}" aria-label="${label}延迟">s</label></div>`;
+          }).join('');
+          return `<div class="setting sfx-multi-setting" title="${hint}"><div class="setting-label"><label>死亡音效多选</label><span id="sfx-death-mask-count" class="sfx-multi-count">已选 ${countDeathMaskBits(DEFAULTS.sfxSlimeBurstDeathMask)} 条</span></div><details class="sfx-multi" id="sfx-death-multi"><summary>勾选要同时播放的死亡音效</summary><div class="sfx-multi-panel">${rows}</div></details><input type="hidden" id="value-sfxSlimeBurstDeathMask" data-setting="sfxSlimeBurstDeathMask" value="${DEFAULTS.sfxSlimeBurstDeathMask}"><p class="threshold-help">${hint}</p></div>`;
+        }
         if(key==='juiceColor'||key==='arrowTrailColor'||key==='arrowPaintColor')return `<div class="setting" title="${hint}"><label for="value-${key}">${name}</label><input id="value-${key}" data-setting="${key}" type="color" value="#${DEFAULTS[key].toString(16).padStart(6,'0')}"></div>`;
         return `<div class="setting" title="${hint}"><div class="setting-label"><label for="slider-${key}">${name}</label><div class="numeric"><input id="value-${key}" data-setting="${key}" type="number" min="${min}" max="${max}" step="${step}" value="${DEFAULTS[key]}" aria-label="${name}数值"><span>${unit}</span></div></div><input id="slider-${key}" data-setting="${key}" type="range" min="${min}" max="${max}" step="${step}" value="${DEFAULTS[key]}" aria-label="${name}"></div>`;
       }).join('')}${group.title === '眼球 · 受击胶质滞后' ? '<div id="eye-hit-preview"></div><h3>① 拉开速度曲线</h3><div id="eye-hit-pull-editor"></div><h3>② 拉回速度曲线</h3><div id="eye-hit-return-editor"></div><h3>③ 入体吸能速度曲线</h3><div id="eye-hit-absorb-editor"></div>' : ''}${group.title === '射击后坐力' ? '<div id="recoil-speed-curve-editor"></div>' : ''}${group.title === '受伤 · 方向喷溅' ? '<p class="threshold-help">在模型朝向的背面（眼睛对面）中心生成，喷出方向垂直于该面（朝向反方向）。水平位移用下方曲线；竖直仅在「俯视平铺」关闭时受重力。也可打开 <a href="./slime-hit-spray-lab.html" target="_blank" rel="noopener">方向喷溅预览页 ↗</a>。</p>' : ''}${group.title === '锁定圆环 UI' ? '<p class="threshold-help">以下曲线及本组全部参数在下一次锁定入场生效。换目标沿用当前值；失去全部目标后重新锁定才应用新值。</p><div id="ring-curve-editor"></div><h3>冲击波扩散 / 时间进度</h3><div id="ring-wave-editor"></div><h3>换目标扩张 / 时间进度</h3><div id="ring-switch-editor"></div><h3>目标圆粗细 / 收缩完成度</h3><div id="ring-stroke-editor"></div><div id="ring-preview" class="ring-preview"><label for="ring-preview-progress">收缩预览 <output id="ring-preview-label">未锁定</output></label><input id="ring-preview-progress" type="range" min="0" max="100" step="0.1" value="0" disabled><button id="ring-preview-resume" disabled>恢复自动播放</button><p class="threshold-help">有锁定目标时可拖动。拖后停留在指定完成度，换目标保留预览；丢锁退出。仅改变圆环，不影响角色操作。参数修改仍在下一次入场生效。</p></div>' : ''}${group.title === '史莱姆 · 眼睛外观' ? '<h3>眼球弹出速度曲线</h3><div id="eye-speed-curve-editor"></div>' : ''}${group.title === '史莱姆 · 充盈变色与行走' ? '<a href="./slime-walk-lab.html" target="_blank" rel="noopener">打开史莱姆行走形变调试页 ↗</a>' : ''}${group.title === '史莱姆 · 蓄爆' ? '<a href="./slime-burst-lab.html" target="_blank" rel="noopener">打开怪物爆炸逐帧调试页 ↗</a><div id="slime-burst-preview"></div>' : ''}${group.title === '撑爆 · 液体残留' ? '<p class="threshold-help">三维液滩 · <a href="./assets/curve-fluid/credits.html" target="_blank" rel="noopener">Curve Fluid / FuLi · CC BY 4.0</a></p><a href="./puddle-shapes.html" target="_blank" rel="noopener">观察液滩形状 / 选择随机候选 ↗</a><h3>液滴弹出速度曲线</h3><div id="liquid-speed-curve-editor"></div><div id="puddle-preview"></div>' : ''}${group.title === '爆炸 · 空间扭曲冲击波' ? '<div id="burst-shockwave-speed-editor"></div><button type="button" id="shockwave-preview" disabled>在游戏中预览冲击波</button><p class="threshold-help">在锁定目标或角色前方预览。也可打开 <a href="./slime-burst-lab.html" target="_blank" rel="noopener">爆炸逐帧调试页</a> 检查扩散过程。</p>' : ''}${group.title === '屏幕伸缩 · Out → 阻尼弹簧' ? '<div id="camera-zoom-preview"></div>' : ''}${group.title === '轮盘与锚点' ? '<label class="threshold-toggle"><input id="show-threshold" type="checkbox">显示移动阈值范围</label><p class="threshold-help">黄圈为首次解锁边界，越过后变青色；回圈内不会再次锁定。</p>' : ''}</section>`).join('')}<section class="setting-group"><h2>移动速度模型</h2><div class="turn-model-field"><label for="move-model">移动速度模型</label><select id="move-model" disabled><option value="0">恒定移动速度</option><option value="1">角度差曲线</option></select><p class="threshold-help">身体与实际锚点方向的最短角度差 → 基础移动速度百分比。100% 保持当前速度，80% 为当前速度的八成。默认全程 100%。</p></div><div id="move-curve-editor" hidden></div></section><section class="setting-group"><h2>锚点防抖</h2><label class="threshold-toggle"><input id="anchor-follow" type="checkbox">启用锚点跟随</label><div id="anchor-curve-editor"></div></section><section class="setting-group"><h2>箭矢命中调试</h2><label class="threshold-toggle"><input id="hit-debug-enabled" type="checkbox">显示命中范围与箭尖轨迹</label><label class="threshold-toggle"><input id="hit-debug-auto" type="checkbox" checked>命中时暂停（受击反馈之前）</label><label>模拟速度 <select id="hit-debug-speed"><option value="1">正常</option><option value="0.25">1/4 速</option><option value="0.1">1/10 速</option><option value="0.05">1/20 速</option></select></label><p class="threshold-help">青色：真实命中体；绿色：箭尖；黄色：扫掠路径。命中时蓝色箭表示检测前位置，金色箭表示真实接触位置，红点表示交点。仅本次调试，不保存到参数。</p></section><section class="setting-group"><h2>朝向调试</h2><label class="threshold-toggle"><input id="show-heading" type="checkbox">显示角色朝向线</label><label class="threshold-toggle debug-toggle"><input id="show-idle-anchor" type="checkbox">待机时也显示移动锚点</label><label class="threshold-toggle debug-toggle"><input id="show-anchor-outline" type="checkbox">锚点遮挡轮廓</label><p class="threshold-help">粉红直线代表角色当前朝向；蓝点代表移动锚点；遮挡轮廓让浅蓝圆环透过角色显示。开关仅用于本次页面调试。</p></section></div>
@@ -466,11 +482,36 @@ function syncSettings() {
     input.value = input.type==='color' ? '#'+value.toString(16).padStart(6,'0') : String(value);
     const [min, max] = LIMITS[key]; input.style.setProperty('--fill', `${(value - min) / (max - min) * 100}%`);
   });
+  syncDeathMaskUi();
   drawJoystick();
+}
+function syncDeathMaskUi() {
+  const mask = controller.settings.sfxSlimeBurstDeathMask;
+  document.querySelectorAll<HTMLInputElement>('[data-death-bit]').forEach(box => {
+    const bit = Number(box.dataset.deathBit);
+    box.checked = !!(mask & (1 << bit));
+  });
+  const count = document.getElementById('sfx-death-mask-count');
+  if (count) count.textContent = `已选 ${countDeathMaskBits(mask)} 条`;
+}
+function readDeathMaskFromUi(): number {
+  let mask = 0;
+  document.querySelectorAll<HTMLInputElement>('[data-death-bit]').forEach(box => {
+    if (!box.checked) return;
+    const bit = Number(box.dataset.deathBit);
+    if (bit >= 0 && bit < SFX_SLIME_BURST_DEATH_COUNT) mask |= 1 << bit;
+  });
+  return mask;
 }
 document.querySelectorAll<HTMLInputElement>('[data-setting]').forEach(input => {
   input.addEventListener(input.type === 'range' ? 'input' : 'change', () => {
     controller.set(input.dataset.setting as SettingKey, input.type==='color'?parseInt(input.value.slice(1),16):input.type==='select-one'?Number(input.value):input.valueAsNumber);
+    syncSettings(); settingsChanged();
+  });
+});
+document.querySelectorAll<HTMLInputElement>('[data-death-bit]').forEach(box => {
+  box.addEventListener('change', () => {
+    controller.set('sfxSlimeBurstDeathMask', readDeathMaskFromUi());
     syncSettings(); settingsChanged();
   });
 });
@@ -675,6 +716,7 @@ async function start() {
         pauseForInspection: (paused:boolean) => {game.renderer.setAnimationLoop(paused?null:frame);lastFrame=0;if(paused)game.render();},
         testArrowFire: () => game.arrowFireSfx.play(controller.settings),
         testSlimeBurstWindup: () => game.slimeBurstWindupSfx.play(controller.settings),
+        testSlimeBurstDeath: () => game.slimeBurstDeathSfx.play(controller.settings),
             testSlimeHit: (id:string) => {
           const ok = game.feedback?.hit(id,{x:0,z:-1},controller.settings);
           if (ok && game.feedback?.isYellowSlimeTarget(id)) {
@@ -684,7 +726,7 @@ async function start() {
           return !!ok;
         },
         stepInspection: (dt:number) => {game.advanceFeedback(dt);game.sync(dt);game.render();},
-        snapshot: () => ({ ...controller.snapshot(), settings: { ...controller.settings }, center: { ...controller.center }, cameraZoom:game.cameraZoom.snapshot(controller.settings), cameraShake:game.cameraShake.snapshot(), shockwave:game.shockwave?.snapshot(), cameraView:game.camera.view?{...game.camera.view}:null, cameraZ: game.cameraZ, cameraX: game.camera.position.x, footNdc: game.player.position.clone().project(game.camera).toArray(), anchorNdc: game.anchor.position.clone().project(game.camera).toArray(), trainingTargets: game.trainingTargetsSnapshot(), feedback: game.feedback?.snapshot() ?? [], bowRelease:game.bowRelease?.snapshot(), juice:game.juice?.snapshot(), spray:{active:game.spray?.activeCount()??0,curve:game.spray?.curve,mode:game.spray?.mode,params:game.spray?{...game.spray.params}:null,lastEmit:game.spray?.lastEmit??null}, burstEffects:game.burstEffects?.snapshot(), attack: game.animation.snapshot(), arrows: game.arrows?.snapshot(), arrowFireSfx: { active: game.arrowFireSfx.activeCount }, bodyHitSfx: { active: game.bodyHitSfx.activeCount }, slimeHitSfx: { active: game.slimeHitSfx.activeCount, pending: game.slimeHitSfx.pendingCount }, slimeBurstWindupSfx: { active: game.slimeBurstWindupSfx.activeCount }, runWeight: game.blend.weight, runTime: game.run.time, runTimeScale: game.run.getEffectiveTimeScale(), idleTimeScale: game.idle.getEffectiveTimeScale(), debug: { hit:game.hitDebug.snapshot(), headingVisible: game.headingGuide.visible, heading: game.headingGuide.rotation.y, anchorVisible: game.anchor.visible, anchorOutlineVisible: game.anchor.visible && game.anchorOutline.visible, lockRangeVisible: game.lockRangeGuide.visible, lockRangeRadius: game.lockRangeGuide.scale.x, rings: game.rings.state.snapshot(), candidateMarkerVisible: game.candidateMarker.visible }, gpuMemory:{...game.renderer.info.memory}, startup:{...game.startup}, renderer: 'webgpu', ready }),
+        snapshot: () => ({ ...controller.snapshot(), settings: { ...controller.settings }, center: { ...controller.center }, cameraZoom:game.cameraZoom.snapshot(controller.settings), cameraShake:game.cameraShake.snapshot(), shockwave:game.shockwave?.snapshot(), cameraView:game.camera.view?{...game.camera.view}:null, cameraZ: game.cameraZ, cameraX: game.camera.position.x, footNdc: game.player.position.clone().project(game.camera).toArray(), anchorNdc: game.anchor.position.clone().project(game.camera).toArray(), trainingTargets: game.trainingTargetsSnapshot(), feedback: game.feedback?.snapshot() ?? [], bowRelease:game.bowRelease?.snapshot(), juice:game.juice?.snapshot(), spray:{active:game.spray?.activeCount()??0,curve:game.spray?.curve,mode:game.spray?.mode,params:game.spray?{...game.spray.params}:null,lastEmit:game.spray?.lastEmit??null}, burstEffects:game.burstEffects?.snapshot(), attack: game.animation.snapshot(), arrows: game.arrows?.snapshot(), arrowFireSfx: { active: game.arrowFireSfx.activeCount }, bodyHitSfx: { active: game.bodyHitSfx.activeCount }, slimeHitSfx: { active: game.slimeHitSfx.activeCount, pending: game.slimeHitSfx.pendingCount }, slimeBurstWindupSfx: { active: game.slimeBurstWindupSfx.activeCount }, slimeBurstDeathSfx: { active: game.slimeBurstDeathSfx.activeCount }, runWeight: game.blend.weight, runTime: game.run.time, runTimeScale: game.run.getEffectiveTimeScale(), idleTimeScale: game.idle.getEffectiveTimeScale(), debug: { hit:game.hitDebug.snapshot(), headingVisible: game.headingGuide.visible, heading: game.headingGuide.rotation.y, anchorVisible: game.anchor.visible, anchorOutlineVisible: game.anchor.visible && game.anchorOutline.visible, lockRangeVisible: game.lockRangeGuide.visible, lockRangeRadius: game.lockRangeGuide.scale.x, rings: game.rings.state.snapshot(), candidateMarkerVisible: game.candidateMarker.visible }, gpuMemory:{...game.renderer.info.memory}, startup:{...game.startup}, renderer: 'webgpu', ready }),
       } });
     }
   } catch (error) {

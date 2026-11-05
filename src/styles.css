@@ -29,6 +29,18 @@ h1, .large-heading { margin: 10px 0 0; font-size: 19px; font-weight: 500; letter
 .setting-group h2 { margin: 0 0 14px; font-size: 11px; font-weight: 500; color: #b8ccb9; letter-spacing: 1px; }
 .setting { margin-bottom: 15px; }
 .setting-label { display: flex; align-items: center; justify-content: space-between; gap: 7px; font-size: 12px; color: #afc1b5; }
+.sfx-multi-count { font-size: 11px; color: #9fb5a4; }
+.sfx-multi { margin-top: 8px; border: 1px solid #466050; border-radius: 8px; background: #1b2c22; }
+.sfx-multi > summary { cursor: pointer; list-style: none; padding: 9px 11px; font-size: 12px; color: #d5e7c9; }
+.sfx-multi > summary::-webkit-details-marker { display: none; }
+.sfx-multi > summary::after { content: ' ▾'; color: #8fa892; }
+.sfx-multi[open] > summary::after { content: ' ▴'; }
+.sfx-multi-panel { padding: 4px 10px 10px; display: flex; flex-direction: column; gap: 7px; border-top: 1px solid #334b3b; }
+.sfx-multi-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.sfx-multi-check { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #c9dbc4; cursor: pointer; min-width: 0; }
+.sfx-multi-check input { accent-color: #aeca91; }
+.sfx-multi-delay { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #8fa892; white-space: nowrap; }
+.sfx-multi-delay input[type=number] { width: 52px; background: #24362c; border: 1px solid #466050; border-radius: 5px; color: #edf2e1; padding: 3px 5px; font: inherit; text-align: right; }
 .numeric { display: flex; gap: 5px; align-items: baseline; }
 .numeric input { background: transparent; color: #edf2e1; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12px; width: 48px; padding: 2px 0; border: 0; text-align: right; border-radius: 3px; appearance: textfield; -moz-appearance: textfield; }
 .numeric input::-webkit-inner-spin-button, .numeric input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
