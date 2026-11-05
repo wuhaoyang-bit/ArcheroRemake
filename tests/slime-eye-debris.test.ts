@@ -2,6 +2,18 @@ import test from 'node:test';import assert from 'node:assert/strict';import * as
 import {SlimeEyeDebris} from '../src/slime-eye-debris.ts';import {SLIME_EYES_DEFAULTS as C} from '../src/slime-eyes-config.ts';
 function setup(){const scene=new T.Scene(),body=new T.Group();scene.add(body);body.position.set(2,1,3);const eyes=[-.3,.3].map(x=>{const eye=new T.Group();eye.position.set(x,.2,1);eye.scale.setScalar(.13);eye.add(new T.Mesh(new T.SphereGeometry(1),new T.MeshPhysicalNodeMaterial()));body.add(eye);return eye;});scene.updateMatrixWorld(true);return {scene,body,eyes,debris:new SlimeEyeDebris(scene)};}
 test('detached eyes retain world pose and launch radially; body hiding does not hide them',()=>{const {scene,body,eyes,debris}=setup(),center=body.position.clone();debris.emit(eyes,center,C);const snap=debris.snapshot();assert.equal(snap.length,2);snap.forEach((f,i)=>{const pos=eyes[i].getWorldPosition(new T.Vector3());assert.ok(pos.distanceTo(new T.Vector3(...f.position))<1e-8);const expected=pos.sub(center).normalize().multiplyScalar(C.slimeEyeEjectSpeed);assert.ok(expected.distanceTo(new T.Vector3(...f.velocity))<1e-8);});body.visible=false;assert.ok(scene.children.filter(x=>x.name==='DetachedSlimeEye').every(x=>x.visible));debris.update(.1);assert.notDeepEqual(debris.snapshot(),snap);});
+test('emit drops walk/hit non-uniform scale so detached eyes stay spheres for Q-deform',()=>{
+ const {scene,body,eyes,debris}=setup();
+ body.scale.set(1.4,.6,1.4);scene.updateMatrixWorld(true);
+ debris.emit(eyes,body.position.clone(),C);
+ const detached=scene.children.filter(x=>x.name==='DetachedSlimeEye');
+ assert.equal(detached.length,2);
+ for(const eye of detached){
+  assert.ok(Math.abs(eye.scale.x-eye.scale.y)<1e-8);
+  assert.ok(Math.abs(eye.scale.y-eye.scale.z)<1e-8);
+  assert.ok(eye.scale.x>0.1);
+ }
+});
 test('eyes settle, persist, and reset clears fragments without disposing original assets',()=>{const {scene,eyes,debris}=setup();let disposed=false;(eyes[0].children[0] as T.Mesh).geometry.addEventListener('dispose',()=>disposed=true);debris.emit(eyes,new T.Vector3(2,1,3),C);for(let i=0;i<2400;i++)debris.update(1/120);assert.equal(debris.snapshot().length,2);assert.ok(debris.snapshot().every(x=>x.settled));debris.clear();assert.equal(debris.snapshot().length,0);assert.equal(scene.children.length,1);assert.equal(disposed,false);});
 
 test('editable radial curve integrates accurately and gravity starts immediately',async()=>{

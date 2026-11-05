@@ -40,10 +40,12 @@ export class SlimeEyeDebris{
  constructor(private parent:T.Object3D){}
  emit(eyes:T.Object3D[],center:T.Vector3,c:EyeMotionSettings,sourceId?:string){if(!c.slimeEyeEjectEnabled)return;this.parent.updateWorldMatrix(true,false);const inverse=this.parent.matrixWorld.clone().invert(),localCenter=this.parent.worldToLocal(center.clone());
  for(const source of eyes){if(!source.parent?.visible||!source.visible)continue;source.updateWorldMatrix(true,true);const object=source.clone(true);object.name='DetachedSlimeEye';object.matrix.copy(inverse).multiply(source.matrixWorld);object.matrix.decompose(object.position,object.quaternion,object.scale);object.matrixAutoUpdate=true;
+ // Walk / hit squash bake non-uniform scale into world matrix; keep a sphere so Q-deform reads clearly.
+ const radius=Math.max(Math.abs(object.scale.x),Math.abs(object.scale.y),Math.abs(object.scale.z),1e-4);
+ object.scale.setScalar(radius);
  object.traverse(o=>{if(!(o instanceof T.Mesh))return;const sourceMat=o.material as T.MeshPhysicalNodeMaterial;const mat=sourceMat.clone();mat.emissiveNode=null;mat.emissive.set(0);o.material=mat;o.castShadow=true;o.receiveShadow=true;});this.parent.add(object);
  const direction=object.position.clone().sub(localCenter);if(direction.lengthSq()<1e-12)direction.set(0,1,0);direction.normalize();
- // Each eye contains a unit sphere. A rotated bounding BOX inflates its contact radius and makes it hover.
- const radius=Math.max(Math.abs(object.scale.x),Math.abs(object.scale.y),Math.abs(object.scale.z));
+ // Unit-sphere eye: collision radius matches the uniform visual scale (not a rotated AABB).
  this.fragments.push({sourceId,ballistic:false,landed:false,grounded:false,age:0,origin:object.position.clone(),direction:direction.clone(),object,velocity:direction.multiplyScalar(eyeFlight(0,c).speed),spin:new T.Vector3(c.slimeEyeEjectSpin,c.slimeEyeEjectSpin*.6,c.slimeEyeEjectSpin*.3),radius,settled:false,settings:{...c,slimeEyeSpeedCurve:(c.slimeEyeSpeedCurve??DEFAULT_EYE_SPEED_CURVE).map(p=>({...p}))}});
  }}
  private impact(f:Fragment){const c=f.settings,incoming=Math.max(0,-f.velocity.y);f.landed=true;f.ballistic=true;f.object.position.y=f.radius;
