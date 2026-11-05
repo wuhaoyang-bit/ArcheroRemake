@@ -2,13 +2,21 @@ import type {JuiceSpeedPoint} from './juice-speed-curve.ts';
 import type {FlightSettings} from './slime-flight-motion.ts';
 
 // Independent liquid flight; base speed, gravity and curve initialized from the tuned eyes.
-export const LIQUID_FLIGHT_DEFAULTS={liquidEjectSpeed:20,liquidSpeedJitter:3,liquidGravity:20,liquidCurveTime:.9};
+export const LIQUID_FLIGHT_DEFAULTS={
+ liquidDropSize:1,
+ liquidEjectSpeed:20,
+ liquidSpeedJitter:3,
+ liquidGravity:20,
+ liquidCurveTime:.9,
+};
 export const DEFAULT_LIQUID_SPEED_CURVE:JuiceSpeedPoint[]=[{time:0,progress:120},{time:100,progress:8}];
 export type LiquidFlightSettings=typeof LIQUID_FLIGHT_DEFAULTS&{liquidSpeedCurve?:JuiceSpeedPoint[]};
 export const LIQUID_FLIGHT_LIMITS:Record<keyof typeof LIQUID_FLIGHT_DEFAULTS,[number,number,number]>={
+ liquidDropSize:[.1,4,.05],
  liquidEjectSpeed:[0,40,.1],liquidSpeedJitter:[0,40,.1],liquidGravity:[0,30,.1],liquidCurveTime:[.02,2,.01],
 };
 export const LIQUID_FLIGHT_CONTROLS:[keyof typeof LIQUID_FLIGHT_DEFAULTS,string,string,string][]=[
+ ['liquidDropSize','液滴大小','倍','空中飞溅液滴半径倍率；1 为原默认大小，随撑爆体型仍会再缩放。落地残留与二次飞溅跟液滴半径走。修改后下次爆炸生效。'],
  ['liquidEjectSpeed','液滴弹出速度','u/s','随机偏移前的基础速度，再乘速度曲线。用于融合液面模式，修改后下次爆炸生效。'],
  ['liquidSpeedJitter','液滴速度随机偏移','±u/s','每滴喷出时在基础速度 ± 此值内随机一次，最低为 0，再乘速度曲线。0 关闭随机；修改后下次爆炸生效。'],
  ['liquidGravity','液滴下落重力','u/s²','从液滴喷出的第一帧就生效，首次触地变成液滩。新生成的二次飞溅和踩踏液滴也使用此重力。'],

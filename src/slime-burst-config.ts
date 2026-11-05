@@ -295,7 +295,7 @@ export const BURST_CONTROLS:[keyof BurstSettings,string,string,string][]=[
  ['puddleShadowZ','阴影纵向偏移','u','与液滩动画同步。'],
  ['puddleEnabled','生成液体残留','0/1','独立于空中特效。'],
  ['puddleDelay','液滩生成延迟','s','相对模型消失。'],
- ['puddleSize','液滩目标直径','u','旧模式为笔刷外接尺寸；融合模式为主体基准直径，并随爆开体型适度增长，也影响落滴残留尺寸。'],
+ ['puddleSize','液滩目标直径','u','旧模式为笔刷外接尺寸；融合模式为主体基准直径，并随爆开体型适度增长；落滴残留还乘液滴半径（见「液滴大小」）。'],
  ['puddleStart','液滩起始尺寸比例','','0从无展开。'],
  ['puddleFrequency','液滩弹簧频率','Hz','复用受击弹簧。'],
  ['puddleDamping','液滩弹簧阻尼','','小于1超调。'],

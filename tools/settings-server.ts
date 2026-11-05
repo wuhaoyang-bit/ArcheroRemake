@@ -65,10 +65,83 @@ export function settingsMiddleware(file: string) {
   };
 }
 
-export function jsonSettingsPlugin(file: string): Plugin {
+/** Atomic JSON write for preview-only documents (face-bulge, etc.). */
+export function jsonDocumentMiddleware(file: string, getPath: string, postPath: string) {
+  return (req: IncomingMessage, res: ServerResponse, next: () => void) => {
+    const url = req.url?.split('?')[0];
+    if (url !== getPath && url !== postPath) return next();
+    const send = (status: number, body: unknown) => {
+      res.statusCode = status;
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.setHeader('Cache-Control', 'no-store');
+      res.end(JSON.stringify(body));
+    };
+    if (url === getPath && req.method === 'GET') {
+      void readFile(file, 'utf8').then(raw => {
+        send(200, JSON.parse(raw));
+      }).catch(() => send(200, { version: 1, cutMode: 'voronoi', cutSeed: 1, faces: [] }));
+      return;
+    }
+    if (url !== postPath || req.method !== 'POST') {
+      send(405, { ok: false, error: '请求方法不受支持' }); return;
+    }
+    if (req.headers.origin) {
+      try {
+        const authority = req.headers[':authority'] ?? req.headers.host;
+        if (new URL(req.headers.origin).host !== authority) throw new Error();
+      } catch { send(403, { ok: false, error: '只允许从当前项目页面保存' }); return; }
+    }
+    if (!req.headers['content-type']?.startsWith('application/json')) {
+      send(415, { ok: false, error: '保存内容必须是 JSON' }); return;
+    }
+    void (async () => {
+      let raw = '', size = 0;
+      try {
+        for await (const chunk of req) {
+          size += Buffer.byteLength(chunk);
+          if (size > MAX_BYTES) { send(413, { ok: false, error: '参数文件过大' }); return; }
+          raw += chunk.toString();
+        }
+      } catch { if (!res.destroyed) send(400, { ok: false, error: '未能完整接收参数' }); return; }
+      let doc: unknown;
+      try { doc = JSON.parse(raw); }
+      catch { send(400, { ok: false, error: 'JSON 无效' }); return; }
+      const temp = join(dirname(file), `.face-bulge-${randomUUID()}.tmp`);
+      try {
+        await mkdir(dirname(file), { recursive: true });
+        await writeFile(temp, `${JSON.stringify(doc, null, 2)}\n`, 'utf8');
+        await rename(temp, file);
+        send(200, { ok: true });
+      } catch {
+        await rm(temp, { force: true }).catch(() => {});
+        send(500, { ok: false, error: '无法写入 JSON，请检查项目目录写入权限' });
+      }
+    })();
+  };
+}
+
+export function jsonSettingsPlugin(file: string, faceBulgeFile?: string): Plugin {
   return {
     name: 'archero-json-settings',
-    configureServer(server) { server.middlewares.use(settingsMiddleware(file)); },
-    configurePreviewServer(server) { server.middlewares.use(settingsMiddleware(file)); },
+    configureServer(server) {
+      server.middlewares.use(settingsMiddleware(file));
+      if (faceBulgeFile) {
+        server.middlewares.use(jsonDocumentMiddleware(
+          faceBulgeFile,
+          '/slime-burst-face-bulge.json',
+          '/__save-face-bulge',
+        ));
+      }
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use(settingsMiddleware(file));
+      if (faceBulgeFile) {
+        server.middlewares.use(jsonDocumentMiddleware(
+          faceBulgeFile,
+          '/slime-burst-face-bulge.json',
+          '/__save-face-bulge',
+        ));
+      }
+    },
   };
 }

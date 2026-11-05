@@ -27,6 +27,7 @@
     "test:hit-feedback": "node tools/hit-feedback-browser-check.mjs"
   },
   "dependencies": {
+    "@dgreenheck/three-pinata": "^2.0.1",
     "three": "0.186.1"
   },
   "devDependencies": {

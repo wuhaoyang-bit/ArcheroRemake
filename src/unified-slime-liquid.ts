@@ -60,8 +60,9 @@ export class UnifiedSlimeLiquid{
   const motion=liquidFlightSettings(c);
   // Centre height tracks the actual inflated body, so a large monster releases larger drops.
   const volumeScale=T.MathUtils.clamp(center.y/1.1,.65,2.8),count=Math.round(c.liquidDropCount*Math.sqrt(volumeScale));
+  const sizeMul=Math.max(.05,c.liquidDropSize??1);
   for(let i=0;i<count;i++){
-   const a=(i+random()*.7)/count*Math.PI*2,r=(.09+random()*.14)*volumeScale;
+   const a=(i+random()*.7)/count*Math.PI*2,r=(.09+random()*.14)*volumeScale*sizeMul;
    const direction=new T.Vector3(Math.cos(a),.15+random()*.65,Math.sin(a)).normalize();
    // Choose each drop's base speed once; retain that offset throughout its flight curve.
    const dropMotion={...motion,slimeEyeEjectSpeed:Math.max(0,motion.slimeEyeEjectSpeed+(random()*2-1)*c.liquidSpeedJitter)};
@@ -137,7 +138,8 @@ export class UnifiedSlimeLiquid{
   this.steps++;const speed=d/dt;this.ripple(x,z,c.liquidRippleStrength*(.06+Math.min(.18,speed*.018)));
   const color=new T.Color().setRGB(...this.field.color(x,z) as [number,number,number]);
   const motion=liquidFlightSettings(c);
-  for(let i=0;i<3;i++){const side=i-1;this.addDrop({p:new T.Vector3(x,.07,z),v:new T.Vector3(dx/d*.6+dz/d*side,1+i*.25,dz/d*.6-dx/d*side),radius:.035+i*.008,color,paint:false,seed:i},motion);}
+  const sizeMul=Math.max(.05,c.liquidDropSize??1);
+  for(let i=0;i<3;i++){const side=i-1;this.addDrop({p:new T.Vector3(x,.07,z),v:new T.Vector3(dx/d*.6+dz/d*side,1+i*.25,dz/d*.6-dx/d*side),radius:(.035+i*.008)*sizeMul,color,paint:false,seed:i},motion);}
  }
  clear(){this.trail.clear();this.trailBodies=[];this.drops=[];this.deposits=[];this.field.rebuild([]);this.map.needsUpdate=true;this.clock=0;this.time.value=0;this.signature='';this.dirty=true;this.dropRenderer.clear();this.floor.visible=false;this.stepDistance=0;this.hits=this.steps=0;this.waves.forEach(w=>w.set(0,0,-100,0));}
  snapshot(){return {renderer:'unified-slime',drops:this.drops.length,deposits:this.deposits.length,impacts:this.hits,footsteps:this.steps,ripples:this.waves.filter(w=>this.clock-w.z<1.2).length,instances:1,trail:this.trail.snapshot()};}

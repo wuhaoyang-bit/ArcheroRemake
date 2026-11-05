@@ -7,7 +7,7 @@ import {DEFAULT_LIQUID_SPEED_CURVE} from '../src/slime-liquid-flight-config.ts';
 
 const read=(settings:Record<string,unknown>,strict=false)=>parseSettingsDocument({version:1,settings},strict);
 test('liquid defaults copy the currently tuned eye values rather than the old eye factory defaults',()=>{
- const c=read({});assert.equal(c.liquidEjectSpeed,20);assert.equal(c.liquidGravity,20);assert.equal(c.liquidCurveTime,.9);
+ const c=read({});assert.equal(c.liquidDropSize,1);assert.equal(c.liquidEjectSpeed,20);assert.equal(c.liquidGravity,20);assert.equal(c.liquidCurveTime,.9);
  assert.deepEqual(c.liquidSpeedCurve,[{time:0,progress:120},{time:100,progress:8}]);
  c.liquidSpeedCurve[0].progress=2;assert.equal(DEFAULT_LIQUID_SPEED_CURVE[0].progress,120);
 });
@@ -27,11 +27,12 @@ test('explicit liquid values including zero override legacy eye migration and ro
  assert.deepEqual(parseSettingsDocument(settingsDocument(c)),c);
 });
 test('liquid numeric limits and curve validation reject invalid data and clamp normal imports',()=>{
- for(const key of ['liquidEjectSpeed','liquidSpeedJitter','liquidGravity','liquidCurveTime']){
+ for(const key of ['liquidDropSize','liquidEjectSpeed','liquidSpeedJitter','liquidGravity','liquidCurveTime']){
   assert.throws(()=>read({[key]:NaN}));assert.throws(()=>read({[key]:'10'}));assert.throws(()=>read({[key]:-1},true));
  }
- const c=read({liquidEjectSpeed:90,liquidGravity:90,liquidCurveTime:0});
- assert.equal(c.liquidEjectSpeed,40);assert.equal(c.liquidGravity,30);assert.equal(c.liquidCurveTime,.02);
+ const c=read({liquidDropSize:9,liquidEjectSpeed:90,liquidGravity:90,liquidCurveTime:0});
+ assert.equal(c.liquidDropSize,4);assert.equal(c.liquidEjectSpeed,40);assert.equal(c.liquidGravity,30);assert.equal(c.liquidCurveTime,.02);
+ assert.equal(read({}).liquidDropSize,1);
  for(const curve of [[],[{time:0,progress:-1},{time:100,progress:0}],[{time:0,progress:301},{time:100,progress:0}]])assert.throws(()=>read({liquidSpeedCurve:curve}));
 });
 test('speed jitter defaults for old files, clamps at its limit and saves explicit zero or custom offsets',()=>{

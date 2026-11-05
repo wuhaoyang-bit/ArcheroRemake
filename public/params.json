@@ -100,6 +100,7 @@
     "slimeBulge": 0.65,
     "slimeInflationFrequency": 5.5,
     "slimeInflationDamping": 0.55,
+    "liquidDropSize": 1.6,
     "liquidEjectSpeed": 13,
     "liquidSpeedJitter": 3,
     "liquidGravity": 30,
@@ -137,7 +138,7 @@
     "burstBulge": 0.8,
     "burstBulgePower": 1.5,
     "burstFxDelay": 0,
-    "burstFxScale": 1.5,
+    "burstFxScale": 1.75,
     "burstFxSpeed": 1,
     "burstFxX": 0,
     "burstFxY": 0,
@@ -362,6 +363,10 @@
         "progress": 120
       },
       {
+        "time": 20,
+        "progress": 120
+      },
+      {
         "time": 100,
         "progress": 8
       }
@@ -577,11 +582,11 @@
     "arrowTrailTaper": 0.8,
     "arrowTrailFade": 0.65,
     "sfxArrowFireEnabled": 1,
-    "sfxArrowFireVolume": 0.4,
+    "sfxArrowFireVolume": 0.35,
     "sfxArrowFirePitchMin": -1,
     "sfxArrowFirePitchMax": 1,
     "sfxBodyHitEnabled": 1,
-    "sfxBodyHitVolume": 0.4,
+    "sfxBodyHitVolume": 0.45,
     "sfxBodyHitPitchMin": -0.5,
     "sfxBodyHitPitchMax": 1.5,
     "sfxSlimeHitEnabled": 0,
@@ -592,7 +597,7 @@
     "sfxSlimeHitDelay": 0.12,
     "sfxSlimeBurstWindupEnabled": 1,
     "sfxSlimeBurstWindupVariant": 3,
-    "sfxSlimeBurstWindupVolume": 0.85,
+    "sfxSlimeBurstWindupVolume": 0.5,
     "sfxSlimeBurstWindupPitchMin": 0.5,
     "sfxSlimeBurstWindupPitchMax": 1,
     "sfxSlimeBurstDeathEnabled": 1,
