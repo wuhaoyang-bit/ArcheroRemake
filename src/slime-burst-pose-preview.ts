@@ -21,15 +21,25 @@ import {
   type FaceBulgeParams,
 } from './slime-burst-face-bulge.ts';
 import {loadFaceBulgeDocument,saveFaceBulgeDocument,upsertFaceEntry} from './slime-burst-face-bulge-store.ts';
+import {TrainingFeedback} from './training-feedback.ts';
+import {BurstShockwaveEffects} from './burst-shockwave.ts';
+import {LushBurstEffects} from './lush-burst-effects.ts';
+import {SlimeBurstPosePlayback} from './slime-burst-pose-playback.ts';
+import {buildChunkSoftbodyModelLite} from './slime-burst-centroid-fan.ts';
+import {SlimeBurstFem} from './slime-burst-fem.ts';
+import {slimeFlight} from './slime-flight-motion.ts';
 import './slime-burst-pose-preview.css';
+
+/** Softbody budget: convex-cage FEM on a few shards; rest stay hard shells. */
+const SOFT_CHUNK_LIMIT=2;
 
 const $=<E extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id) as E;
 
 document.querySelector('#app')!.innerHTML=`
 <header>
   <div>
-    <h1>爆开瞬间 · 史莱姆模型定格</h1>
-    <p>定格消失瞬间外形，切开碎块。移动模式拖动碎块；凸起模式双击某个面，用项目同一套 <code>inflatePoint('bulge')</code> 调鼓面，并可撤回 / 保存到 JSON。</p>
+    <h1>蓄爆 → 全特效 → 软碎块</h1>
+    <p>预览页专用：从蓄力播到爆开（颜色/凸面/大小跟游戏一致），播放完整爆炸特效，碎块按眼球同曲线外飞并可叠软体。编辑模式仍可切块与鼓面。</p>
   </div>
   <div class="links">
     <a href="./slime-burst-lab.html">逐帧调试页 ↗</a>
@@ -40,7 +50,7 @@ document.querySelector('#app')!.innerHTML=`
   <main>
     <div id="view">
       <div class="overlay">
-        <strong>Burst vanish pose</strong>
+        <strong id="overlay-label">Burst vanish pose</strong>
         <div id="pose-title">计算中…</div>
         <div id="pose-sub"></div>
       </div>
@@ -52,11 +62,45 @@ document.querySelector('#app')!.innerHTML=`
       </div>
       <div id="loading">正在加载参数与模型…</div>
     </div>
+    <div id="transport" class="transport" hidden>
+      <div class="row">
+        <button type="button" id="play-burst">从蓄力播放</button>
+        <button type="button" id="pause-burst">暂停</button>
+        <button type="button" id="restart-burst">重播</button>
+        <label>速度
+          <select id="play-speed" aria-label="播放速度">
+            <option value=".25">0.25×</option>
+            <option value=".5">0.5×</option>
+            <option value="1" selected>1×</option>
+            <option value="2">2×</option>
+          </select>
+        </label>
+        <label class="check"><input id="play-loop" type="checkbox">循环</label>
+      </div>
+      <input id="play-seek" type="range" min="0" max="720" value="0" step="1" aria-label="蓄爆时间轴">
+      <p id="play-time" class="chunk-info">—</p>
+    </div>
   </main>
   <aside>
-    <h2>这一帧在算什么</h2>
-    <p class="intro">游戏里 <code>gone</code> 那一帧会先写蓄爆终点姿态再隐藏。本页定格该姿态，并支持切块与按面鼓面调试。</p>
+    <h2>页面模式</h2>
+    <div class="mode-row" role="group" aria-label="页面模式">
+      <button type="button" id="ui-edit" class="mode active">编辑</button>
+      <button type="button" id="ui-play" class="mode">播放</button>
+    </div>
+    <p class="intro" id="mode-intro">编辑：定格蓄满姿态，切块与鼓面调试。播放：从蓄力到爆开完整电影。</p>
     <div id="stats"></div>
+
+    <div id="play-panel" hidden>
+      <h2>播放 · 飞溅与软体</h2>
+      <label class="check"><input id="softbody-enabled" type="checkbox">软体效果（凸包粗笼 FEM，最多 ${SOFT_CHUNK_LIMIT} 块）</label>
+      <p class="chunk-info">默认关：爆点 FEM bake 会卡死主线程。需要时再勾选；进入播放会预热着色器。硬壳飞溅更流畅。</p>
+      <label class="check"><input id="show-tet-wire" type="checkbox">显示 tet 线框</label>
+      <label class="field">FEM stepsPerSecond
+        <input id="fem-steps" type="range" min="15" max="60" step="15" value="30">
+        <output id="fem-steps-value">30</output>
+      </label>
+      <p id="play-hint" class="chunk-info">碎块速度曲线与眼球共用 slimeEyeEject* 参数（默认 Speed=14）。</p>
+    </div>
 
     <h2>切块预览</h2>
     <label class="field">切割方式
@@ -142,6 +186,7 @@ type PoseSnapshot={
 };
 
 type InteractMode='move'|'bulge';
+type UiMode='edit'|'play';
 
 function computePose(c:Settings):PoseSnapshot{
   const age=burstEndTime(c);
@@ -272,8 +317,11 @@ async function main(){
   scene.add(grid);
 
   const root=createTrainingCube(environment);
-  root.userData.practiceTarget='burst-pose';
-  scene.add(root);
+  root.userData.practiceTarget='preview';
+  const feedbackGroup=new T.Group();
+  feedbackGroup.name='PosePreviewFeedback';
+  feedbackGroup.add(root);
+  scene.add(feedbackGroup);
 
   const chunkRoot=new T.Group();
   chunkRoot.name='SlimeChunks';
@@ -290,6 +338,28 @@ async function main(){
   camera.position.fromArray(views.perspective);
   orbit.update();
 
+  $('loading').textContent='正在加载爆炸与液体资源…';
+  const shockwave=new BurstShockwaveEffects(renderer,scene,camera);
+  const effects=await LushBurstEffects.load(scene,()=>{},environment);
+  const feedback=new TrainingFeedback(feedbackGroup,[{id:'preview',x:0,z:0}],24,24);
+  // Warm GPU pipelines once at load: first burst otherwise freezes ~1s on shader compile
+  // (shockwave RenderPipeline + Lush node materials + eye debris).
+  try{
+    $('loading').textContent='正在预热爆炸着色器…';
+    const tWarm=performance.now();
+    // Emit a real wave so the refraction pass compiles with non-zero strength uniforms.
+    shockwave.emit(new T.Vector3(0,1,0),c);
+    shockwave.warmup(c);
+    effects.prepareWarmup(1,c,camera,24,24);
+    feedback.prepareEyeDebris(c);
+    renderer.render(scene,camera);
+    effects.clear();
+    feedback.eyeDebris.clear();
+    feedback.reset();
+    shockwave.clear();
+    console.info(`[perf] burst fx warmup ${Math.round(performance.now()-tWarm)}ms`);
+  }catch(e){console.warn('burst fx warmup skipped',e);}
+
   let autoRotate=false;
   let chunkMode:ChunkMode=faceDoc.cutMode;
   let pieces:ChunkPiece[]=[];
@@ -299,11 +369,16 @@ async function main(){
   let nextCutSeed=faceDoc.cutSeed;
   $<HTMLSelectElement>('chunk-mode').value=chunkMode;
   let interactMode:InteractMode='move';
+  let uiMode:UiMode='edit';
   let dragging=false;
   let selectedFace:FaceBulgeEntry|null=null;
   let selectedPatchLoop:number[]|null=null;
   let selectedChunkIndex=-1;
   let panelSyncing=false;
+  let fem:SlimeBurstFem|null=null;
+  let femReady=false;
+  let baseCamPos=camera.position.clone();
+  let softElapsed=0;
 
   const dragPlane=new T.Plane();
   const dragOffset=new T.Vector3();
@@ -317,6 +392,185 @@ async function main(){
 
   const inflation=monsterInstance(root)!.inflation!;
   const bodyMat=inflation.body.material as T.MeshPhysicalMaterial;
+
+  async function disposeFem(){
+    fem?.dispose();
+    fem=null;
+    femReady=false;
+    softElapsed=0;
+  }
+
+  const yieldFrame=()=>new Promise<void>(r=>requestAnimationFrame(()=>r()));
+
+  /** Compile FEM compute pipelines once before burst so first soft attach is cheaper. */
+  async function prewarmFem(){
+    if(!$<HTMLInputElement>('softbody-enabled').checked)return;
+    $('message').textContent='软体着色器预热中…';
+    const t0=performance.now();
+    try{
+      const warm=new SlimeBurstFem(renderer,{groundY:0});
+      const box=new T.BoxGeometry(0.4,0.4,0.4);
+      const model=buildChunkSoftbodyModelLite(box);
+      box.dispose();
+      await warm.addChunk(model);
+      await warm.bake();
+      warm.dispose();
+      console.info(`[perf] fem prewarm ${Math.round(performance.now()-t0)}ms`);
+      $('message').textContent=`软体预热完成（${Math.round(performance.now()-t0)}ms），可播放。`;
+    }catch(e){
+      console.warn('fem prewarm failed',e);
+      $('message').textContent=`软体预热失败：${e instanceof Error?e.message:String(e)}`;
+    }
+  }
+
+  async function attachSoftChunks(chunkPieces:ChunkPiece[]){
+    await disposeFem();
+    if(!$<HTMLInputElement>('softbody-enabled').checked||!chunkPieces.length)return;
+    for(const p of chunkPieces)p.mesh.visible=true;
+    const softPieces=chunkPieces.slice(0,SOFT_CHUNK_LIMIT);
+    // Let hard shells + Lush paint for a couple frames before FEM bake monopolizes the GPU.
+    $('message').textContent='硬壳已飞出 · 软体编译中…';
+    await yieldFrame();
+    await yieldFrame();
+    const t0=performance.now();
+    try{
+      fem=new SlimeBurstFem(renderer,{groundY:0});
+      scene.add(fem.object);
+      let tetTotal=0;
+      for(const p of softPieces){
+        const model=buildChunkSoftbodyModelLite(p.mesh.geometry);
+        tetTotal+=(model.tetIds.length/4)|0;
+        await fem.addChunk(model);
+      }
+      const tBake=performance.now();
+      await fem.bake();
+      console.info(`[perf] fem bake ${Math.round(performance.now()-tBake)}ms · total attach ${Math.round(performance.now()-t0)}ms · ~${tetTotal} tet`);
+      fem.setStepsPerSecond(Number($<HTMLInputElement>('fem-steps').value)||30);
+      // Match hard-shell eye gravity (do not ×2 — that pulls soft chunks away from the eye curve).
+      const g=c.slimeEyeEjectGravity??9.8;
+      fem.setGravity(0,-Math.abs(g),0);
+      const wire=fem.getTetVisualizer();
+      if(wire)wire.visible=$<HTMLInputElement>('show-tet-wire').checked;
+
+      const flightPieces=playback.chunkFlight.getPieces();
+      let spawned=0;
+      for(let i=0;i<softPieces.length;i++){
+        const fp=flightPieces[i];
+        if(!fp)break;
+        // Deferred attach: use current flight age so speed matches the hard shell already in air.
+        const motion=slimeFlight(fp.age,c);
+        const velocity=fp.direction.clone().multiplyScalar(motion.speed);
+        velocity.y-=motion.fallSpeed;
+        await fem.spawnChunk(i,fp.object.position.clone(),velocity);
+        spawned++;
+      }
+      // Only hide hard shells that have a live soft twin — never leave the burst empty.
+      const softOk=spawned>0;
+      if(softOk){
+        for(let i=0;i<spawned;i++)softPieces[i].mesh.visible=false;
+      }
+      femReady=softOk;
+      const softMeshes=fem.object.children.filter((o):o is T.Mesh=> (o as T.Mesh).isMesh);
+      const instanceCounts=softMeshes.map(m=>(m.geometry as T.InstancedBufferGeometry)?.instanceCount??-1);
+      console.info(`[perf] soft spawn ${spawned} · instanceCounts=${instanceCounts.join(',')}`);
+      if(!softOk||instanceCounts.every(n=>n<=0)){
+        for(const p of chunkPieces)p.mesh.visible=true;
+        $('message').textContent=`软体已 bake 但未显示，保留硬壳 · ~${tetTotal} tet`;
+      }else{
+        $('message').textContent=`软体 ${spawned}/${chunkPieces.length} 块 · ~${tetTotal} tet · bake ${Math.round(performance.now()-tBake)}ms`;
+      }
+    }catch(e){
+      console.warn('softbody attach failed; keeping hard shells',e);
+      await disposeFem();
+      for(const p of chunkPieces)p.mesh.visible=true;
+      $('message').textContent=`软体失败（硬壳仍飞）：${e instanceof Error?e.message:String(e)}`;
+    }
+  }
+
+  const playback=new SlimeBurstPosePlayback(
+    feedback,
+    effects,
+    shockwave,
+    root,
+    chunkRoot,
+    ()=>c,
+    ()=>chunkMode,
+    ()=>faceDoc,
+    ()=>activeCutSeed,
+    {
+      onChunkInfo:text=>{
+        pieces=playback.pieces;
+        $('chunk-info').textContent=text;
+        $('message').textContent=text;
+        $('overlay-label').textContent='Chunks flying';
+      },
+      onMessage:text=>{$('message').textContent=text;},
+      onPhase:(phase,detail)=>{
+        $('overlay-label').textContent='Playback';
+        $('pose-title').textContent=phase;
+        $('pose-sub').textContent=detail;
+        $('play-time').textContent=`${phase} · ${detail}`;
+        $<HTMLInputElement>('play-seek').value=String(playback.frame);
+        $<HTMLInputElement>('play-seek').max=String(playback.total);
+      },
+      onSoftChunks:async(chunkPieces)=>{
+        pieces=chunkPieces;
+        await attachSoftChunks(chunkPieces);
+      },
+      // Softbody flies on its own after spawnChunk impulse — no per-frame kinematic reset.
+      onSoftSync:()=>{},
+      onSoftUpdate:async(dt,elapsed)=>{
+        if(!fem||!femReady)return;
+        softElapsed=elapsed;
+        try{
+          await fem.update(dt,elapsed);
+        }catch(e){
+          console.warn('fem.update failed',e);
+          $('message').textContent=`软体步进失败：${e instanceof Error?e.message:String(e)}`;
+          for(const p of pieces)p.mesh.visible=true;
+          await disposeFem();
+        }
+      },
+    },
+  );
+  playback.setCamera(camera);
+  playback.softbodyEnabled=$<HTMLInputElement>('softbody-enabled').checked;
+
+  function setUiMode(mode:UiMode){
+    uiMode=mode;
+    $('ui-edit').classList.toggle('active',mode==='edit');
+    $('ui-play').classList.toggle('active',mode==='play');
+    $('transport').hidden=mode!=='play';
+    $('play-panel').hidden=mode!=='play';
+    $('mode-intro').textContent=mode==='edit'
+      ?'编辑：定格蓄满姿态，切块与鼓面调试。'
+      :'播放：从蓄力开始，完整爆炸特效 + 碎块外飞（眼球同曲线）+ 可选软体。';
+    if(mode==='edit'){
+      playback.stop();
+      playback.clearChunks();
+      void disposeFem();
+      effects.clear();
+      shockwave.clear();
+      feedback.reset();
+      feedback.eyeDebris.clear();
+      root.visible=true;
+      pieces=[];
+      applyBurstVanishPose(root,c,computePose(c));
+      renderStats(computePose(c));
+      $('overlay-label').textContent='Burst vanish pose';
+      $('message').textContent='已回到编辑模式。';
+    }else{
+      clearChunks();
+      clearFaceSelection();
+      setChunkSelected(null,pieces);
+      selected=null;
+      void disposeFem();
+      playback.measure();
+      $<HTMLInputElement>('play-seek').max=String(playback.total);
+      $('message').textContent='播放模式：点「从蓄力播放」。';
+      if($<HTMLInputElement>('softbody-enabled').checked)void prewarmFem();
+    }
+  }
 
   function refreshStoreUi(){
     $('store-status').textContent=storeStatus;
@@ -535,6 +789,40 @@ async function main(){
   $('show-whole').onclick=()=>showWhole();
   $('mode-move').onclick=()=>setInteractMode('move');
   $('mode-bulge').onclick=()=>setInteractMode('bulge');
+  $('ui-edit').onclick=()=>setUiMode('edit');
+  $('ui-play').onclick=()=>setUiMode('play');
+  $('play-burst').onclick=()=>{
+    playback.softbodyEnabled=$<HTMLInputElement>('softbody-enabled').checked;
+    activeCutSeed=nextCutSeed;
+    playback.playFromWindup(camera);
+    $('pause-burst').textContent='暂停';
+  };
+  $('pause-burst').onclick=()=>{
+    if(playback.playing){
+      playback.stop();
+      $('pause-burst').textContent='继续';
+    }else{
+      playback.togglePlay(camera);
+      $('pause-burst').textContent='暂停';
+    }
+  };
+  $('restart-burst').onclick=()=>$('play-burst').click();
+  $<HTMLInputElement>('play-seek').oninput=e=>{
+    playback.seek(Number((e.target as HTMLInputElement).value),camera);
+  };
+  $('softbody-enabled').onchange=()=>{
+    playback.softbodyEnabled=$<HTMLInputElement>('softbody-enabled').checked;
+    if(uiMode==='play'&&playback.softbodyEnabled)void prewarmFem();
+  };
+  $('show-tet-wire').onchange=()=>{
+    const wire=fem?.getTetVisualizer();
+    if(wire)wire.visible=$<HTMLInputElement>('show-tet-wire').checked;
+  };
+  $('fem-steps').oninput=()=>{
+    const v=Number($<HTMLInputElement>('fem-steps').value)||30;
+    $('fem-steps-value').textContent=String(v);
+    fem?.setStepsPerSecond(v);
+  };
 
   for(const id of ['face-bulge','face-fill','face-rings']){
     $(id).addEventListener('pointerdown',()=>history.begin());
@@ -605,7 +893,7 @@ async function main(){
   }
 
   canvas.addEventListener('pointerdown',ev=>{
-    if(!pieces.length||ev.button!==0)return;
+    if(uiMode!=='edit'||!pieces.length||ev.button!==0)return;
     if(interactMode!=='move')return;
     ndc(ev);
     raycaster.setFromCamera(pointer,camera);
@@ -645,7 +933,7 @@ async function main(){
   canvas.addEventListener('pointercancel',endDrag);
 
   canvas.addEventListener('dblclick',ev=>{
-    if(!pieces.length||interactMode!=='bulge')return;
+    if(uiMode!=='edit'||!pieces.length||interactMode!=='bulge')return;
     ndc(ev);
     raycaster.setFromCamera(pointer,camera);
     const hits=raycaster.intersectObjects(pieces.map(p=>p.mesh),false);
@@ -707,21 +995,48 @@ async function main(){
           settings:{...c},
           pose:computePose(c),
           chunks:pieces.length,
+          hardVisible:pieces.filter(p=>p.mesh.visible).length,
+          soft:{
+            ready:femReady,
+            children:fem?.object.children.length??0,
+            meshes:(fem?.object.children??[]).filter((o):o is T.Mesh=>(o as T.Mesh).isMesh).map(m=>({
+              name:m.name,
+              visible:m.visible,
+              instanceCount:(m.geometry as T.InstancedBufferGeometry)?.instanceCount??null,
+            })),
+          },
           mode:chunkMode,
           interactMode,
+          uiMode,
+          play:{frame:playback.frame,total:playback.total,wind:playback.windFrame,burst:playback.burstFrame,playing:playback.playing},
+          flight:playback.chunkFlight.snapshot(),
           faceDoc:cloneFaceBulgeDoc(faceDoc),
           selectedFace,
         }),
         cut:()=>cutChunks(),
         reload:()=>$('reload').click(),
+        play:()=>$('play-burst').click(),
       },
     });
   }
 
-  renderer.setAnimationLoop(()=>{
-    if(autoRotate&&root.visible)root.rotation.y+=0.006;
+  setUiMode('edit');
+
+  renderer.setAnimationLoop((now:number)=>{
+    if(uiMode==='edit'){
+      if(autoRotate&&root.visible)root.rotation.y+=0.006;
+      orbit.update();
+      renderer.render(scene,camera);
+      return;
+    }
+    baseCamPos.copy(camera.position);
+    const speed=Number($<HTMLSelectElement>('play-speed').value)||1;
+    const loop=$<HTMLInputElement>('play-loop').checked;
+    playback.tick(now,speed,camera,loop);
+    const shake=playback.shakeOffset();
+    camera.position.set(baseCamPos.x+shake.x*.02,baseCamPos.y+shake.y*.02,baseCamPos.z);
     orbit.update();
-    renderer.render(scene,camera);
+    // playback.tick → shockwave.render already composites the scene
   });
 }
 

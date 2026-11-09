@@ -43,11 +43,52 @@ function materialPair(source:T.Mesh){
   return {outer:base,inner};
 }
 
+/**
+ * Slime body is BoxGeometry(2,2,2,16,16,16) → ~5k verts after inflate.
+ * Feeding all of them into ConvexGeometry freezes the main thread (~1s+).
+ * Voxel-bin downsample keeps the outer cage with tens of points.
+ */
+function downsampleConvexPoints(points:T.Vector3[],maxPoints=48):T.Vector3[]{
+  if(points.length<=maxPoints)return points;
+  const box=new T.Box3().setFromPoints(points);
+  const size=box.getSize(new T.Vector3());
+  const extent=Math.max(size.x,size.y,size.z,1e-4);
+  const cells=Math.max(2,Math.ceil(Math.cbrt(maxPoints)));
+  const cell=extent/cells;
+  const bins=new Map<string,T.Vector3>();
+  for(const p of points){
+    const ix=Math.floor((p.x-box.min.x)/cell);
+    const iy=Math.floor((p.y-box.min.y)/cell);
+    const iz=Math.floor((p.z-box.min.z)/cell);
+    const key=`${ix},${iy},${iz}`;
+    if(!bins.has(key))bins.set(key,p.clone());
+  }
+  let out=[...bins.values()];
+  if(out.length<4){
+    const {min,max}=box;
+    out=[
+      new T.Vector3(min.x,min.y,min.z),new T.Vector3(max.x,min.y,min.z),
+      new T.Vector3(min.x,max.y,min.z),new T.Vector3(max.x,max.y,min.z),
+      new T.Vector3(min.x,min.y,max.z),new T.Vector3(max.x,min.y,max.z),
+      new T.Vector3(min.x,max.y,max.z),new T.Vector3(max.x,max.y,max.z),
+    ];
+  }
+  if(out.length>maxPoints)out=out.slice(0,maxPoints);
+  return out;
+}
+
 function toConvexMesh(geometry:T.BufferGeometry,material:T.Material){
   const pos=geometry.getAttribute('position');
   const points:T.Vector3[]=[];
-  for(let i=0;i<pos.count;i++)points.push(new T.Vector3().fromBufferAttribute(pos,i));
-  const convex=new ConvexGeometry(points);
+  const seen=new Set<string>();
+  for(let i=0;i<pos.count;i++){
+    const p=new T.Vector3().fromBufferAttribute(pos,i);
+    const key=`${p.x.toFixed(4)},${p.y.toFixed(4)},${p.z.toFixed(4)}`;
+    if(seen.has(key))continue;
+    seen.add(key);
+    points.push(p);
+  }
+  const convex=new ConvexGeometry(downsampleConvexPoints(points,48));
   const mesh=new T.Mesh(convex,material);
   mesh.castShadow=true;
   mesh.receiveShadow=true;
@@ -166,11 +207,20 @@ function finalizePieces(meshes:T.Mesh[],fallbackMat:T.Material){
     bakeMeshInPlace(mesh);
     const base=((Array.isArray(mesh.material)?mesh.material[0]:mesh.material)||fallbackMat).clone() as T.MeshPhysicalMaterial;
     if('color' in base)base.color=new T.Color(palette[i%palette.length]);
+    // Preview readability: slight emissive so shards stay visible inside lush FX.
+    if('emissive' in base&&base.emissive){
+      base.emissive=base.color.clone().multiplyScalar(0.35);
+      if('emissiveIntensity' in base)(base as T.MeshStandardMaterial).emissiveIntensity=0.55;
+    }
+    if('transmission' in base)base.transmission=0;
+    base.transparent=false;
+    base.opacity=1;
     const hasInner=(mesh.geometry.groups??[]).some(g=>g.materialIndex===1);
     if(hasInner){
       const inner=base.clone();
       inner.color=base.color.clone().multiplyScalar(.78);
       if('transmission' in inner)inner.transmission=0;
+      if('emissive' in inner&&inner.emissive)inner.emissive=inner.color.clone().multiplyScalar(0.25);
       mesh.material=[base,inner];
     }else mesh.material=base;
     mesh.castShadow=true;
