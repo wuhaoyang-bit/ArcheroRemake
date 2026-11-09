@@ -19,7 +19,13 @@ export type SoftbodyModel = {
   baryCoords: number[];
 };
 
-type Attr = {array: ArrayLike<number>; count: number};
+type Attr = {
+  array: ArrayLike<number>;
+  count: number;
+  getX?(i: number): number;
+  getY?(i: number): number;
+  getZ?(i: number): number;
+};
 type GeometryLike = {
   getAttribute(name: string): Attr | undefined;
   index: {array: ArrayLike<number>; count: number} | null;
@@ -306,7 +312,9 @@ export function buildChunkSoftbodyModelLite(geometry: GeometryLike): SoftbodyMod
   const points: T.Vector3[] = [];
   const seen = new Set<string>();
   for (let i = 0; i < posAttr.count; i++) {
-    const x = posAttr.getX(i), y = posAttr.getY(i), z = posAttr.getZ(i);
+    const x = posAttr.getX ? posAttr.getX(i) : Number(posAttr.array[i * 3]);
+    const y = posAttr.getY ? posAttr.getY(i) : Number(posAttr.array[i * 3 + 1]);
+    const z = posAttr.getZ ? posAttr.getZ(i) : Number(posAttr.array[i * 3 + 2]);
     const key = `${x.toFixed(4)},${y.toFixed(4)},${z.toFixed(4)}`;
     if (seen.has(key)) continue;
     seen.add(key);
