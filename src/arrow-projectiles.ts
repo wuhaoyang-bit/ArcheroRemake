@@ -12,10 +12,18 @@ type Arrow = {
   paint:THREE.Mesh;
   direction: THREE.Vector3;
   distance: number;
+  /** Per-arrow flight speed (base or after-pierce). */
+  speed: number;
   active: boolean;
   pierce: boolean;
   /** Seconds left pinned at the hit point before recycle; 0 means flying normally. */
   lingerRemaining: number;
+  /** First pierce body; cleared after after-pierce speed applies. */
+  pierceExitTarget: THREE.Object3D | null;
+  /** World point on the far AABB face along flight; tip must reach it before slowdown. */
+  pierceExitPoint: THREE.Vector3 | null;
+  /** True once tip passed the first pierce body (or that target vanished). */
+  afterPierceApplied: boolean;
   /** Enemy ids already damaged by this arrow (pierce: once each; non-pierce: at most one). */
   hitIds: Set<string>;
 };
@@ -42,6 +50,9 @@ export class ArrowProjectiles {
   private hits: THREE.Intersection[] = [];
   private origin = new THREE.Vector3();
   private tipPoint = new THREE.Vector3();
+  private exitBox = new THREE.Box3();
+  private exitRay = new THREE.Ray();
+  private exitScratch = new THREE.Vector3();
   private forward = new THREE.Vector3(0, 0, 1);
   private fired = 0;
   private hitCount = 0;
@@ -50,6 +61,8 @@ export class ArrowProjectiles {
   private tail: number;
   private scale = 1;
   private speed = ARROW_SPEED;
+  /** Absolute speed after tip leaves the first pierced body. */
+  private speedAfterPierce = ARROW_SPEED;
   private pierce = false;
   /** Non-pierce hit linger before recycle (seconds). 0 = immediate despawn. */
   private hitLinger = 1 / 60;
@@ -82,9 +95,13 @@ export class ArrowProjectiles {
       object,trail,paint,
       direction: new THREE.Vector3(),
       distance: 0,
+      speed: this.speed,
       active: false,
       pierce: false,
       lingerRemaining: 0,
+      pierceExitTarget: null,
+      pierceExitPoint: null,
+      afterPierceApplied: false,
       hitIds: new Set(),
     };
     this.pool.push(arrow);
@@ -94,6 +111,18 @@ export class ArrowProjectiles {
   setSpeed(speed: number) {
     if (!Number.isFinite(speed) || speed <= 0) throw new Error('箭速必须为正数。');
     this.speed = speed;
+    // Live arrows that have not yet taken after-pierce speed follow the new base.
+    for (const arrow of this.pool) {
+      if (arrow.active && !arrow.afterPierceApplied) arrow.speed = speed;
+    }
+  }
+
+  setSpeedAfterPierce(speed: number) {
+    if (!Number.isFinite(speed) || speed <= 0) throw new Error('穿透后箭速必须为正数。');
+    this.speedAfterPierce = speed;
+    for (const arrow of this.pool) {
+      if (arrow.active && arrow.afterPierceApplied) arrow.speed = speed;
+    }
   }
 
   setPierce(enabled: boolean) {
@@ -137,6 +166,10 @@ export class ArrowProjectiles {
     arrow.trail.clear();
     arrow.active = false;
     arrow.lingerRemaining = 0;
+    arrow.pierceExitTarget = null;
+    arrow.pierceExitPoint = null;
+    arrow.afterPierceApplied = false;
+    arrow.speed = this.speed;
     arrow.object.visible = false;
     arrow.hitIds.clear();
   }
@@ -155,8 +188,12 @@ export class ArrowProjectiles {
     arrow.object.position.copy(position);
     arrow.object.quaternion.setFromUnitVectors(this.forward, arrow.direction);
     arrow.distance = 0;
+    arrow.speed = this.speed;
     arrow.pierce = this.pierce;
     arrow.lingerRemaining = 0;
+    arrow.pierceExitTarget = null;
+    arrow.pierceExitPoint = null;
+    arrow.afterPierceApplied = false;
     arrow.hitIds.clear();
     arrow.active = true;
     arrow.object.visible = true;
@@ -170,10 +207,17 @@ export class ArrowProjectiles {
   }
 
   private targetId(start: THREE.Object3D): string | null {
+    const root = this.practiceRoot(start);
+    const id = root?.userData.practiceTarget;
+    return typeof id === 'string' && id.length ? id : null;
+  }
+
+  /** Object that owns `userData.practiceTarget` (hit proxy root). */
+  private practiceRoot(start: THREE.Object3D): THREE.Object3D | null {
     let object: THREE.Object3D | null = start;
     while (object) {
       const id = object.userData.practiceTarget;
-      if (typeof id === 'string' && id.length) return id;
+      if (typeof id === 'string' && id.length) return object;
       object = object.parent;
     }
     return null;
@@ -181,6 +225,43 @@ export class ArrowProjectiles {
 
   private outsideWalls(point: THREE.Vector3) {
     return Math.abs(point.x) > this.wallX + 1e-6 || Math.abs(point.z) > this.wallZ + 1e-6;
+  }
+
+  /** Far-face exit along `dir` from a contact point on/inside the AABB. */
+  private farFaceExit(target: THREE.Object3D, contact: THREE.Vector3, dir: THREE.Vector3) {
+    this.exitBox.setFromObject(target);
+    this.exitRay.origin.copy(contact).addScaledVector(dir, 1e-3);
+    this.exitRay.direction.copy(dir);
+    if (this.exitRay.intersectBox(this.exitBox, this.exitScratch)) return this.exitScratch.clone();
+    return contact.clone();
+  }
+
+  /** Tip reached/passed the far face, or the pierce target vanished. */
+  private pierceExitReady(arrow: Arrow, tip: THREE.Vector3) {
+    const target = arrow.pierceExitTarget;
+    if (!target) return false;
+    if (!target.parent || !this.targets.includes(target)) return true;
+    const exit = arrow.pierceExitPoint;
+    if (!exit) return true;
+    return this.exitScratch.copy(tip).sub(exit).dot(arrow.direction) >= -1e-4;
+  }
+
+  private tryApplyAfterPierceSpeed(arrow: Arrow) {
+    if (!arrow.pierce || arrow.afterPierceApplied || !arrow.pierceExitTarget) return;
+    this.tipPoint.copy(arrow.object.position).addScaledVector(arrow.direction, this.tip * this.scale);
+    if (!this.pierceExitReady(arrow, this.tipPoint)) return;
+    arrow.speed = this.speedAfterPierce;
+    arrow.afterPierceApplied = true;
+    arrow.pierceExitTarget = null;
+    arrow.pierceExitPoint = null;
+  }
+
+  private beginPierceExitWatch(arrow: Arrow, hitObject: THREE.Object3D, contact: THREE.Vector3) {
+    if (arrow.afterPierceApplied || arrow.pierceExitTarget) return;
+    const root = this.practiceRoot(hitObject);
+    if (!root) return;
+    arrow.pierceExitTarget = root;
+    arrow.pierceExitPoint = this.farFaceExit(root, contact, arrow.direction);
   }
 
   /**
@@ -222,6 +303,8 @@ export class ArrowProjectiles {
         }
         return true;
       }
+      // First pierce only: wait until tip passes the far face of this body, then slow.
+      this.beginPierceExitWatch(arrow, intersection.object, intersection.point);
       this.onHit?.(hit);
       // In diagnostic pause mode preserve a piercing arrow at the first contact.
       if(this.debug?.enabled&&this.debug.paused){
@@ -243,7 +326,7 @@ export class ArrowProjectiles {
       return;
     }
 
-    const travel = this.speed * dt;
+    const travel = arrow.speed * dt;
 
     // Trigger starts at the current tip and sweeps along the flight direction.
     this.origin.copy(arrow.object.position).addScaledVector(arrow.direction, this.tip * this.scale);
@@ -251,6 +334,9 @@ export class ArrowProjectiles {
 
     arrow.object.position.addScaledVector(arrow.direction, travel);
     arrow.distance += travel;
+
+    this.tryApplyAfterPierceSpeed(arrow);
+    if (!arrow.active) return;
 
     this.tipPoint.copy(arrow.object.position).addScaledVector(arrow.direction, this.tip * this.scale);
     if (this.outsideWalls(this.tipPoint)) this.recycle(arrow);
@@ -280,6 +366,7 @@ export class ArrowProjectiles {
     return {
       scale: this.scale,
       speed: this.speed,
+      speedAfterPierce: this.speedAfterPierce,
       pierce: this.pierce,
       hitLinger: this.hitLinger,
       fired: this.fired,
@@ -292,7 +379,9 @@ export class ArrowProjectiles {
         tip:a.object.position.clone().addScaledVector(a.direction,this.tip*this.scale).toArray(),
         direction: a.direction.toArray(),
         distance: a.distance,
+        speed: a.speed,
         pierce: a.pierce,
+        afterPierceApplied: a.afterPierceApplied,
         lingerRemaining: a.lingerRemaining,
         hitIds: [...a.hitIds],
       })),

@@ -107,6 +107,72 @@ test('pierce damages each enemy once, keeps flying, and only despawns on the roo
   assert.equal(arrows.snapshot().active.length, 0);
 });
 
+test('pierce slows only after the tip passes the first body far face, then keeps that speed', () => {
+  const { scene, arrows } = fixture();
+  const hits: string[] = [];
+  arrows.onHit = hit => hits.push(hit.id);
+  arrows.setPierce(true);
+  arrows.setSpeed(50);
+  arrows.setSpeedAfterPierce(10);
+  arrows.setRoomBounds(16, 38);
+  const nearEnemy = enemy(scene, 5, 'near');
+  const farEnemy = enemy(scene, 14, 'far');
+  arrows.setTargets([nearEnemy, farEnemy]);
+  arrows.fire(origin, aim, Infinity);
+
+  // Approach until first hit; tip may still be short of the far face (z≈5.5).
+  for (let i = 0; i < 40 && hits.length < 1; i++) arrows.update(.01);
+  assert.deepEqual(hits, ['near']);
+  let snap = arrows.snapshot().active[0];
+  assert.ok(snap);
+  if (!snap.afterPierceApplied) {
+    assert.equal(snap.speed, 50);
+    // Still short of far face: tip z should be < ~5.5
+    assert.ok(snap.tip[2] < 5.5 + 1e-3);
+  }
+
+  // Advance until tip clears the first body.
+  for (let i = 0; i < 40 && !arrows.snapshot().active[0]?.afterPierceApplied; i++) arrows.update(.01);
+  snap = arrows.snapshot().active[0];
+  assert.ok(snap);
+  assert.equal(snap.afterPierceApplied, true);
+  assert.equal(snap.speed, 10);
+  near(snap.tip[2], 5.5, .15);
+
+  const distAtSlow = snap.distance;
+  arrows.update(.1);
+  snap = arrows.snapshot().active[0];
+  assert.ok(snap);
+  near(snap.distance - distAtSlow, 1); // 10 * 0.1
+  assert.equal(snap.speed, 10);
+
+  for (let i = 0; i < 80 && hits.length < 2; i++) arrows.update(.05);
+  assert.deepEqual(hits, ['near', 'far']);
+  snap = arrows.snapshot().active[0];
+  assert.ok(snap);
+  assert.equal(snap.speed, 10);
+  assert.equal(snap.afterPierceApplied, true);
+});
+
+test('removing the pierce target before exit applies after-pierce speed immediately', () => {
+  const { scene, arrows } = fixture();
+  arrows.setPierce(true);
+  arrows.setSpeed(40);
+  arrows.setSpeedAfterPierce(8);
+  arrows.setRoomBounds(16, 38);
+  const target = enemy(scene, 4, 'only');
+  arrows.setTargets([target]);
+  arrows.fire(origin, aim, Infinity);
+  for (let i = 0; i < 40 && arrows.snapshot().hits < 1; i++) arrows.update(.01);
+  assert.equal(arrows.snapshot().hits, 1);
+  assert.equal(arrows.snapshot().active[0].afterPierceApplied, false);
+  assert.equal(arrows.snapshot().active[0].speed, 40);
+  arrows.setTargets([]);
+  arrows.update(.01);
+  assert.equal(arrows.snapshot().active[0].afterPierceApplied, true);
+  assert.equal(arrows.snapshot().active[0].speed, 8);
+});
+
 test('pierce still hits a far mid-flight enemy beyond the old range budget', () => {
   const { scene, arrows } = fixture();
   const hits: string[] = [];

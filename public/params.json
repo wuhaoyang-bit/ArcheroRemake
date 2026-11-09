@@ -964,6 +964,7 @@
     "arrowScale": 2.4,
     "arrowSpeed": 110,
     "arrowPierce": 1,
+    "arrowSpeedAfterPierce": 80,
     "arrowHitLinger": 0.01,
     "arrowsPerAttack": 1,
     "arrowFireInterval": 0.1,
