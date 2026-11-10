@@ -427,3 +427,51 @@ test('low-speed movement sweeps other bodies and respects exit slowdown after re
  assert.deepEqual(arrows.snapshot().active[0].hitIds,['near','far']);
  near(arrows.snapshot().active[0].position[2],12.6);
 });
+
+test('gravity begins only after pierced entry resistance and embeds at the impact angle',()=>{
+ const {scene,arrows}=fixture();arrows.setPierce(true);arrows.setPierceGravity(true);
+ arrows.setSpeed(10);arrows.setSpeedAfterPierce(10);arrows.setPiercePause(40);arrows.setTargets([enemy(scene,2,'gel')]);
+ arrows.fire(origin,aim,Infinity);arrows.update(.12);
+ let shot=arrows.snapshot().active[0];near(shot.tip[1],1);near(shot.verticalSpeed,0);near(shot.piercePauseRemaining,.02);
+ arrows.update(.12);shot=arrows.snapshot().active[0];
+ near(shot.tip[1],1-.5*9.8*.1*.1);near(shot.verticalSpeed,-.98);assert.ok(shot.direction[1]<0);
+ arrows.update(.5);shot=arrows.snapshot().active[0];assert.equal(shot.grounded,true);assert.ok(shot.tip[1]<0);
+ const position=[...shot.position],direction=[...shot.direction];arrows.update(.1);
+ assert.deepEqual(arrows.snapshot().active[0].position,position);assert.deepEqual(arrows.snapshot().active[0].direction,direction);
+ arrows.update(3);assert.equal(arrows.snapshot().active.length,0);
+ arrows.setTargets([]);arrows.fire(origin,aim,Infinity);arrows.update(.3);
+ shot=arrows.snapshot().active[0];near(shot.tip[1],1);assert.equal(shot.gravityArmed,false);assert.equal(shot.grounded,false);
+});
+
+test('gravity is opt-in, zero-duration entry triggers immediately, landing is frame independent',()=>{
+ const landed:number[][]=[];
+ for(const steps of [1,30,120]){
+  const {scene,arrows}=fixture();arrows.setPierce(true);arrows.setPierceGravity(true);
+  arrows.setSpeed(10);arrows.setSpeedAfterPierce(10);arrows.setPiercePause(0);arrows.setTargets([enemy(scene,2,'gel')]);
+  arrows.fire(origin,aim,Infinity);for(let i=0;i<steps;i++)arrows.update(.8/steps);
+  const shot=arrows.snapshot().active[0];assert.equal(shot.grounded,true);landed.push(shot.position);
+ }
+ for(const pos of landed)pos.forEach((v,i)=>near(v,landed[0][i]));
+ const {scene,arrows}=fixture();arrows.setPierce(true);arrows.setSpeed(10);arrows.setTargets([enemy(scene,2,'gel')]);
+ arrows.fire(origin,aim,Infinity);arrows.update(1);near(arrows.snapshot().active[0].tip[1],1);
+});
+
+test('falling arrows retain swept collision and damage a later body once',()=>{
+ const {scene,arrows}=fixture();arrows.setPierce(true);arrows.setPierceGravity(true);
+ arrows.setSpeed(10);arrows.setSpeedAfterPierce(10);arrows.setPiercePause(0);
+ arrows.setTargets([enemy(scene,2,'near'),enemy(scene,4,'far')]);
+ arrows.fire(origin,aim,Infinity);arrows.update(.8);
+ assert.deepEqual(arrows.snapshot().active[0].hitIds,['near','far']);assert.equal(arrows.snapshot().hits,2);
+});
+
+test('adjustable gravity supports zero, stronger pull and live changes without losing vertical momentum',()=>{
+ const {scene,arrows}=fixture();arrows.setPierce(true);arrows.setPierceGravity(true);arrows.setGravity(0);
+ arrows.setSpeed(10);arrows.setSpeedAfterPierce(10);arrows.setPiercePause(0);arrows.setTargets([enemy(scene,2,'gel')]);
+ arrows.fire(origin,aim,Infinity);arrows.update(.2);near(arrows.snapshot().active[0].tip[1],1);
+ arrows.setGravity(20);arrows.update(.1);
+ near(arrows.snapshot().active[0].tip[1],.9);near(arrows.snapshot().active[0].verticalSpeed,-2);
+ arrows.setGravity(0);arrows.update(.1);
+ near(arrows.snapshot().active[0].tip[1],.7);near(arrows.snapshot().active[0].verticalSpeed,-2);
+ arrows.update(.4);assert.equal(arrows.snapshot().active[0].grounded,true);
+ for(const invalid of [-1,NaN,Infinity])assert.throws(()=>arrows.setGravity(invalid));
+});

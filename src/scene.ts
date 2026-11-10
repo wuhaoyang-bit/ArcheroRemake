@@ -550,6 +550,8 @@ export class GameScene {
     this.arrows?.setHitLinger(ctl.settings.arrowHitLinger);
     this.arrows?.setPiercePause(ctl.settings.arrowPiercePauseMs);
     this.arrows?.setPierceEntrySpeed(ctl.settings.arrowPierceEntrySpeed);
+    this.arrows?.setPierceGravity(!!ctl.settings.arrowPierceGravity);
+    this.arrows?.setGravity(ctl.settings.arrowPierceGravityStrength);
     if (!ctl.combatTraining || ctl.activeAttackRequest === null) this.pendingShots.length = 0;
     this.queuePendingShots(dt);
     this.arrows?.update(dt);

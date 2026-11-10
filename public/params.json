@@ -1002,6 +1002,8 @@
     "arrowHitLinger": 0.01,
     "arrowPiercePauseMs": 20,
     "arrowPierceEntrySpeed": 10,
+    "arrowPierceGravity": 0,
+    "arrowPierceGravityStrength": 9.8,
     "arrowsPerAttack": 1,
     "arrowFireInterval": 0.1,
     "roomSize": 16,

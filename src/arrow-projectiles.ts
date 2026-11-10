@@ -4,6 +4,7 @@ import type { HitDebug } from './hit-debug.ts';
 import * as THREE from 'three/webgpu';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
+export const ARROW_GRAVITY = 9.8;
 export const ARROW_SPEED = 50; // World units/second; independent of attack and Run speed.
 
 type Arrow = {
@@ -15,6 +16,10 @@ type Arrow = {
   /** Per-arrow flight speed (base or after-pierce). */
   speed: number;
   active: boolean;
+  gravityArmed:boolean;
+  verticalSpeed:number;
+  grounded:boolean;
+  groundRemaining:number;
   pierce: boolean;
   /** Seconds left pinned at the hit point before recycle; 0 means flying normally. */
   lingerRemaining: number;
@@ -39,7 +44,8 @@ export type ArrowHit = { id: string; point: THREE.Vector3; direction: THREE.Vect
  * Despawn rules (only these):
  * 1. Non-pierce enemy hit — optional linger pin, then recycle
  * 2. Arrow mesh and its complete trail leave the camera view
- * 3. Explicit clear() on room rebuild / reset
+ * 3. Embedded arrows remain for three seconds, then recycle
+ * 4. Explicit clear() on room rebuild / reset
  * Object-pool recycle never runs for any other reason while the arrow is flying.
  */
 export class ArrowProjectiles {
@@ -72,6 +78,8 @@ export class ArrowProjectiles {
   private hitLinger = 1 / 60;
   private piercePause = .04;
   private pierceEntrySpeed = 20;
+  private pierceGravity = false;
+  private gravity = ARROW_GRAVITY;
   private viewFrustum = new THREE.Frustum();
   private viewProjection = new THREE.Matrix4();
   private visibleBounds = new THREE.Box3();
@@ -104,6 +112,7 @@ export class ArrowProjectiles {
       distance: 0,
       speed: this.speed,
       active: false,
+      gravityArmed:false,verticalSpeed:0,grounded:false,groundRemaining:0,
       pierce: false,
       lingerRemaining: 0,
       piercePauseRemaining: 0,
@@ -155,6 +164,13 @@ export class ArrowProjectiles {
     this.pierceEntrySpeed=speed;
   }
 
+  setPierceGravity(enabled:boolean){this.pierceGravity=!!enabled;}
+
+  setGravity(gravity:number){
+    if(!Number.isFinite(gravity)||gravity<0)throw new Error('入体后重力必须为非负数。');
+    this.gravity=gravity;
+  }
+
   setScale(scale: number) {
     if (scale === this.scale) return;
     if (!Number.isFinite(scale) || scale <= 0) throw new Error('箭缩放必须为正数。');
@@ -177,6 +193,7 @@ export class ArrowProjectiles {
     arrow.trail.clear();
     arrow.active = false;
     arrow.lingerRemaining = 0;
+    arrow.gravityArmed=false;arrow.verticalSpeed=0;arrow.grounded=false;arrow.groundRemaining=0;
     arrow.piercePauseRemaining = 0;
     arrow.piercePauseTarget = null;
     arrow.pierceExitTarget = null;
@@ -204,6 +221,7 @@ export class ArrowProjectiles {
     arrow.speed = this.speed;
     arrow.pierce = this.pierce;
     arrow.lingerRemaining = 0;
+    arrow.gravityArmed=false;arrow.verticalSpeed=0;arrow.grounded=false;arrow.groundRemaining=0;
     arrow.piercePauseRemaining = 0;
     arrow.piercePauseTarget = null;
     arrow.pierceExitTarget = null;
@@ -304,6 +322,7 @@ export class ArrowProjectiles {
         arrow.object.position.copy(intersection.point).addScaledVector(arrow.direction,-this.tip*this.scale);
         arrow.distance+=intersection.distance;
       }
+      if(this.pierceGravity)arrow.gravityArmed=true;
       arrow.piercePauseRemaining+=this.piercePause;
       if(this.piercePause>0){
         arrow.piercePauseTarget=this.practiceRoot(intersection.object);
@@ -333,16 +352,57 @@ export class ArrowProjectiles {
     arrow.piercePauseTargetPosition.add(this.exitScratch);
   }
 
+  /** Integrate the tip ballistically; short swept segments retain enemy collision.
+   * The model follows velocity, then remains at its impact angle in the ground. */
+  private advanceGravity(arrow:Arrow,dt:number){
+    const start=arrow.object.position.clone().addScaledVector(arrow.direction,this.tip*this.scale);
+    const horizontal=arrow.direction.clone().setY(0).normalize();
+    const vy=arrow.verticalSpeed,g=this.gravity;
+    const groundTime=start.y<=0?0:g>0?(vy+Math.sqrt(vy*vy+2*g*start.y))/g:vy<0?-start.y/vy:Infinity;
+    const step=Math.min(dt,1/120,groundTime);
+    const end=start.clone().addScaledVector(horizontal,arrow.speed*step);
+    end.y+=vy*step-.5*g*step*step;
+    const delta=end.clone().sub(start),travel=delta.length();
+    if(travel>1e-12)arrow.direction.copy(delta).divideScalar(travel);
+    this.origin.copy(start);
+    const contact=this.resolveTrigger(arrow,travel);
+    const spent=contact===null?step:step*contact/travel;
+    arrow.verticalSpeed=vy-g*spent;
+    const tip=contact===null?end:arrow.object.position.clone().addScaledVector(arrow.direction,this.tip*this.scale);
+    arrow.direction.copy(horizontal).multiplyScalar(arrow.speed);arrow.direction.y=arrow.verticalSpeed;arrow.direction.normalize();
+    arrow.object.quaternion.setFromUnitVectors(this.forward,arrow.direction);
+    arrow.object.position.copy(tip).addScaledVector(arrow.direction,-this.tip*this.scale);
+    if(contact===null){
+      arrow.distance+=travel;
+      if(groundTime<=step+1e-10){
+        tip.y=0;
+        const depth=Math.min(.18,(this.tip-this.tail)*this.scale*.12);
+        arrow.object.position.copy(tip).addScaledVector(arrow.direction,depth-this.tip*this.scale);
+        arrow.grounded=true;arrow.groundRemaining=3;arrow.trail.clear();
+        arrow.pierceExitTarget=null;arrow.pierceExitPoint=null;
+      }
+    }
+    return spent;
+  }
+
   private advance(arrow:Arrow,dt:number){
     if(!arrow.active||dt<=0)return;
     if(arrow.lingerRemaining>0){arrow.lingerRemaining-=dt;if(arrow.lingerRemaining<=0)this.recycle(arrow);return;}
     let remaining=dt;
     while(arrow.active&&remaining>1e-12){
+      if(arrow.grounded){arrow.groundRemaining-=remaining;if(arrow.groundRemaining<=0)this.recycle(arrow);return;}
+
       // A disappearing target still applies its exit speed, but does not cancel
       // the entry pause that is already in progress.
       if(arrow.piercePauseRemaining>0)this.followPausedTarget(arrow);
       this.tryApplyAfterPierceSpeed(arrow);
       const resisting=arrow.piercePauseRemaining>0;
+      if(arrow.gravityArmed&&!resisting){
+        remaining=Math.max(0,remaining-this.advanceGravity(arrow,remaining));
+        if(this.debug?.enabled&&this.debug.paused)return;
+        this.tryApplyAfterPierceSpeed(arrow);
+        continue;
+      }
       this.origin.copy(arrow.object.position).addScaledVector(arrow.direction,this.tip*this.scale);
       const speed=resisting?this.pierceEntrySpeed:arrow.speed;
       let flightTime=resisting?Math.min(remaining,arrow.piercePauseRemaining):remaining;
@@ -381,7 +441,8 @@ export class ArrowProjectiles {
       if(!arrow.active)continue;
       arrow.paint.visible=!!settings.arrowPaintEnabled;arrow.paint.scale.setScalar(settings.arrowPaintRadius);arrow.paint.position.set(0,0,this.tip+settings.arrowPaintOffset);
       this.tipPoint.copy(arrow.object.position).addScaledVector(arrow.direction,this.tail*this.scale);
-      arrow.trail.update(this.tipPoint,arrow.direction,arrow.distance,this.scale,camera,settings);
+      if(arrow.grounded)arrow.trail.clear();
+      else arrow.trail.update(this.tipPoint,arrow.direction,arrow.distance,this.scale,camera,settings);
       // Check after rebuilding the ribbon, using the current render camera (including
       // zoom/aspect changes). Crossing the room boundary does not end flight.
       if(recycleOffscreen&&!this.intersectsView(arrow.object)&&!this.intersectsView(arrow.trail.mesh))this.recycle(arrow);
@@ -417,6 +478,8 @@ export class ArrowProjectiles {
       hitLinger: this.hitLinger,
       piercePauseMs:this.piercePause*1000,
       pierceEntrySpeed:this.pierceEntrySpeed,
+      pierceGravity:this.pierceGravity,
+      gravity:this.gravity,
       fired: this.fired,
       hits: this.hitCount,
       lastHit: this.lastHit,
@@ -429,6 +492,7 @@ export class ArrowProjectiles {
         distance: a.distance,
         speed: a.speed,
         pierce: a.pierce,
+        gravityArmed:a.gravityArmed,verticalSpeed:a.verticalSpeed,grounded:a.grounded,groundRemaining:a.groundRemaining,
         afterPierceApplied: a.afterPierceApplied,
         lingerRemaining: a.lingerRemaining,
         piercePauseRemaining:a.piercePauseRemaining,
