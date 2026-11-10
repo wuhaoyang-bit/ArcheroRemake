@@ -475,3 +475,63 @@ test('adjustable gravity supports zero, stronger pull and live changes without l
  arrows.update(.4);assert.equal(arrows.snapshot().active[0].grounded,true);
  for(const invalid of [-1,NaN,Infinity])assert.throws(()=>arrows.setGravity(invalid));
 });
+
+test('mode 2 stops inside after entry time, follows recoil and ignores live flight-speed edits',()=>{
+ const {scene,arrows}=fixture(),target=enemy(scene,2,'gel');
+ arrows.setPierce(true);arrows.setPierceMode(2);arrows.setSpeed(10);arrows.setSpeedAfterPierce(20);arrows.setPierceEntrySpeed(5);arrows.setPiercePause(40);arrows.setEmbedMotion(5,40,100);arrows.setTargets([target]);
+ arrows.fire(origin,aim,Infinity);arrows.update(.12);
+ assert.equal(arrows.snapshot().active[0].lodged,false);
+ arrows.update(.02);let shot=arrows.snapshot().active[0];assert.equal(shot.lodged,true);near(shot.speed,0);near(shot.tip[2],1.7);
+ target.position.x+=1;target.position.z+=2;arrows.setSpeed(100);arrows.setSpeedAfterPierce(150);arrows.update(.5);
+ shot=arrows.snapshot().active[0];near(shot.tip[0],1);near(shot.tip[2],3.7);near(shot.tip[1],1);near(shot.speed,0);
+ assert.equal(shot.gravityArmed,false);assert.equal(arrows.snapshot().hits,1);
+ arrows.setTargets([]);arrows.update(.01);assert.equal(arrows.snapshot().active.length,0);
+ arrows.setPierceMode(0);arrows.fire(origin,aim,Infinity);arrows.update(.1);
+ assert.equal(arrows.snapshot().active[0].lodged,false);assert.ok(arrows.snapshot().active[0].speed>0);
+});
+
+test('mode 2 cannot exit a thin body during a long low-speed phase; modes are exclusive',()=>{
+ for(const pause of [0,200]){
+  const {scene,arrows}=fixture();arrows.setPierce(true);arrows.setPierceMode(2);arrows.setPiercePause(pause);arrows.setPierceEntrySpeed(100);arrows.setEmbedMotion(100,pause,50);arrows.setSpeed(10);
+  arrows.setTargets([enemy(scene,2,'gel'),enemy(scene,4,'far')]);arrows.fire(origin,aim,Infinity);arrows.update(.5);
+  const shot=arrows.snapshot().active[0];assert.equal(shot.lodged,true);assert.ok(shot.tip[2]<2.5);assert.deepEqual(shot.hitIds,['gel']);assert.equal(shot.grounded,false);near(shot.speed,0);
+ }
+ const {arrows}=fixture();for(const bad of [-1,3,.5,NaN])assert.throws(()=>arrows.setPierceMode(bad));
+});
+
+test('lodged arrow preserves local position and orientation through target and parent rotation',()=>{
+ const {scene,arrows}=fixture(),parent=new THREE.Group();scene.add(parent);
+ const target=enemy(scene,2,'gel');parent.add(target);
+ arrows.setPierce(true);arrows.setPierceMode(2);arrows.setPiercePause(40);arrows.setPierceEntrySpeed(5);arrows.setEmbedMotion(5,40,100);arrows.setSpeed(10);arrows.setTargets([target]);
+ arrows.fire(origin,aim,Infinity);arrows.update(.14);
+ const before=arrows.snapshot().active[0];assert.equal(before.lodged,true);
+ const offset=new THREE.Vector3(...before.position).sub(target.getWorldPosition(new THREE.Vector3()));
+ parent.position.set(3,0,4);parent.rotation.y=Math.PI/3;target.rotation.y=Math.PI/6;
+ const rotation=target.getWorldQuaternion(new THREE.Quaternion());
+ const expected=offset.clone().applyQuaternion(rotation).add(target.getWorldPosition(new THREE.Vector3()));
+ arrows.update(.1);const shot=arrows.snapshot().active[0];
+ shot.position.forEach((v,i)=>near(v,expected.toArray()[i]));
+ near(shot.direction[0],1);near(shot.direction[1],0);near(shot.direction[2],0);near(shot.speed,0);
+ arrows.update(.1);assert.deepEqual(arrows.snapshot().active[0].position,shot.position);
+ assert.deepEqual(arrows.snapshot().active[0].direction,shot.direction);
+});
+
+test('mode 2 has independent speed/time and brakes at the chosen distance fraction',()=>{
+ const {scene,arrows}=fixture();arrows.setPierce(true);arrows.setPierceMode(2);arrows.setSpeed(10);
+ arrows.setPierceEntrySpeed(150);arrows.setPiercePause(200);arrows.setEmbedMotion(6,120,50);
+ arrows.setTargets([enemy(scene,2,'gel')]);arrows.fire(origin,aim,Infinity);arrows.update(.1);
+ arrows.update(.04);let shot=arrows.snapshot().active[0];near(shot.tip[2],1.74);near(shot.embedEntrySpeed!,6);
+ // The first .24 units are 50% of the total .48-unit entry path.
+ arrows.update(.04);shot=arrows.snapshot().active[0];near(shot.tip[2],1.92);near(shot.embedEntrySpeed!,3);
+ arrows.setEmbedMotion(100,500,90); // An already-entering arrow keeps its captured profile.
+ arrows.update(.04);shot=arrows.snapshot().active[0];near(shot.tip[2],1.98);near(shot.speed,0);near(shot.embedEntrySpeed!,0);assert.equal(shot.lodged,true);
+});
+
+test('mode 2 analytic slowdown is frame independent and thin-body fitting retains a gradual stop',()=>{
+ for(const frames of [1,30,120]){
+  const {scene,arrows}=fixture();arrows.setPierce(true);arrows.setPierceMode(2);arrows.setSpeed(10);arrows.setEmbedMotion(100,200,50);
+  arrows.setTargets([enemy(scene,2,'gel')]);arrows.fire(origin,aim,Infinity);
+  for(let i=0;i<frames;i++)arrows.update(.3/frames);
+  const shot=arrows.snapshot().active[0];near(shot.tip[2],2.35);assert.equal(shot.lodged,true);near(shot.embedEntrySpeed!,0);
+ }
+});

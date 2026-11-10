@@ -1,3 +1,4 @@
+import {bindArrowToBody} from './arrow-body-attachment.ts';
 import {SlimeEyeDebris} from './slime-eye-debris.ts';
 import {SlimeWalkBreath,gaitLocalState,slimeMoveGaitMultiplier,slimeSpeedMultiplier} from './slime-fullness.ts';
 import { SlimeBurstState, burstSample, burstEyePose } from './slime-burst-state.ts';
@@ -242,6 +243,12 @@ export class TrainingFeedback {
    * Check: root.rotation.y=0 → outDir (0,0,−1); y=π/2 → outDir (−1,0,0).
    * Non-slime fallback: hit-cylinder radius along −facing at aimHeight.
    */
+  bindArrow(id:string,position:T.Vector3,rotation:T.Quaternion,direction:T.Vector3){
+    const d=this.dummies.find(d=>d.root.userData.practiceTarget===id);
+    if(!d)return null;
+    const body=d.monster?.inflation?.body;
+    return body?bindArrowToBody(body,position,rotation,direction):null;
+  }
   sprayFrontAnchor(id:string,outOrigin:T.Vector3,outDir:T.Vector3){
     const d=this.dummies.find(d=>d.root.userData.practiceTarget===id);
     if(!d||d.burst.phase!=='alive'||!d.root.visible)return false;

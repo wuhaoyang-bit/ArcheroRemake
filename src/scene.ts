@@ -287,6 +287,7 @@ export class GameScene {
       this.cameraZoom.trigger('shot',this.controller.settings,elapsed);
     };
     this.arrows.debug=this.hitDebug;
+    this.arrows.bindToBody=(id,position,rotation,direction)=>this.feedback?.bindArrow(id,position,rotation,direction)??null;
     this.arrows.setTargets(this.feedback?.proxies ?? []);
     this.applyArrowHit=hit=>{
       if(!this.controller.combatTraining||!this.feedback)return;
@@ -550,7 +551,8 @@ export class GameScene {
     this.arrows?.setHitLinger(ctl.settings.arrowHitLinger);
     this.arrows?.setPiercePause(ctl.settings.arrowPiercePauseMs);
     this.arrows?.setPierceEntrySpeed(ctl.settings.arrowPierceEntrySpeed);
-    this.arrows?.setPierceGravity(!!ctl.settings.arrowPierceGravity);
+    this.arrows?.setPierceMode(ctl.settings.arrowPierceGravity);
+    this.arrows?.setEmbedMotion(ctl.settings.arrowEmbedSpeed,ctl.settings.arrowEmbedDurationMs,ctl.settings.arrowEmbedBrakePercent);
     this.arrows?.setGravity(ctl.settings.arrowPierceGravityStrength);
     if (!ctl.combatTraining || ctl.activeAttackRequest === null) this.pendingShots.length = 0;
     this.queuePendingShots(dt);

@@ -1,3 +1,5 @@
+import {sampleEmbedMotion} from './arrow-embed-motion.ts';
+import type {ArrowBodyAttachment} from './arrow-body-attachment.ts';
 import { ARROW_TRAIL_DEFAULTS, type ArrowTrailSettings } from './arrow-trail-config.ts';
 import { ArrowTrail } from './arrow-trail.ts';
 import type { HitDebug } from './hit-debug.ts';
@@ -17,6 +19,13 @@ type Arrow = {
   speed: number;
   active: boolean;
   gravityArmed:boolean;
+  responseMode:number|null;
+  lodged:boolean;
+  bodyAttachment:ArrowBodyAttachment|null;
+  lodgedOffset:THREE.Vector3;
+  lodgedRotation:THREE.Quaternion;
+  embedLimit:THREE.Vector3|null;
+  embedSpeed:number;embedDuration:number;embedBrake:number;
   verticalSpeed:number;
   grounded:boolean;
   groundRemaining:number;
@@ -50,6 +59,7 @@ export type ArrowHit = { id: string; point: THREE.Vector3; direction: THREE.Vect
  */
 export class ArrowProjectiles {
   debug?:HitDebug;
+  bindToBody?:(id:string,position:THREE.Vector3,rotation:THREE.Quaternion,direction:THREE.Vector3)=>ArrowBodyAttachment|null;
   onHit?: (hit: ArrowHit) => void;
   onFire?: (position: THREE.Vector3, direction: THREE.Vector3, elapsed: number) => void;
   private pool: Arrow[] = [];
@@ -63,6 +73,8 @@ export class ArrowProjectiles {
   private exitBox = new THREE.Box3();
   private exitRay = new THREE.Ray();
   private exitScratch = new THREE.Vector3();
+  private attachmentRotation=new THREE.Quaternion();
+  private attachmentPosition=new THREE.Vector3();
   private forward = new THREE.Vector3(0, 0, 1);
   private fired = 0;
   private hitCount = 0;
@@ -78,7 +90,10 @@ export class ArrowProjectiles {
   private hitLinger = 1 / 60;
   private piercePause = .04;
   private pierceEntrySpeed = 20;
-  private pierceGravity = false;
+  private pierceMode = 0;
+  private embedSpeed=10;
+  private embedDuration=.02;
+  private embedBrake=.5;
   private gravity = ARROW_GRAVITY;
   private viewFrustum = new THREE.Frustum();
   private viewProjection = new THREE.Matrix4();
@@ -112,12 +127,14 @@ export class ArrowProjectiles {
       distance: 0,
       speed: this.speed,
       active: false,
-      gravityArmed:false,verticalSpeed:0,grounded:false,groundRemaining:0,
+      gravityArmed:false,responseMode:null,lodged:false,bodyAttachment:null,embedLimit:null,verticalSpeed:0,grounded:false,groundRemaining:0,
       pierce: false,
+      embedSpeed:0,embedDuration:0,embedBrake:0,
       lingerRemaining: 0,
       piercePauseRemaining: 0,
       piercePauseTarget: null,
       piercePauseTargetPosition: new THREE.Vector3(),
+      lodgedOffset:new THREE.Vector3(),lodgedRotation:new THREE.Quaternion(),
       pierceExitTarget: null,
       pierceExitPoint: null,
       afterPierceApplied: false,
@@ -132,7 +149,7 @@ export class ArrowProjectiles {
     this.speed = speed;
     // Live arrows that have not yet taken after-pierce speed follow the new base.
     for (const arrow of this.pool) {
-      if (arrow.active && !arrow.afterPierceApplied) arrow.speed = speed;
+      if (arrow.active && !arrow.lodged && !arrow.afterPierceApplied) arrow.speed = speed;
     }
   }
 
@@ -140,7 +157,7 @@ export class ArrowProjectiles {
     if (!Number.isFinite(speed) || speed <= 0) throw new Error('穿透后箭速必须为正数。');
     this.speedAfterPierce = speed;
     for (const arrow of this.pool) {
-      if (arrow.active && arrow.afterPierceApplied) arrow.speed = speed;
+      if (arrow.active && !arrow.lodged && arrow.afterPierceApplied) arrow.speed = speed;
     }
   }
 
@@ -164,7 +181,16 @@ export class ArrowProjectiles {
     this.pierceEntrySpeed=speed;
   }
 
-  setPierceGravity(enabled:boolean){this.pierceGravity=!!enabled;}
+  setPierceGravity(enabled:boolean){this.setPierceMode(enabled?1:0);}
+  setPierceMode(mode:number){
+    if(!Number.isInteger(mode)||mode<0||mode>2)throw new Error('入体后模式必须为 0、1 或 2。');
+    this.pierceMode=mode;
+  }
+
+  setEmbedMotion(speed:number,durationMs:number,brakePercent:number){
+    if(!Number.isFinite(speed)||speed<0||!Number.isFinite(durationMs)||durationMs<0||!Number.isFinite(brakePercent)||brakePercent<0||brakePercent>100)throw new Error('模式 2 入体参数无效。');
+    this.embedSpeed=speed;this.embedDuration=durationMs/1000;this.embedBrake=brakePercent/100;
+  }
 
   setGravity(gravity:number){
     if(!Number.isFinite(gravity)||gravity<0)throw new Error('入体后重力必须为非负数。');
@@ -193,7 +219,8 @@ export class ArrowProjectiles {
     arrow.trail.clear();
     arrow.active = false;
     arrow.lingerRemaining = 0;
-    arrow.gravityArmed=false;arrow.verticalSpeed=0;arrow.grounded=false;arrow.groundRemaining=0;
+    arrow.embedSpeed=0;arrow.embedDuration=0;arrow.embedBrake=0;
+    arrow.gravityArmed=false;arrow.responseMode=null;arrow.lodged=false;arrow.bodyAttachment=null;arrow.embedLimit=null;arrow.verticalSpeed=0;arrow.grounded=false;arrow.groundRemaining=0;
     arrow.piercePauseRemaining = 0;
     arrow.piercePauseTarget = null;
     arrow.pierceExitTarget = null;
@@ -221,7 +248,8 @@ export class ArrowProjectiles {
     arrow.speed = this.speed;
     arrow.pierce = this.pierce;
     arrow.lingerRemaining = 0;
-    arrow.gravityArmed=false;arrow.verticalSpeed=0;arrow.grounded=false;arrow.groundRemaining=0;
+    arrow.embedSpeed=0;arrow.embedDuration=0;arrow.embedBrake=0;
+    arrow.gravityArmed=false;arrow.responseMode=null;arrow.lodged=false;arrow.bodyAttachment=null;arrow.embedLimit=null;arrow.verticalSpeed=0;arrow.grounded=false;arrow.groundRemaining=0;
     arrow.piercePauseRemaining = 0;
     arrow.piercePauseTarget = null;
     arrow.pierceExitTarget = null;
@@ -278,7 +306,7 @@ export class ArrowProjectiles {
   }
 
   private tryApplyAfterPierceSpeed(arrow: Arrow) {
-    if (!arrow.pierce || arrow.afterPierceApplied || !arrow.pierceExitTarget) return;
+    if (arrow.lodged || !arrow.pierce || arrow.afterPierceApplied || !arrow.pierceExitTarget) return;
     this.tipPoint.copy(arrow.object.position).addScaledVector(arrow.direction, this.tip * this.scale);
     if (!this.pierceExitReady(arrow, this.tipPoint)) return;
     arrow.speed = this.speedAfterPierce;
@@ -322,9 +350,24 @@ export class ArrowProjectiles {
         arrow.object.position.copy(intersection.point).addScaledVector(arrow.direction,-this.tip*this.scale);
         arrow.distance+=intersection.distance;
       }
-      if(this.pierceGravity)arrow.gravityArmed=true;
-      arrow.piercePauseRemaining+=this.piercePause;
-      if(this.piercePause>0){
+      if(arrow.responseMode===null){
+        arrow.responseMode=this.pierceMode;
+        arrow.gravityArmed=arrow.responseMode===1;
+        if(arrow.responseMode===2){
+          arrow.embedDuration=this.embedDuration;arrow.embedBrake=this.embedBrake;arrow.embedSpeed=this.embedSpeed;
+          arrow.piercePauseRemaining=this.embedDuration;
+          const root=this.practiceRoot(intersection.object);
+          if(root){
+            arrow.embedLimit=intersection.point.clone().lerp(this.farFaceExit(root,intersection.point,arrow.direction),.85);
+            // Preserve duration and braking fraction when the body is too thin.
+            const tip=arrow.object.position.clone().addScaledVector(arrow.direction,this.tip*this.scale);
+            const available=Math.max(0,arrow.embedLimit.clone().sub(tip).dot(arrow.direction));
+            if(arrow.embedDuration>0)arrow.embedSpeed=Math.min(arrow.embedSpeed,available*(2-arrow.embedBrake)/arrow.embedDuration);
+          }
+        }
+      }
+      if(arrow.responseMode!==2)arrow.piercePauseRemaining+=this.piercePause;
+      if(this.piercePause>0||arrow.responseMode===2){
         arrow.piercePauseTarget=this.practiceRoot(intersection.object);
         arrow.piercePauseTarget?.getWorldPosition(arrow.piercePauseTargetPosition);
       }
@@ -347,6 +390,7 @@ export class ArrowProjectiles {
     target.getWorldPosition(this.exitScratch);
     this.exitScratch.sub(arrow.piercePauseTargetPosition);
     arrow.object.position.add(this.exitScratch);
+    arrow.embedLimit?.add(this.exitScratch);
     // Keep the watched far face aligned: recoil alone must not count as exiting.
     if(arrow.pierceExitTarget===target)arrow.pierceExitPoint?.add(this.exitScratch);
     arrow.piercePauseTargetPosition.add(this.exitScratch);
@@ -385,11 +429,40 @@ export class ArrowProjectiles {
     return spent;
   }
 
+  private lodgeIfReady(arrow:Arrow){
+    if(arrow.lodged||arrow.responseMode!==2||arrow.piercePauseRemaining>0||!arrow.active)return;
+    const target=arrow.piercePauseTarget;
+    if(!target||!target.parent||!this.targets.includes(target)){this.recycle(arrow);return;}
+    this.followPausedTarget(arrow);
+    target.getWorldPosition(this.attachmentPosition);
+    target.getWorldQuaternion(this.attachmentRotation).invert();
+    arrow.lodgedOffset.copy(arrow.object.position).sub(this.attachmentPosition).applyQuaternion(this.attachmentRotation);
+    arrow.lodgedRotation.copy(this.attachmentRotation).multiply(arrow.object.quaternion);
+    arrow.bodyAttachment=this.bindToBody?.(target.userData.practiceTarget,arrow.object.position,arrow.object.quaternion,arrow.direction)??null;
+    arrow.lodged=true;arrow.speed=0;arrow.verticalSpeed=0;arrow.gravityArmed=false;
+    arrow.pierceExitTarget=null;arrow.pierceExitPoint=null;arrow.trail.clear();
+  }
+
+  private followLodged(arrow:Arrow){
+    const target=arrow.piercePauseTarget;
+    if(!target||!target.parent||!this.targets.includes(target)){this.recycle(arrow);return;}
+    if(arrow.bodyAttachment){
+      if(!arrow.bodyAttachment.update(arrow.object.position,arrow.object.quaternion)){this.recycle(arrow);return;}
+    }else{
+      target.getWorldPosition(this.attachmentPosition);target.getWorldQuaternion(this.attachmentRotation);
+      arrow.object.position.copy(arrow.lodgedOffset).applyQuaternion(this.attachmentRotation).add(this.attachmentPosition);
+      arrow.object.quaternion.copy(this.attachmentRotation).multiply(arrow.lodgedRotation);
+    }
+    arrow.direction.copy(this.forward).applyQuaternion(arrow.object.quaternion).normalize();
+  }
+
   private advance(arrow:Arrow,dt:number){
     if(!arrow.active||dt<=0)return;
     if(arrow.lingerRemaining>0){arrow.lingerRemaining-=dt;if(arrow.lingerRemaining<=0)this.recycle(arrow);return;}
     let remaining=dt;
     while(arrow.active&&remaining>1e-12){
+      this.lodgeIfReady(arrow);
+      if(arrow.lodged){this.followLodged(arrow);return;}
       if(arrow.grounded){arrow.groundRemaining-=remaining;if(arrow.groundRemaining<=0)this.recycle(arrow);return;}
 
       // A disappearing target still applies its exit speed, but does not cancel
@@ -404,8 +477,14 @@ export class ArrowProjectiles {
         continue;
       }
       this.origin.copy(arrow.object.position).addScaledVector(arrow.direction,this.tip*this.scale);
-      const speed=resisting?this.pierceEntrySpeed:arrow.speed;
       let flightTime=resisting?Math.min(remaining,arrow.piercePauseRemaining):remaining;
+      let speed=resisting?this.pierceEntrySpeed:arrow.speed;
+      if(arrow.responseMode===2&&resisting){
+        const age=arrow.embedDuration-arrow.piercePauseRemaining;
+        const from=sampleEmbedMotion(arrow.embedSpeed,arrow.embedDuration,arrow.embedBrake,age);
+        const to=sampleEmbedMotion(arrow.embedSpeed,arrow.embedDuration,arrow.embedBrake,age+flightTime);
+        speed=Math.max(0,(to.distance-from.distance)/flightTime);
+      }
       if(arrow.pierceExitPoint&&speed>0){
         const untilExit=this.exitScratch.copy(arrow.pierceExitPoint).sub(this.origin).dot(arrow.direction)/speed;
         if(untilExit>0)flightTime=Math.min(flightTime,untilExit);
@@ -416,7 +495,7 @@ export class ArrowProjectiles {
       const spent=contact!==null?contact/speed:flightTime;
       if(resisting&&arrow.active){
         arrow.piercePauseRemaining=Math.max(0,arrow.piercePauseRemaining-Math.min(spent,pauseBefore));
-        if(arrow.piercePauseRemaining<=1e-12){arrow.piercePauseRemaining=0;arrow.piercePauseTarget=null;}
+        if(arrow.piercePauseRemaining<=1e-12){arrow.piercePauseRemaining=0;if(arrow.responseMode!==2)arrow.piercePauseTarget=null;}
       }
       if(contact!==null){
         if(!arrow.active||!arrow.pierce||(this.debug?.enabled&&this.debug.paused))return;
@@ -424,7 +503,7 @@ export class ArrowProjectiles {
         continue;
       }
       arrow.object.position.addScaledVector(arrow.direction,travel);arrow.distance+=travel;
-      remaining=Math.max(0,remaining-flightTime);this.tryApplyAfterPierceSpeed(arrow);
+      remaining=Math.max(0,remaining-flightTime);this.tryApplyAfterPierceSpeed(arrow);this.lodgeIfReady(arrow);
     }
   }
 
@@ -438,10 +517,11 @@ export class ArrowProjectiles {
     this.viewFrustum.setFromProjectionMatrix(this.viewProjection,camera.coordinateSystem,camera.reversedDepth);
     this.paintMaterial.color.setHex(settings.arrowPaintColor);
     for(const arrow of this.pool){
+      if(arrow.lodged)this.followLodged(arrow);
       if(!arrow.active)continue;
       arrow.paint.visible=!!settings.arrowPaintEnabled;arrow.paint.scale.setScalar(settings.arrowPaintRadius);arrow.paint.position.set(0,0,this.tip+settings.arrowPaintOffset);
       this.tipPoint.copy(arrow.object.position).addScaledVector(arrow.direction,this.tail*this.scale);
-      if(arrow.grounded)arrow.trail.clear();
+      if(arrow.grounded||arrow.lodged)arrow.trail.clear();
       else arrow.trail.update(this.tipPoint,arrow.direction,arrow.distance,this.scale,camera,settings);
       // Check after rebuilding the ribbon, using the current render camera (including
       // zoom/aspect changes). Crossing the room boundary does not end flight.
@@ -478,7 +558,9 @@ export class ArrowProjectiles {
       hitLinger: this.hitLinger,
       piercePauseMs:this.piercePause*1000,
       pierceEntrySpeed:this.pierceEntrySpeed,
-      pierceGravity:this.pierceGravity,
+      pierceGravity:this.pierceMode===1,
+      pierceMode:this.pierceMode,
+      embedMotion:{speed:this.embedSpeed,durationMs:this.embedDuration*1000,brakePercent:this.embedBrake*100},
       gravity:this.gravity,
       fired: this.fired,
       hits: this.hitCount,
@@ -492,10 +574,11 @@ export class ArrowProjectiles {
         distance: a.distance,
         speed: a.speed,
         pierce: a.pierce,
-        gravityArmed:a.gravityArmed,verticalSpeed:a.verticalSpeed,grounded:a.grounded,groundRemaining:a.groundRemaining,
+        responseMode:a.responseMode,lodged:a.lodged,bodyAttached:!!a.bodyAttachment,gravityArmed:a.gravityArmed,verticalSpeed:a.verticalSpeed,grounded:a.grounded,groundRemaining:a.groundRemaining,
         afterPierceApplied: a.afterPierceApplied,
         lingerRemaining: a.lingerRemaining,
         piercePauseRemaining:a.piercePauseRemaining,
+        embedEntrySpeed:a.responseMode===2?sampleEmbedMotion(a.embedSpeed,a.embedDuration,a.embedBrake,a.embedDuration-a.piercePauseRemaining).speed:null,
         hitIds: [...a.hitIds],
       })),
     };

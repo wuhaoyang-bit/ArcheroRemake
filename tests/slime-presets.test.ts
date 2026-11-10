@@ -18,7 +18,7 @@ test('historical soft preset restores slime values and leaves every protected co
  const soft=modes.toggle(current);assert.equal(soft.slimeMaxScale,1.35);assert.equal(soft.slimeBulge,.65);assert.equal(soft.burstScale,1.4);assert.equal(soft.slimeTrailEnabled,1);assert.equal(soft.monsterScale,1.3);
  for(const key of SOFT_DISABLED_EFFECTS)assert.equal(soft[key],0);assert.equal(soft.slimeFragmentsEnabled,0);
  for(const [key] of [...HIT_SPLASH_PARTICLE_CONTROLS,...BOW_FX_CONTROLS,...ARROW_PAINT_CONTROLS,...ARROW_TRAIL_CONTROLS])assert.deepEqual(soft[key],current[key],key);
- for(const key of ['recoilEnabled','recoilDistance','recoilDuration','recoilSpeedCurve','attackSpeed','bowScale','arrowSpeed','arrowScale','arrowPierce','arrowSpeedAfterPierce','arrowHitLinger','arrowPiercePauseMs','arrowPierceEntrySpeed','arrowPierceGravity','arrowPierceGravityStrength','arrowsPerAttack','arrowFireInterval','monsterCount','monsterSpeed','roomSize','viewWidth'] as const)assert.deepEqual(soft[key],current[key],key);
+ for(const key of ['recoilEnabled','recoilDistance','recoilDuration','recoilSpeedCurve','attackSpeed','bowScale','arrowSpeed','arrowScale','arrowPierce','arrowSpeedAfterPierce','arrowHitLinger','arrowPiercePauseMs','arrowPierceEntrySpeed','arrowPierceGravity','arrowEmbedSpeed','arrowEmbedDurationMs','arrowEmbedBrakePercent','arrowPierceGravityStrength','arrowsPerAttack','arrowFireInterval','monsterCount','monsterSpeed','roomSize','viewWidth'] as const)assert.deepEqual(soft[key],current[key],key);
 });
 
 test('both modes keep their tuning, shared edits survive both directions, arrays do not alias',()=>{
