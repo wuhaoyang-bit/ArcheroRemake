@@ -442,24 +442,24 @@
         "progress": 102.13
       },
       {
-        "time": 18.47,
-        "progress": 90.71
+        "time": 19.08,
+        "progress": 99.54
       },
       {
-        "time": 29.52,
-        "progress": 65.35
+        "time": 32.26,
+        "progress": 87.64
       },
       {
-        "time": 36.64,
-        "progress": 36.19
+        "time": 39.44,
+        "progress": 59.71
       },
       {
-        "time": 41.91,
-        "progress": 12.87
+        "time": 44.14,
+        "progress": 30.83
       },
       {
-        "time": 48.52,
-        "progress": 8.73
+        "time": 51.87,
+        "progress": 16.74
       },
       {
         "time": 60,
@@ -472,14 +472,21 @@
     ],
     "sprayEnabled": 1,
     "sprayDelay": 0.12,
-    "sprayMode": 0,
+    "sprayMode": 2,
     "sprayFlat": 0,
     "sprayGravity": 14.6,
     "sprayDebugDir": 0,
+    "sprayJetSpeedScale": 1.15,
+    "sprayFanSpeedScale": 0.9,
+    "sprayJetSizeScale": 0.85,
+    "sprayFanSizeScale": 0.85,
+    "sprayJetShare": 0.4,
+    "sprayJetSpread": 10,
+    "sprayFanSpread": 35,
     "sprayCount": 8,
     "spraySpeed": 11.3,
     "spraySpeedJitter": 1.5,
-    "spraySize": 0.83,
+    "spraySize": 1.25,
     "spraySizeJitter": 0.15,
     "sprayLife": 0.7,
     "sprayLifeJitter": 0.2,
@@ -1468,6 +1475,13 @@
       "sprayFlat": 0,
       "sprayGravity": 14.6,
       "sprayDebugDir": 0,
+      "sprayJetSpeedScale": 1,
+      "sprayFanSpeedScale": 1,
+      "sprayJetSizeScale": 1,
+      "sprayFanSizeScale": 1,
+      "sprayJetShare": 0.4,
+      "sprayJetSpread": 12,
+      "sprayFanSpread": 55,
       "sprayCount": 8,
       "spraySpeed": 11.3,
       "spraySpeedJitter": 1.5,

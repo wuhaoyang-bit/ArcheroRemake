@@ -55,9 +55,9 @@ document.querySelector('#app')!.innerHTML = `
     <h2 style="margin:0 0 10px;font-size:18px">方向喷溅</h2>
     <label class="field">效果（叠在原版四散汁液上）
       <select id="mode">
-        <option value="blood">1 · Blood 宽锥喷溅</option>
-        <option value="arterial">2 · Arterial 窄锥高速</option>
-        <option value="quarks">3 · quarks 锥形发射</option>
+        <option value="blood">1 · 扇形飞溅</option>
+        <option value="arterial">2 · 集中射流</option>
+        <option value="quarks">3 · 两者叠加</option>
       </select>
     </label>
     <label class="field">命中方向 <output id="yawOut">180°</output>
@@ -67,7 +67,7 @@ document.querySelector('#app')!.innerHTML = `
       <input id="facing" type="range" min="0" max="360" step="1" value="0">
     </label>
     <label class="field"><span><input type="checkbox" id="sprayOn" checked> 启用方向喷溅</span></label>
-    <label class="field"><span><input type="checkbox" id="sprayDebugDir"> 方向粒子调试开关（红）</span></label>
+    <label class="field"><span><input type="checkbox" id="sprayDebugDir"> 方向粒子调试（射流青蓝 / 扇形橙红）</span></label>
     <label class="field">喷溅延迟 <output id="sprayDelayOut">0.00s</output>
       <input id="sprayDelay" type="range" min="0" max="0.5" step="0.01" value="0">
     </label>
@@ -137,7 +137,7 @@ document.querySelector('#app')!.innerHTML = `
     <p class="hint">
       刷新默认：数量 16、初速 7.6±1.5、大小 0.67±0.15、寿命 1.30±0.20、锥角 45°、盘半径 0.30、平铺关闭、延迟 0s。
       喷溅在立方体模型背面（眼睛对面）面心生成，锥轴跟随「模型朝向」（史莱姆自身 −facing），不是世界轴。
-      命中 yaw 只影响击退。打开「方向粒子调试开关」后粒子变红；转「模型朝向」可核对喷溅是否跟着转。
+      命中 yaw 只影响击退。打开「方向粒子调试开关」后射流变青蓝、扇形变橙红；转「模型朝向」可核对喷溅是否跟着转。
       切换效果仍可载入该模式预设。本页改动只影响预览。
     </p>
     <p id="status" role="status"></p>
@@ -360,6 +360,8 @@ async function main() {
     spray.flatXZ = el<HTMLInputElement>('flat').checked;
     spray.mode = el<HTMLSelectElement>('mode').value as SprayMode;
     spray.params = readSprayParams();
+    if(spray.mode==='arterial')spray.jetSpread=spray.params.spreadDeg;
+    else spray.fanSpread=spray.params.spreadDeg;
     spray.gravity = -Math.abs(Number(el<HTMLInputElement>('gravity').value));
     const curveIdx = Number(el<HTMLSelectElement>('sprayCurve').value);
     spray.curve = (JUICE_CURVE_IDS[curveIdx] ?? 'easeOutCubic') as JuiceCurveId;
