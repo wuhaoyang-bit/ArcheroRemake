@@ -2,109 +2,241 @@
   {
     "piece": 0,
     "kind": "surface",
-    "maxRestError": 7.262473232789835e-15,
-    "maxExteriorWeight": 9.090573661207912e-05
+    "maxRestError": 8.16448078515563e-15,
+    "maxExteriorWeight": 0.00013165916720536686
   },
   {
     "piece": 0,
     "kind": "nodes",
-    "maxRestError": 3.6418022968069345e-15,
-    "maxExteriorWeight": 4.6329666194555585e-05
+    "maxRestError": 3.621437911838241e-15,
+    "maxExteriorWeight": 5.00411924313493e-05
   },
   {
     "piece": 1,
     "kind": "surface",
-    "maxRestError": 6.125373197167204e-15,
-    "maxExteriorWeight": 8.454252079070912e-05
+    "maxRestError": 1.6152886565621937e-14,
+    "maxExteriorWeight": 0.00047578960199956555
   },
   {
     "piece": 1,
     "kind": "nodes",
-    "maxRestError": 8.997602480567051e-15,
-    "maxExteriorWeight": 5.871224808529085e-05
+    "maxRestError": 5.259223848564703e-15,
+    "maxExteriorWeight": 2.2750860484421764e-06
   },
   {
     "piece": 2,
     "kind": "surface",
-    "maxRestError": 7.042700434902163e-15,
-    "maxExteriorWeight": 0.00018781548900559386
+    "maxRestError": 1.090734088899049e-14,
+    "maxExteriorWeight": 0.0005657377642791506
   },
   {
     "piece": 2,
     "kind": "nodes",
-    "maxRestError": 6.125373197167204e-15,
-    "maxExteriorWeight": 6.569566713254815e-05
+    "maxRestError": 4.76749985125122e-15,
+    "maxExteriorWeight": 5.261950049773034e-05
   },
   {
     "piece": 3,
     "kind": "surface",
-    "maxRestError": 9.152482600100037e-15,
-    "maxExteriorWeight": 8.455016244757196e-05
+    "maxRestError": 1.5961362552471973e-14,
+    "maxExteriorWeight": 0.00026717739710901967
   },
   {
     "piece": 3,
     "kind": "nodes",
-    "maxRestError": 4.657646926676369e-15,
-    "maxExteriorWeight": 6.043319551274351e-05
+    "maxRestError": 4.670860135994077e-15,
+    "maxExteriorWeight": 0.00015089375453802845
   },
   {
     "piece": 4,
     "kind": "surface",
-    "maxRestError": 1.2051929894162959e-14,
-    "maxExteriorWeight": 0.0002542322050660406
+    "maxRestError": 5.420799638382024e-15,
+    "maxExteriorWeight": 0.00029912225660222447
   },
   {
     "piece": 4,
     "kind": "nodes",
-    "maxRestError": 3.984447981536823e-15,
-    "maxExteriorWeight": 0.00017583530289044802
+    "maxRestError": 5.338314359524835e-15,
+    "maxExteriorWeight": 9.215624399150357e-06
   },
   {
     "piece": 5,
     "kind": "surface",
-    "maxRestError": 1.0513759286957937e-14,
-    "maxExteriorWeight": 0.00035422199515799946
+    "maxRestError": 7.301351988545594e-15,
+    "maxExteriorWeight": 0.00013345896230543275
   },
   {
     "piece": 5,
     "kind": "nodes",
-    "maxRestError": 6.526751786450488e-15,
-    "maxExteriorWeight": 0.00020147050122298893
+    "maxRestError": 7.444291678311382e-15,
+    "maxExteriorWeight": 6.892207434927577e-05
   },
   {
     "piece": 6,
     "kind": "surface",
-    "maxRestError": 6.06572053902698e-15,
-    "maxExteriorWeight": 0.00021745492458435933
+    "maxRestError": 5.04876895886056e-15,
+    "maxExteriorWeight": 0.00027374035695482135
   },
   {
     "piece": 6,
     "kind": "nodes",
-    "maxRestError": 5.0831364465159854e-15,
-    "maxExteriorWeight": 0.00013973572425118874
+    "maxRestError": 3.2577053834795166e-15,
+    "maxExteriorWeight": 0.00010517554323863365
   },
   {
     "piece": 7,
     "kind": "surface",
-    "maxRestError": 8.478499276892386e-15,
-    "maxExteriorWeight": 0.0003542362138833077
+    "maxRestError": 7.953413345061973e-15,
+    "maxExteriorWeight": 0.00033246386401009076
   },
   {
     "piece": 7,
     "kind": "nodes",
-    "maxRestError": 8.884559321017418e-15,
-    "maxExteriorWeight": 0.00026592465945385335
+    "maxRestError": 5.7302997460712835e-15,
+    "maxExteriorWeight": 2.838652973125022e-06
   },
   {
     "piece": 8,
     "kind": "surface",
-    "maxRestError": 4.946419125159538e-15,
-    "maxExteriorWeight": 0.0
+    "maxRestError": 9.381220322469734e-15,
+    "maxExteriorWeight": 0.0006937595494767024
   },
   {
     "piece": 8,
     "kind": "nodes",
-    "maxRestError": 1.9301603260928013e-15,
+    "maxRestError": 2.928969502107952e-15,
+    "maxExteriorWeight": 6.550767620927544e-05
+  },
+  {
+    "piece": 9,
+    "kind": "surface",
+    "maxRestError": 6.488871305255753e-15,
+    "maxExteriorWeight": 0.0003456006356019614
+  },
+  {
+    "piece": 9,
+    "kind": "nodes",
+    "maxRestError": 4.171839369083926e-15,
+    "maxExteriorWeight": 2.9567736277158474e-06
+  },
+  {
+    "piece": 10,
+    "kind": "surface",
+    "maxRestError": 9.619939965703525e-15,
+    "maxExteriorWeight": 0.0005369427366126445
+  },
+  {
+    "piece": 10,
+    "kind": "nodes",
+    "maxRestError": 3.7763906117083025e-15,
+    "maxExteriorWeight": 7.05416144841653e-05
+  },
+  {
+    "piece": 11,
+    "kind": "surface",
+    "maxRestError": 5.58652929490272e-15,
+    "maxExteriorWeight": 0.0002508685905191488
+  },
+  {
+    "piece": 11,
+    "kind": "nodes",
+    "maxRestError": 3.8778423131653425e-15,
+    "maxExteriorWeight": 1.7945683836728676e-06
+  },
+  {
+    "piece": 12,
+    "kind": "surface",
+    "maxRestError": 5.108232534890496e-15,
     "maxExteriorWeight": 0.0
+  },
+  {
+    "piece": 12,
+    "kind": "nodes",
+    "maxRestError": 3.1185214200286946e-15,
+    "maxExteriorWeight": 0.0
+  },
+  {
+    "piece": 13,
+    "kind": "surface",
+    "maxRestError": 7.056687937132857e-15,
+    "maxExteriorWeight": 0.0003455867490074205
+  },
+  {
+    "piece": 13,
+    "kind": "nodes",
+    "maxRestError": 3.1577990563142793e-15,
+    "maxExteriorWeight": 2.1024018068693806e-06
+  },
+  {
+    "piece": 14,
+    "kind": "surface",
+    "maxRestError": 1.1411018936450998e-14,
+    "maxExteriorWeight": 0.0005369401396686513
+  },
+  {
+    "piece": 14,
+    "kind": "nodes",
+    "maxRestError": 5.3934447137265445e-15,
+    "maxExteriorWeight": 9.452360950490402e-05
+  },
+  {
+    "piece": 15,
+    "kind": "surface",
+    "maxRestError": 5.828406534472336e-15,
+    "maxExteriorWeight": 0.00019375523161402342
+  },
+  {
+    "piece": 15,
+    "kind": "nodes",
+    "maxRestError": 3.3083901009314997e-15,
+    "maxExteriorWeight": 0.00012266263159754764
+  },
+  {
+    "piece": 16,
+    "kind": "surface",
+    "maxRestError": 6.829451004377462e-15,
+    "maxExteriorWeight": 0.0005657465779644877
+  },
+  {
+    "piece": 16,
+    "kind": "nodes",
+    "maxRestError": 4.524754764715329e-15,
+    "maxExteriorWeight": 2.6272234467938915e-06
+  },
+  {
+    "piece": 17,
+    "kind": "surface",
+    "maxRestError": 7.154696162511531e-15,
+    "maxExteriorWeight": 0.0005189332496720045
+  },
+  {
+    "piece": 17,
+    "kind": "nodes",
+    "maxRestError": 4.668550523946536e-15,
+    "maxExteriorWeight": 2.2601995823823273e-06
+  },
+  {
+    "piece": 18,
+    "kind": "surface",
+    "maxRestError": 9.488348160156644e-15,
+    "maxExteriorWeight": 0.0006937627305521055
+  },
+  {
+    "piece": 18,
+    "kind": "nodes",
+    "maxRestError": 5.063396036227354e-15,
+    "maxExteriorWeight": 2.771687503955178e-06
+  },
+  {
+    "piece": 19,
+    "kind": "surface",
+    "maxRestError": 9.493542985708791e-15,
+    "maxExteriorWeight": 0.00047579176681233903
+  },
+  {
+    "piece": 19,
+    "kind": "nodes",
+    "maxRestError": 5.533323041707444e-15,
+    "maxExteriorWeight": 2.48351209042319e-06
   }
 ]

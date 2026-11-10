@@ -8,6 +8,7 @@ import {FragmentPoseMapper} from '../src/slime-fragments/pose.ts';
 import {ShapeMatchingBody,defaults} from '../src/slime-fragments/shape-matching.ts';
 const root=new URL('../public/assets/slime-fragments/',import.meta.url);
 const json=(name:string)=>JSON.parse(readFileSync(new URL(name,root),'utf8'));
+const pieceCount=json('manifest.json').count;
 const bytes=(name:string)=>{const b=readFileSync(new URL(name,root));return b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength) as ArrayBuffer;};
 test('fragment controls persist, old settings get defaults, solver counts are integers',()=>{
  const c={...DEFAULTS,slimeFragmentsSoftness:1.2,slimeFragmentsEnabled:0,slimeFragmentsMaxBursts:2};assert.deepEqual(parseSettingsDocument(settingsDocument(c)),c);
@@ -18,7 +19,7 @@ test('accepted cuts reconstruct their original surface and follow rotated/scaled
  const ref=json('reference-body.json'),mapper=new FragmentPoseMapper(ref),geometry=new T.BufferGeometry();geometry.setAttribute('position',new T.Float32BufferAttribute(ref.positions,3));const body=new T.Mesh(geometry,new T.MeshBasicMaterial());
  for(const transformed of [false,true]){
   if(transformed){body.position.set(3,.5,-8);body.rotation.set(.1,1.2,-.08);body.scale.set(1.3,.9,1.1);}mapper.capture(body);
-  for(let i=0;i<9;i++){const data=json(`${i}-sim.json`),original=new Float32Array(bytes(`${i}-skin-pos.bin`)),binding={ids:new Uint16Array(bytes(`${i}-surface-pose-ids.bin`)),weights:new Float32Array(bytes(`${i}-surface-pose-weights.bin`))},p=mapper.positions(binding);
+  for(let i=0;i<pieceCount;i++){const data=json(`${i}-sim.json`),original=new Float32Array(bytes(`${i}-skin-pos.bin`)),binding={ids:new Uint16Array(bytes(`${i}-surface-pose-ids.bin`)),weights:new Float32Array(bytes(`${i}-surface-pose-weights.bin`))},p=mapper.positions(binding);
    for(let j=0;j<p.length;j+=3){const expected=new T.Vector3(original[j],original[j+1],original[j+2]).add(new T.Vector3(...data.home as [number,number,number])).applyMatrix4(body.matrixWorld);assert.ok(expected.distanceTo(new T.Vector3(p[j],p[j+1],p[j+2]))<3e-6);}
   }
  }
@@ -40,7 +41,7 @@ test('initial overlap from a live slime pose is depenetrated without a fake laun
 });
 
 test('pooled constraints refit to a new bent pose exactly like newly constructed bodies',()=>{
- for(let piece=0;piece<9;piece++){
+ for(let piece=0;piece<pieceCount;piece++){
   const data=json(`${piece}-sim.json`),pooled=new ShapeMatchingBody(data),home=new T.Vector3(2,3,-1);
   const nodes=new Float32Array(data.nodes.map((v:number,i:number)=>v*(i%3===1?.8:1.2)+home.getComponent(i%3)+(i%3===0?.04*data.nodes[i+1]**2:0)));
   const rest=Array.from(nodes,(v,i)=>v-home.getComponent(i%3)),fresh=new ShapeMatchingBody({...data,nodes:rest,home:home.toArray()});
@@ -95,7 +96,7 @@ test('ground grip does not brake airborne fragments and remains adjustable below
 
 test('cut material follows original face labels, including cut rims at the outer shell',async()=>{
  const {fragmentInteriorMask}=await import('../src/slime-fragments/material.ts');let cutRimVertices=0;
- for(let piece=0;piece<9;piece++){
+ for(let piece=0;piece<pieceCount;piece++){
   const data=json(`${piece}-sim.json`),index=new Uint32Array(bytes(`${piece}-skin-index.bin`)),position=new Float32Array(bytes(`${piece}-skin-pos.bin`)),weights=new Float32Array(bytes(`${piece}-surface-pose-weights.bin`));
   const mask=fragmentInteriorMask(position.length/3,index,data.surfaceGroups);
   for(const group of data.surfaceGroups)for(let i=group.start;i<group.start+group.count;i++){
@@ -107,7 +108,7 @@ test('cut material follows original face labels, including cut rims at the outer
 });
 
 test('solid gel absorbs landing energy while retaining compression and volume',()=>{
- for(let piece=0;piece<9;piece++){
+ for(let piece=0;piece<pieceCount;piece++){
   const data=json(`${piece}-sim.json`);let bottom=Infinity;for(let i=1;i<data.nodes.length;i+=3)bottom=Math.min(bottom,data.nodes[i]);
   const run=(heavy:boolean)=>{
    const body=new ShapeMatchingBody(data),p={...defaults,gravity:30,spin:0,stretch:0,...(heavy?{}:{volume:.00001,impactDamping:0,settleDamping:0,bounce:.02})};
@@ -138,4 +139,19 @@ test('impact damping leaves first flight unchanged and its state resets when poo
  for(let i=0;i<15;i++){a.step(1/60,defaults,0);b.step(1/60,defaults,0);}
  assert.deepEqual(a.x,b.x);assert.deepEqual(a.v,b.v);
  const settings=parseSettingsDocument({version:1,settings:{}});assert.equal(settings.slimeFragmentsImpactDamping,18);assert.equal(settings.slimeFragmentsSettleDamping,5);assert.equal(settings.slimeFragmentsBounce,0);
+});
+
+test('denser fracture has mixed piece sizes and preserves the original body volume',()=>{
+ const manifest=json('manifest.json');assert.equal(pieceCount,20);
+ const volumes:number[]=[];let nodes=0,triangles=0;
+ for(let piece=0;piece<pieceCount;piece++){
+  const data=json(`${piece}-sim.json`),p=new Float32Array(bytes(`${piece}-skin-pos.bin`)),index=new Uint32Array(bytes(`${piece}-skin-index.bin`));nodes+=data.nodes.length/3;triangles+=index.length/3;
+  let volume=0;const a=new T.Vector3(),b=new T.Vector3(),c=new T.Vector3();
+  for(let i=0;i<index.length;i+=3){a.fromArray(p,index[i]*3);b.fromArray(p,index[i+1]*3);c.fromArray(p,index[i+2]*3);volume+=a.dot(b.cross(c))/6;}
+  assert.ok(volume>0);volumes.push(volume);
+ }
+ assert.ok(Math.max(...volumes)/Math.min(...volumes)>8,'pieces should visibly differ in volume');
+ assert.ok(Math.abs(volumes.reduce((a,b)=>a+b,0)/manifest.referenceVolume-1)<.001,'cuts preserve total volume');
+ assert.ok(nodes<=1300&&triangles<145000,'more fragments stay within the simulation/render budget');
+ assert.equal(nodes,manifest.totalNodes);assert.equal(triangles,manifest.totalTriangles);
 });

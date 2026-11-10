@@ -1,6 +1,7 @@
 import {chromium} from '@playwright/test';
 import assert from 'node:assert/strict';
 import {readFile,mkdir,writeFile} from 'node:fs/promises';
+const pieceCount=JSON.parse(await readFile('public/assets/slime-fragments/manifest.json','utf8')).count;
 const settings=JSON.parse(await readFile('public/params.json','utf8')).settings;
 const browser=await chromium.launch({channel:'chrome',headless:true,args:['--enable-unsafe-webgpu']});const errors=[];
 try{
@@ -14,7 +15,7 @@ try{
  let s=await page.evaluate(()=>window.__ARCHERO__.snapshot());assert.equal(s.slimeFragments.active,0);const ids=s.feedback.map(f=>f.id);assert.equal(ids.length,3);
  await page.evaluate(ids=>ids.forEach(id=>window.__ARCHERO__.testSlimeHit(id)),ids);
  const emitted=await page.evaluate(()=>{const api=window.__ARCHERO__;for(let i=0;i<600;i++){api.stepInspection(1/120);const s=api.snapshot();if(s.slimeFragments.emitted>=3)return s;}throw Error('No fragment bursts');});
- assert.equal(emitted.slimeFragments.active,2);assert.ok(emitted.slimeFragments.allocated<=2);assert.equal(emitted.slimeFragments.bursts[0].pieces.length,9);assert.ok(emitted.slimeFragments.maxInitialError<.0001);assert.equal(emitted.slimeFragments.failed,0);
+ assert.equal(emitted.slimeFragments.active,2);assert.ok(emitted.slimeFragments.allocated<=2);assert.equal(emitted.slimeFragments.bursts[0].pieces.length,pieceCount);assert.ok(emitted.slimeFragments.maxInitialError<.0001);assert.equal(emitted.slimeFragments.failed,0);
  await mkdir('analysis/slime-fragments',{recursive:true});await page.screenshot({path:'analysis/slime-fragments/assembled.png'});
  const impact=await page.evaluate(()=>{const api=window.__ARCHERO__;let peak=0,ground=false;for(let i=0;i<300;i++){api.stepInspection(1/120);const f=api.snapshot().slimeFragments;for(const b of f.bursts)for(const p of b.pieces){if(p.contact){ground=true;peak=Math.max(peak,p.strain);}}}return {peak,ground,state:api.snapshot().slimeFragments};});assert.equal(impact.ground,true);assert.ok(impact.peak>.08);assert.equal(impact.state.failed,0);assert.ok(impact.state.bursts.every(b=>b.pieces.every(p=>p.centroid[1]<15)),'initial penetration must not launch fragments into the sky');
  await page.screenshot({path:'analysis/slime-fragments/landed.png'});

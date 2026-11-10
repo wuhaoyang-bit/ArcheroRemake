@@ -30,7 +30,8 @@ export class SlimeFragmentEffects{
  constructor(private scene:T.Scene,private assets:Asset[],reference:ReferenceBody,private environment:T.Texture|null=null){this.pose=new FragmentPoseMapper(reference);}
  static async load(scene:T.Scene,environment:T.Texture|null=null){
   const reference=await(await read('reference-body.json')).json() as ReferenceBody;
-  const assets=await Promise.all(Array.from({length:9},async(_,i)=>{
+  const manifest=await(await read('manifest.json')).json() as {count:number};
+  const assets=await Promise.all(Array.from({length:manifest.count},async(_,i)=>{
    const data=await(await read(`${i}-sim.json`)).json() as Asset['data'];
    const names=['skin-pos','skin-normal','skin-index','bind-ids','bind-weights','surface-pose-ids','surface-pose-weights','nodes-pose-ids','nodes-pose-weights'];
    const a=await Promise.all(names.map(async name=>(await read(`${i}-${name}.bin`)).arrayBuffer()));
@@ -44,7 +45,7 @@ export class SlimeFragmentEffects{
   let nodeOffset=0,tetOffset=0;
   const skins=this.assets.map((a,i)=>{const skin=new Skin(new ShapeMatchingBody(a.data),a.positions.slice(),a.normals.slice(),a.index,a.ids,a.weights,material,gpu,nodeOffset,tetOffset);nodeOffset+=a.data.nodes.length/3;tetOffset+=a.data.tets.length/4;skin.mesh.name=`SlimeSoftFragment-${i+1}`;skin.mesh.geometry.setAttribute('fragmentInterior',new T.BufferAttribute(fragmentInteriorMask(a.positions.length/3,a.index,a.data.surfaceGroups),1));return skin;});
   // All pieces share one material and GPU state: submit one mesh per burst,
-  // including transmission and shadow passes, instead of nine separate draws.
+  // including transmission and shadow passes, instead of separate draws for each piece.
   const geometry=mergeGeometries(skins.map(s=>s.mesh.geometry))!,mesh=new T.Mesh(geometry,material);
   mesh.name='SlimeSoftFragments';mesh.frustumCulled=false;mesh.castShadow=true;mesh.receiveShadow=true;mesh.visible=false;this.scene.add(mesh);
   let vertexOffset=0;

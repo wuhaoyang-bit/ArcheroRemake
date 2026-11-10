@@ -497,7 +497,7 @@
     "slimeFragmentsGroupFilter": 0.75,
     "slimeFragmentsSubsteps": 8,
     "slimeFragmentsIterations": 1,
-    "slimeFragmentsSpeed": 1,
+    "slimeFragmentsSpeed": 1.4,
     "slimeFragmentsStretch": 1.2,
     "slimeFragmentsSpin": 1.5,
     "slimeFragmentsGravity": 30,

@@ -1,0 +1,93 @@
+{
+  "version": 2,
+  "count": 20,
+  "seed": 74123,
+  "interfaces": 78,
+  "referenceVolume": 41.36002889754881,
+  "totalPieceVolume": 41.36211464903183,
+  "totalTriangles": 91520,
+  "totalNodes": 1125,
+  "totalTets": 3917,
+  "pieces": [
+    {
+      "volume": 3.674328148584234,
+      "triangles": 5773
+    },
+    {
+      "volume": 4.414260719714912,
+      "triangles": 5768
+    },
+    {
+      "volume": 0.4095848963097002,
+      "triangles": 2386
+    },
+    {
+      "volume": 1.437086936166139,
+      "triangles": 3832
+    },
+    {
+      "volume": 2.4265118284589495,
+      "triangles": 5315
+    },
+    {
+      "volume": 0.8038762873825902,
+      "triangles": 3244
+    },
+    {
+      "volume": 2.4560099048761685,
+      "triangles": 5125
+    },
+    {
+      "volume": 1.8348446624325763,
+      "triangles": 4103
+    },
+    {
+      "volume": 2.0182552270508745,
+      "triangles": 4157
+    },
+    {
+      "volume": 3.3812594147783552,
+      "triangles": 5362
+    },
+    {
+      "volume": 0.6491231174195649,
+      "triangles": 2866
+    },
+    {
+      "volume": 2.3770975062172566,
+      "triangles": 4876
+    },
+    {
+      "volume": 3.7324845691181396,
+      "triangles": 8704
+    },
+    {
+      "volume": 2.1914907259049343,
+      "triangles": 5351
+    },
+    {
+      "volume": 0.9294803468470776,
+      "triangles": 3627
+    },
+    {
+      "volume": 1.0264357868934786,
+      "triangles": 3628
+    },
+    {
+      "volume": 1.699498532461053,
+      "triangles": 4099
+    },
+    {
+      "volume": 1.9492765294400536,
+      "triangles": 4573
+    },
+    {
+      "volume": 2.0730288281833187,
+      "triangles": 4379
+    },
+    {
+      "volume": 1.8781806807924544,
+      "triangles": 4352
+    }
+  ]
+}

@@ -15,7 +15,7 @@ export const SLIME_FRAGMENTS_LIMITS:Record<keyof SlimeFragmentsSettings,[number,
  slimeFragmentsLifetime:[1,15,.5],slimeFragmentsMaxBursts:[1,6,1],slimeFragmentsWireEnabled:[0,1,1],
 };
 export const SLIME_FRAGMENTS_CONTROLS:[keyof SlimeFragmentsSettings,string,string,string][]=[
- ['slimeFragmentsEnabled','启用爆炸碎块','0/1','方案 D：物理 Shape Matching。爆炸时生成 9 块；关闭时立即清理已有碎块。'],
+ ['slimeFragmentsEnabled','启用爆炸碎块','0/1','方案 D：物理 Shape Matching。爆炸时生成 20 块大小不一的不规则碎块；关闭时立即清理已有碎块。'],
  ['slimeFragmentsSoftness','碎块软度','','越大越容易压扁和拉长；0.8 对应预览页顺应度 0.008。立即影响现有碎块。'],
  ['slimeFragmentsVolume','体积可压缩度','','越小越难压瘪；0.1 对应体积顺应度 0.00001。'],
  ['slimeFragmentsDamping','弹性阻尼','1/s','越大越快停止抖动；保留整体平移速度。'],
@@ -31,6 +31,6 @@ export const SLIME_FRAGMENTS_CONTROLS:[keyof SlimeFragmentsSettings,string,strin
  ['slimeFragmentsFriction','地面摩擦','','1 为落地止滑：接触点不沿地面移动，仍可弹起；小于 1 时使用可滑动摩擦。'],
  ['slimeFragmentsBounce','地面额外反弹','','材料自身会弹性恢复，此值只控制接触点额外反弹。'],
  ['slimeFragmentsLifetime','保留时间','s','末尾 0.5 秒淡出并回收到对象池。'],
- ['slimeFragmentsMaxBursts','最多同时保留','组','每组 9 块；超过上限回收最早的一组，限制连续爆炸开销。'],
+ ['slimeFragmentsMaxBursts','最多同时保留','组','每组 20 块；超过上限回收最早的一组，限制连续爆炸开销。'],
  ['slimeFragmentsWireEnabled','显示碎块表面线框','0/1','查看表面如何随物理节点变形。'],
 ];

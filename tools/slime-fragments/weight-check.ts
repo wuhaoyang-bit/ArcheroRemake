@@ -1,8 +1,9 @@
 import {readFileSync,writeFileSync} from 'node:fs';
 import {Vector3} from 'three';
 import {ShapeMatchingBody,defaults} from '../../src/slime-fragments/shape-matching.ts';
+const pieceCount=JSON.parse(readFileSync('public/assets/slime-fragments/manifest.json','utf8')).count;
 const results=[];
-for(const heavy of [false,true])for(let piece=0;piece<9;piece++){
+for(const heavy of [false,true])for(let piece=0;piece<pieceCount;piece++){
  const data=JSON.parse(readFileSync(`public/assets/slime-fragments/${piece}-sim.json`,'utf8')),body=new ShapeMatchingBody(data);
  const p={...defaults,gravity:30,spin:0,stretch:0,...(heavy?{}:{volume:.00001,impactDamping:0,settleDamping:0,bounce:.02})};
  let localBottom=Infinity;for(let i=1;i<data.nodes.length;i+=3)localBottom=Math.min(localBottom,data.nodes[i]);

@@ -1,7 +1,7 @@
 import * as T from 'three/webgpu';
 import {attribute,storage,vec3,Fn,normalLocal} from 'three/tsl';
 import {ShapeMatchingBody as Body} from './shape-matching.ts';
-/** One pair of small GPU buffers shared by all nine pieces of a burst.
+/** One pair of small GPU buffers shared by all pieces of a burst.
  * Binding attributes stay on the GPU; only node displacements and tet cofactors
  * change each frame. Surface detail no longer determines CPU skinning cost. */
 export class SkinBuffers{
