@@ -69,3 +69,73 @@ test('GPU skin buffers match CPU surface and normals without uploading surface v
  }
  assert.ok(gpu.displacement.version>0);assert.ok(gpu.normals.version>0);
 });
+
+test('full ground grip removes tangential contact slip while retaining physical rebound',()=>{
+ for(const dt of [1/60,1/120]){
+  const body=new ShapeMatchingBody(json('0-sim.json')),p={...defaults,friction:1,bounce:.5,spin:0,stretch:0};
+  body.spawn(new T.Vector3(0,3,0),new T.Vector3(),0,p);
+  for(let i=0;i<body.v.length;i+=3){body.v[i]=12;body.v[i+1]=-5;body.v[i+2]=-4;}
+  let contacts=0,upwardSpeed=0,peakStrain=0;
+  for(let frame=0;frame<Math.round(2/dt);frame++){
+   body.step(dt,p,0);assert.ok(body.x.every(Number.isFinite));
+   if(body.contact){let vy=0;for(let i=1;i<body.v.length;i+=3)vy+=body.v[i];upwardSpeed=Math.max(upwardSpeed,vy/body.inv.length);peakStrain=Math.max(peakStrain,body.strain());}
+   for(let i=0;i<body.inv.length;i++){const j=i*3;if(body.touching[i]&&body.x[j+1]<=.025001){contacts++;assert.equal(body.x[j],body.prev[j]);assert.equal(body.x[j+2],body.prev[j+2]);assert.equal(Math.abs(body.v[j]),0);assert.equal(Math.abs(body.v[j+2]),0);}}
+  }
+  assert.ok(contacts>10);assert.ok(upwardSpeed>1,'contact must release for upward bounce');assert.ok(peakStrain>.08,'soft deformation must remain active');
+ }
+});
+
+test('ground grip does not brake airborne fragments and remains adjustable below full grip',()=>{
+ const a=new ShapeMatchingBody(json('0-sim.json')),b=new ShapeMatchingBody(json('0-sim.json'));
+ for(const body of [a,b])body.spawn(new T.Vector3(0,10,0),new T.Vector3(),5,defaults);
+ for(let frame=0;frame<12;frame++){a.step(1/60,{...defaults,friction:1},0);b.step(1/60,{...defaults,friction:.45},0);}
+ assert.equal(a.contact,false);assert.deepEqual(a.x,b.x);assert.deepEqual(a.v,b.v);
+ assert.equal(parseSettingsDocument({version:1,settings:{}}).slimeFragmentsFriction,1);
+});
+
+test('cut material follows original face labels, including cut rims at the outer shell',async()=>{
+ const {fragmentInteriorMask}=await import('../src/slime-fragments/material.ts');let cutRimVertices=0;
+ for(let piece=0;piece<9;piece++){
+  const data=json(`${piece}-sim.json`),index=new Uint32Array(bytes(`${piece}-skin-index.bin`)),position=new Float32Array(bytes(`${piece}-skin-pos.bin`)),weights=new Float32Array(bytes(`${piece}-surface-pose-weights.bin`));
+  const mask=fragmentInteriorMask(position.length/3,index,data.surfaceGroups);
+  for(const group of data.surfaceGroups)for(let i=group.start;i<group.start+group.count;i++){
+   const vertex=index[i],inside=group.materialIndex===1;assert.equal(mask[vertex],inside?1:0);
+   if(inside&&1-weights[vertex*3]-weights[vertex*3+1]-weights[vertex*3+2]<.002)cutRimVertices++;
+  }
+ }
+ assert.ok(cutRimVertices>100,'depth-only classification would miss these real cut vertices');
+});
+
+test('solid gel absorbs landing energy while retaining compression and volume',()=>{
+ for(let piece=0;piece<9;piece++){
+  const data=json(`${piece}-sim.json`);let bottom=Infinity;for(let i=1;i<data.nodes.length;i+=3)bottom=Math.min(bottom,data.nodes[i]);
+  const run=(heavy:boolean)=>{
+   const body=new ShapeMatchingBody(data),p={...defaults,gravity:30,spin:0,stretch:0,...(heavy?{}:{volume:.00001,impactDamping:0,settleDamping:0,bounce:.02})};
+   body.spawn(new T.Vector3(0,3-data.home[1]-bottom,0),new T.Vector3(),0,p);
+   let clearance=0,strain=0,lateMotion=0;
+   for(let i=0;i<240;i++){
+    body.step(1/60,p,0);assert.ok(body.x.every(Number.isFinite));
+    if(body.contact){let floor=Infinity;for(let j=1;j<body.x.length;j+=3)floor=Math.min(floor,body.x[j]);clearance=Math.max(clearance,floor-.025);strain=Math.max(strain,body.strain());}
+    if(i>180)for(const v of body.v)lateMotion+=v*v/body.v.length;
+   }
+   return {clearance,strain,lateMotion,volume:body.snapshot().volumeRatio};
+  };
+  const old=run(false),gel=run(true);
+  assert.ok(gel.clearance<old.clearance*.5,`piece ${piece}: lower whole-body rebound`);
+  assert.ok(gel.strain>.1&&gel.strain>old.strain*.5,`piece ${piece}: compression remains visible`);
+  assert.ok(gel.lateMotion<old.lateMotion*.2,`piece ${piece}: residual wobble settles`);
+  assert.ok(Math.abs(gel.volume-1)<.08,`piece ${piece}: retains volume`);
+ }
+});
+
+test('impact damping leaves first flight unchanged and its state resets when pooled',()=>{
+ const data=json('0-sim.json'),a=new ShapeMatchingBody(data),b=new ShapeMatchingBody(data),without={...defaults,impactDamping:0,settleDamping:0};
+ for(const body of [a,b])body.spawn(new T.Vector3(0,4,0),new T.Vector3(),0,defaults);
+ for(let i=0;i<15;i++){a.step(1/60,defaults,0);b.step(1/60,without,0);}
+ assert.equal(a.contact,false);assert.deepEqual(a.x,b.x);assert.deepEqual(a.v,b.v);
+ for(let i=0;i<100;i++)a.step(1/60,defaults,0);assert.equal(a.contact,true);
+ for(const body of [a,b])body.spawn(new T.Vector3(0,4,0),new T.Vector3(),0,defaults);
+ for(let i=0;i<15;i++){a.step(1/60,defaults,0);b.step(1/60,defaults,0);}
+ assert.deepEqual(a.x,b.x);assert.deepEqual(a.v,b.v);
+ const settings=parseSettingsDocument({version:1,settings:{}});assert.equal(settings.slimeFragmentsImpactDamping,18);assert.equal(settings.slimeFragmentsSettleDamping,5);assert.equal(settings.slimeFragmentsBounce,0);
+});

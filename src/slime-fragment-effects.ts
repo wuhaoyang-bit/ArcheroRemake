@@ -2,16 +2,17 @@ import * as T from 'three/webgpu';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {ShapeMatchingBody,type FragmentMeshData,type Params} from './slime-fragments/shape-matching.ts';
 import {Skin,SkinBuffers} from './slime-fragments/skin.ts';
+import {configureFragmentMaterial,fragmentInteriorMask,type FragmentSurfaceGroup} from './slime-fragments/material.ts';
 import {FragmentPoseMapper,type PoseBinding,type ReferenceBody} from './slime-fragments/pose.ts';
 import type {SlimeFragmentsSettings} from './slime-fragments-config.ts';
 import {slimeFlight,type FlightSettings} from './slime-flight-motion.ts';
 
 type Settings=SlimeFragmentsSettings&FlightSettings;
-type Asset={data:FragmentMeshData;positions:Float32Array;normals:Float32Array;index:Uint32Array;ids:Uint32Array;weights:Float32Array;surfacePose:PoseBinding;nodesPose:PoseBinding};
+type Asset={data:FragmentMeshData&{surfaceGroups:FragmentSurfaceGroup[]};positions:Float32Array;normals:Float32Array;index:Uint32Array;ids:Uint32Array;weights:Float32Array;surfacePose:PoseBinding;nodesPose:PoseBinding};
 type Burst={skins:Skin[];mesh:T.Mesh;material:T.MeshPhysicalNodeMaterial;active:boolean;age:number;serial:number;flight:FlightSettings;launchSpeed:number;dirty:boolean};
 const ROOT=`${import.meta.env.BASE_URL}assets/slime-fragments/`;
 async function read(name:string){const r=await fetch(ROOT+name);if(!r.ok)throw Error(`碎块资源加载失败：${name}`);return r;}
-export function fragmentParams(c:SlimeFragmentsSettings):Params{return {softness:c.slimeFragmentsSoftness*.01,volume:c.slimeFragmentsVolume*.0001,damping:c.slimeFragmentsDamping,substeps:c.slimeFragmentsSubsteps,iterations:c.slimeFragmentsIterations,gravity:c.slimeFragmentsGravity,friction:c.slimeFragmentsFriction,bounce:c.slimeFragmentsBounce,speed:c.slimeFragmentsSpeed,stretch:c.slimeFragmentsStretch,spin:c.slimeFragmentsSpin,groupFilter:c.slimeFragmentsGroupFilter};}
+export function fragmentParams(c:SlimeFragmentsSettings):Params{return {softness:c.slimeFragmentsSoftness*.01,volume:c.slimeFragmentsVolume*.0001,damping:c.slimeFragmentsDamping,impactDamping:c.slimeFragmentsImpactDamping,settleDamping:c.slimeFragmentsSettleDamping,substeps:c.slimeFragmentsSubsteps,iterations:c.slimeFragmentsIterations,gravity:c.slimeFragmentsGravity,friction:c.slimeFragmentsFriction,bounce:c.slimeFragmentsBounce,speed:c.slimeFragmentsSpeed,stretch:c.slimeFragmentsStretch,spin:c.slimeFragmentsSpin,groupFilter:c.slimeFragmentsGroupFilter};}
 
 /** Scheme D only. A bounded reusable pool; physics runs at 60 Hz and the high-detail
  * surface is updated once per render, not once for each 120 Hz gameplay tick. */
@@ -30,7 +31,7 @@ export class SlimeFragmentEffects{
  static async load(scene:T.Scene,environment:T.Texture|null=null){
   const reference=await(await read('reference-body.json')).json() as ReferenceBody;
   const assets=await Promise.all(Array.from({length:9},async(_,i)=>{
-   const data=await(await read(`${i}-sim.json`)).json() as FragmentMeshData;
+   const data=await(await read(`${i}-sim.json`)).json() as Asset['data'];
    const names=['skin-pos','skin-normal','skin-index','bind-ids','bind-weights','surface-pose-ids','surface-pose-weights','nodes-pose-ids','nodes-pose-weights'];
    const a=await Promise.all(names.map(async name=>(await read(`${i}-${name}.bin`)).arrayBuffer()));
    return {data,positions:new Float32Array(a[0]),normals:new Float32Array(a[1]),index:new Uint32Array(a[2]),ids:new Uint32Array(a[3]),weights:new Float32Array(a[4]),surfacePose:{ids:new Uint16Array(a[5]),weights:new Float32Array(a[6])},nodesPose:{ids:new Uint16Array(a[7]),weights:new Float32Array(a[8])}};
@@ -38,9 +39,10 @@ export class SlimeFragmentEffects{
  }
  private allocate():Burst{
   const material=new T.MeshPhysicalNodeMaterial({color:0xffdd32,roughness:.19,metalness:0,transmission:.65,thickness:1.8,ior:1.36,attenuationColor:0xffcc20,attenuationDistance:2.6,clearcoat:.8,clearcoatRoughness:.15,envMap:this.environment,transparent:true});
+  configureFragmentMaterial(material);
   const gpu=new SkinBuffers(this.assets.reduce((sum,a)=>sum+a.data.nodes.length/3,0),this.assets.reduce((sum,a)=>sum+a.data.tets.length/4,0),material);
   let nodeOffset=0,tetOffset=0;
-  const skins=this.assets.map((a,i)=>{const skin=new Skin(new ShapeMatchingBody(a.data),a.positions.slice(),a.normals.slice(),a.index,a.ids,a.weights,material,gpu,nodeOffset,tetOffset);nodeOffset+=a.data.nodes.length/3;tetOffset+=a.data.tets.length/4;skin.mesh.name=`SlimeSoftFragment-${i+1}`;return skin;});
+  const skins=this.assets.map((a,i)=>{const skin=new Skin(new ShapeMatchingBody(a.data),a.positions.slice(),a.normals.slice(),a.index,a.ids,a.weights,material,gpu,nodeOffset,tetOffset);nodeOffset+=a.data.nodes.length/3;tetOffset+=a.data.tets.length/4;skin.mesh.name=`SlimeSoftFragment-${i+1}`;skin.mesh.geometry.setAttribute('fragmentInterior',new T.BufferAttribute(fragmentInteriorMask(a.positions.length/3,a.index,a.data.surfaceGroups),1));return skin;});
   // All pieces share one material and GPU state: submit one mesh per burst,
   // including transmission and shadow passes, instead of nine separate draws.
   const geometry=mergeGeometries(skins.map(s=>s.mesh.geometry))!,mesh=new T.Mesh(geometry,material);

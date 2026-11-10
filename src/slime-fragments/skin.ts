@@ -1,5 +1,5 @@
 import * as T from 'three/webgpu';
-import {attribute,storage,vec3,varying,transformNormalToView} from 'three/tsl';
+import {attribute,storage,vec3,Fn,normalLocal} from 'three/tsl';
 import {ShapeMatchingBody as Body} from './shape-matching.ts';
 /** One pair of small GPU buffers shared by all nine pieces of a burst.
  * Binding attributes stay on the GPU; only node displacements and tet cofactors
@@ -12,12 +12,16 @@ export class SkinBuffers{
   this.normals=new T.StorageBufferAttribute(new Float32Array(tetCount*12),4).setUsage(T.DynamicDrawUsage);
   const delta=storage(this.displacement,'vec4',nodeCount).toReadOnly(),cofactor=storage(this.normals,'vec4',tetCount*3).toReadOnly();
   const ids=attribute('fragmentNodes','uvec4'),w=attribute('fragmentWeights','vec4');
-  material.positionNode=attribute('position','vec3')
+  const deformedPosition=attribute('position','vec3')
    .add(delta.element(ids.x).xyz.mul(w.x)).add(delta.element(ids.y).xyz.mul(w.y))
    .add(delta.element(ids.z).xyz.mul(w.z)).add(delta.element(ids.w).xyz.mul(w.w));
   const tet=attribute('fragmentTet','uint').mul(3),n=attribute('normal','vec3');
   const deformedNormal=vec3(cofactor.element(tet).xyz.dot(n),cofactor.element(tet.add(1)).xyz.dot(n),cofactor.element(tet.add(2)).xyz.dot(n)).normalize();
-  material.normalNode=transformNormalToView(varying(deformedNormal)).normalize();
+  // Update the vertex-stage geometric normal, not just the base BRDF's normal.
+  // Clearcoat and geometric shading otherwise keep using the undeformed normal,
+  // producing silver bands as a soft fragment rotates or flattens on the ground.
+  material.positionNode=Fn(()=>{normalLocal.assign(deformedNormal);return deformedPosition;})();
+  material.normalNode=null;
  }
 }
 export class Skin{
