@@ -297,6 +297,7 @@ export class GameScene {
       }
       this.cameraZoom.trigger('hit',settings);
       const feet=this.feedback.feetOrigin(hit.id,this.juiceScratch);if(feet)this.hitSplash?.emit(hit.id,feet,settings);
+      this.hitSplash?.emitBack(hit.id,settings,(id,origin,dir)=>!!this.feedback?.sprayBackAnchor(id,origin,dir));
       this.juice?.schedule(hit.id,settings,id=>this.juiceOriginFor(id));
       // Back face of model facing (opposite eyes); cone outward ⊥ that face.
       this.spray?.schedule(hit.id,settings,(id,origin,dir)=>!!this.feedback?.sprayBackAnchor(id,origin,dir));
@@ -433,7 +434,7 @@ export class GameScene {
     this.feedback?.eyeDebris.setPlayer({...this.controller.position,radius:PLAYER_RADIUS,height:3.25});
     this.feedback?.update(dt,this.controller.settings);
     if(this.controller.training==='monsters'){this.feedback?.pursue(dt,this.controller.position,this.controller.settings.monsterSpeed,this.controller.settings,()=>this.controller.resolveMonsterContacts());}
-    this.hitSplash?.update(dt,this.camera,(id,out)=>this.feedback?.feetOrigin(id,out)??null,this.controller.settings);
+    this.hitSplash?.update(dt,this.camera,(id,out)=>this.feedback?.feetOrigin(id,out)??null,this.controller.settings,(id,origin,dir)=>!!this.feedback?.sprayBackAnchor(id,origin,dir));
     this.juice?.update(dt,id=>this.juiceOriginFor(id));
     this.spray?.update(dt,(id,origin,dir)=>!!this.feedback?.sprayBackAnchor(id,origin,dir));
     this.burstEffects?.setSlimeTrailBodies(this.feedback?.slimeTrailBodies()??[]);

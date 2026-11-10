@@ -27,6 +27,7 @@ export const HIT_DEFAULTS = {
   liquidSpeedCurve:DEFAULT_LIQUID_SPEED_CURVE,
   juiceSpeedCurve: DEFAULT_JUICE_SPEED_CURVE,
   hitSplashSheetsEnabled:1,hitSplashSheetsScale:1,hitSplashSheetsSpeed:1,hitSplashSheetsDelay:0,hitSplashSheetsHeight:0,
+  hitSplashBackEnabled:1,hitSplashBackScale:1,hitSplashBackSpeed:1,hitSplashBackDelay:0,
   hitSplashParticlesCount:33,hitSplashParticlesScale:1,hitSplashParticlesHeight:0,
   hitSplashParticlesEnabled:1,
   juiceEnabled:1,juiceDelay:.13,juiceCount:16,juiceSpeed:4,juiceSpeedJitter:1,
@@ -52,6 +53,7 @@ export const HIT_LIMITS = {
   hitRimTime:[.04,5,.01],hitRimFadeStart:[0,5,.01],hitRimStrength:[0,1,.05],hitRimBrightness:[0,5,.1],hitRimWidth:[.1,1,.05],
   hitSquashTime:[.05,5,.01],hitSquashAmount:[.02,.65,.01],hitCompressTime:[.01,.5,.01],hitReleaseTime:[0,2,.01],hitSpringFrequency:[.5,12,.1],hitSpringDamping:[.05,2,.05],
   hitSplashSheetsEnabled:[0,1,1],hitSplashSheetsScale:[.05,3,.05],hitSplashSheetsSpeed:[.1,5,.1],hitSplashSheetsDelay:[0,3,.01],hitSplashSheetsHeight:[-1,3,.05],
+  hitSplashBackEnabled:[0,1,1],hitSplashBackScale:[.05,3,.05],hitSplashBackSpeed:[.1,5,.1],hitSplashBackDelay:[0,3,.01],
   hitSplashParticlesCount:[1,33,1],hitSplashParticlesScale:[.1,3,.05],hitSplashParticlesHeight:[-1,3,.05],
   hitSplashParticlesEnabled:[0,1,1],
   juiceEnabled:[0,1,1],juiceDelay:[0,3,.01],juiceCount:[1,64,1],juiceSpeed:[0,20,.1],juiceSpeedJitter:[0,10,.1],juiceRadius:[0,1.5,.01],
@@ -145,4 +147,11 @@ export const HIT_SPLASH_PARTICLE_CONTROLS: typeof HIT_CONTROLS = [
  ['hitSplashParticlesCount','跟随汁滴数量','个','每次命中的颗粒数量。'],
  ['hitSplashParticlesScale','跟随汁滴大小倍率','倍','乘以共用汁液尺寸，不改变贴图比例。'],
  ['hitSplashParticlesHeight','跟随汁滴高度偏移','u','叠加在脚底和共用汁液高度之上；速度、曲线、寿命、延迟沿用下方汁液参数。'],
+];
+
+export const HIT_SPLASH_BACK_CONTROLS: typeof HIT_CONTROLS = [
+ ['hitSplashBackEnabled','液体飞溅-背后 · 开关','0/1','复制液片飞溅，在方向喷溅的背面生成点向外喷出；独立于方向粒子开关。'],
+ ['hitSplashBackScale','背后飞溅 · 大小','倍','缩放背后液片和扩散范围。'],
+ ['hitSplashBackSpeed','背后飞溅 · 播放速度','倍','液片运动、展开和消散的播放速度。'],
+ ['hitSplashBackDelay','背后飞溅 · 延迟','s','从命中开始计时；生成位置沿用方向喷溅位置和高度偏移。'],
 ];
