@@ -8,7 +8,9 @@ const near = (a: number, b: number) => assert.ok(Math.abs(a - b) < 1e-6, `${a} !
 function fixture() {
   const scene = new THREE.Scene();
   const template = new THREE.Mesh(new THREE.BoxGeometry(.1, .1, 1), new THREE.MeshBasicMaterial());
-  return { scene, arrows: new ArrowProjectiles(scene, template) };
+  const arrows=new ArrowProjectiles(scene, template);
+  arrows.setPierceEntrySpeed(0); // Existing stationary-resistance regression cases.
+  return { scene, arrows };
 }
 function enemy(scene: THREE.Scene, z: number, id: string) {
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), new THREE.MeshBasicMaterial());
@@ -318,4 +320,110 @@ test('recycling follows the current camera zoom and portrait viewport',()=>{
   assert.equal(arrows.snapshot().active.length,1); // tail x=3.3 inside zoomed-out width 6
   camera.zoom=1;camera.updateProjectionMatrix();arrows.prepare(camera);
   assert.equal(arrows.snapshot().active.length,0); // same tail now beyond portrait width 3
+});
+
+test('piercing entry pauses for 40ms, damages once, and only freezes the contacting arrow', () => {
+  const {scene, arrows}=fixture();
+  arrows.setPierce(true); arrows.setSpeed(100); arrows.setSpeedAfterPierce(100);
+  arrows.setTargets([enemy(scene,5,'gel')]);
+  arrows.fire(origin,aim,Infinity);
+  arrows.fire(new THREE.Vector3(3,1,0),new THREE.Vector3(3,1,20),Infinity);
+  arrows.update(.06);
+  let [hit,miss]=arrows.snapshot().active;
+  near(hit.position[2],4); near(hit.piercePauseRemaining,.02); near(miss.position[2],6);
+  arrows.update(.01); near(arrows.snapshot().active[0].position[2],4);
+  arrows.update(.02); near(arrows.snapshot().active[0].position[2],5);
+  assert.equal(arrows.snapshot().hits,1);
+});
+
+test('pause and far-face slowdown consume exact time at different frame rates, including 0ms', () => {
+  for(const pauseMs of [0,40,200]) for(const steps of [1,12,24,48]) {
+    const {scene,arrows}=fixture();
+    arrows.setPierce(true); arrows.setSpeed(100); arrows.setSpeedAfterPierce(20); arrows.setPiercePause(pauseMs);
+    arrows.setTargets([enemy(scene,5,'gel')]); arrows.fire(origin,aim,Infinity);
+    for(let i=0;i<steps;i++)arrows.update(.4/steps);
+    const shot=arrows.snapshot().active[0];
+    near(shot.position[2],5+(.4-.05-pauseMs/1000)*20);
+    near(shot.piercePauseRemaining,0); assert.equal(arrows.snapshot().hits,1);
+  }
+});
+
+test('each new body pauses once; a held arrow does not hit a later target early', () => {
+  const {scene,arrows}=fixture();
+  arrows.setPierce(true); arrows.setSpeed(100); arrows.setSpeedAfterPierce(100);
+  arrows.setTargets([enemy(scene,10,'far'),enemy(scene,5,'near')]);
+  arrows.fire(origin,aim,Infinity); arrows.update(.1);
+  assert.deepEqual(arrows.snapshot().active[0].hitIds,['near']);
+  arrows.update(.1);
+  assert.deepEqual(arrows.snapshot().active[0].hitIds,['near','far']);
+  near(arrows.snapshot().active[0].position[2],12);
+});
+
+test('point-blank pause does not rewind spawn; pool reuse clears pause and zero disables it', () => {
+  const {scene,arrows}=fixture();
+  arrows.setPierce(true); arrows.setSpeed(100); arrows.setSpeedAfterPierce(100);
+  arrows.setTargets([enemy(scene,5,'gel')]);
+  arrows.fire(new THREE.Vector3(0,1,4.25),aim,Infinity,.02);
+  near(arrows.snapshot().active[0].position[2],4.25);
+  near(arrows.snapshot().active[0].piercePauseRemaining,.02);
+  arrows.setPiercePause(0); arrows.update(.01);
+  near(arrows.snapshot().active[0].position[2],4.25);
+  arrows.clear(); arrows.fire(origin,aim,Infinity,.1);
+  near(arrows.snapshot().active[0].position[2],10);
+  near(arrows.snapshot().active[0].piercePauseRemaining,0);
+});
+
+test('paused arrow follows recoil through parent transforms and resumes from the carried position', () => {
+  const {scene,arrows}=fixture(), parent=new THREE.Group(); scene.add(parent);
+  const target=enemy(scene,5,'gel'); parent.add(target);
+  arrows.setTargets([target]); arrows.setPierce(true); arrows.setSpeed(100); arrows.setSpeedAfterPierce(20);
+  arrows.fire(origin,aim,Infinity); arrows.update(.05);
+  near(arrows.snapshot().active[0].position[2],4);
+  parent.position.set(1,0,2); arrows.update(.01);
+  let shot=arrows.snapshot().active[0];
+  near(shot.position[0],1); near(shot.position[2],6); near(shot.piercePauseRemaining,.02);
+  assert.equal(shot.afterPierceApplied,false); near(shot.distance,4);
+  parent.position.z=3; arrows.update(.02);
+  near(arrows.snapshot().active[0].position[2],7);
+  // No longer follows once the 40ms hold has ended.
+  parent.position.z=4; arrows.update(.005);
+  shot=arrows.snapshot().active[0]; near(shot.position[2],7.5); near(shot.position[0],1);
+  assert.equal(arrows.snapshot().hits,1);
+});
+
+test('immediate hit recoil follows; removed targets and recycled arrows release the attachment', () => {
+  const {scene,arrows}=fixture(),target=enemy(scene,5,'gel');
+  arrows.setTargets([target]); arrows.setPierce(true); arrows.setSpeed(100); arrows.setSpeedAfterPierce(100);
+  arrows.onHit=()=>{target.position.z+=2;};
+  arrows.fire(origin,aim,Infinity); arrows.update(.05);
+  near(arrows.snapshot().active[0].position[2],6);
+  arrows.setTargets([]); target.position.z+=10; arrows.update(.01);
+  near(arrows.snapshot().active[0].position[2],6);
+  arrows.update(.03); near(arrows.snapshot().active[0].position[2],7);
+  arrows.clear(); arrows.fire(origin,aim,Infinity); target.position.z+=10; arrows.update(.01);
+  near(arrows.snapshot().active[0].position[2],1);
+});
+
+test('20ms entry resistance advances at 20 units/s, follows recoil and resumes normal flight',()=>{
+ for(const steps of [1,10,100]){
+  const {scene,arrows}=fixture(),target=enemy(scene,5,'gel');
+  arrows.setPierce(true);arrows.setSpeed(100);arrows.setSpeedAfterPierce(100);
+  arrows.setPiercePause(20);arrows.setPierceEntrySpeed(20);arrows.setTargets([target]);
+  arrows.fire(origin,aim,Infinity);arrows.update(.04);
+  target.position.z+=2;
+  for(let i=0;i<steps;i++)arrows.update(.01/steps);
+  near(arrows.snapshot().active[0].position[2],6.2);
+  near(arrows.snapshot().active[0].piercePauseRemaining,.01);
+  arrows.update(.02);near(arrows.snapshot().active[0].position[2],7.4);
+  assert.equal(arrows.snapshot().hits,1);
+ }
+});
+
+test('low-speed movement sweeps other bodies and respects exit slowdown after resistance ends',()=>{
+ const {scene,arrows}=fixture();arrows.setPierce(true);arrows.setSpeed(100);arrows.setSpeedAfterPierce(10);
+ arrows.setPiercePause(200);arrows.setPierceEntrySpeed(20);
+ arrows.setTargets([enemy(scene,5,'near'),enemy(scene,7,'far')]);arrows.fire(origin,aim,Infinity);
+ arrows.update(.5);
+ assert.deepEqual(arrows.snapshot().active[0].hitIds,['near','far']);
+ near(arrows.snapshot().active[0].position[2],12.6);
 });

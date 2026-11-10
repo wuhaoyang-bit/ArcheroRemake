@@ -18,6 +18,10 @@ type Arrow = {
   pierce: boolean;
   /** Seconds left pinned at the hit point before recycle; 0 means flying normally. */
   lingerRemaining: number;
+  /** Entry resistance: moves slowly while following body translation (seconds). */
+  piercePauseRemaining: number;
+  piercePauseTarget: THREE.Object3D | null;
+  piercePauseTargetPosition: THREE.Vector3;
   /** First pierce body; cleared after after-pierce speed applies. */
   pierceExitTarget: THREE.Object3D | null;
   /** World point on the far AABB face along flight; tip must reach it before slowdown. */
@@ -66,6 +70,8 @@ export class ArrowProjectiles {
   private pierce = false;
   /** Non-pierce hit linger before recycle (seconds). 0 = immediate despawn. */
   private hitLinger = 1 / 60;
+  private piercePause = .04;
+  private pierceEntrySpeed = 20;
   private viewFrustum = new THREE.Frustum();
   private viewProjection = new THREE.Matrix4();
   private visibleBounds = new THREE.Box3();
@@ -100,6 +106,9 @@ export class ArrowProjectiles {
       active: false,
       pierce: false,
       lingerRemaining: 0,
+      piercePauseRemaining: 0,
+      piercePauseTarget: null,
+      piercePauseTargetPosition: new THREE.Vector3(),
       pierceExitTarget: null,
       pierceExitPoint: null,
       afterPierceApplied: false,
@@ -136,6 +145,16 @@ export class ArrowProjectiles {
   }
 
 
+  setPiercePause(milliseconds:number){
+    if(!Number.isFinite(milliseconds)||milliseconds<0)throw new Error('穿透入体停顿必须为非负毫秒数。');
+    this.piercePause=milliseconds/1000;
+  }
+
+  setPierceEntrySpeed(speed:number){
+    if(!Number.isFinite(speed)||speed<0)throw new Error('穿透入体速度必须为非负数。');
+    this.pierceEntrySpeed=speed;
+  }
+
   setScale(scale: number) {
     if (scale === this.scale) return;
     if (!Number.isFinite(scale) || scale <= 0) throw new Error('箭缩放必须为正数。');
@@ -158,6 +177,8 @@ export class ArrowProjectiles {
     arrow.trail.clear();
     arrow.active = false;
     arrow.lingerRemaining = 0;
+    arrow.piercePauseRemaining = 0;
+    arrow.piercePauseTarget = null;
     arrow.pierceExitTarget = null;
     arrow.pierceExitPoint = null;
     arrow.afterPierceApplied = false;
@@ -183,6 +204,8 @@ export class ArrowProjectiles {
     arrow.speed = this.speed;
     arrow.pierce = this.pierce;
     arrow.lingerRemaining = 0;
+    arrow.piercePauseRemaining = 0;
+    arrow.piercePauseTarget = null;
     arrow.pierceExitTarget = null;
     arrow.pierceExitPoint = null;
     arrow.afterPierceApplied = false;
@@ -194,7 +217,8 @@ export class ArrowProjectiles {
 
     // Point-blank: shaft already overlapping an enemy at spawn.
     this.origin.copy(position).addScaledVector(arrow.direction, this.tail * this.scale);
-    if (this.resolveTrigger(arrow, (this.tip - this.tail) * this.scale,'出生时箭身重叠')) return;
+    const contact=this.resolveTrigger(arrow, (this.tip - this.tail) * this.scale,'出生时箭身重叠');
+    if(contact!==null&&(!arrow.pierce||!arrow.active||(this.debug?.enabled&&this.debug.paused)))return;
     if (elapsed > 0) this.advance(arrow, elapsed);
   }
 
@@ -253,80 +277,95 @@ export class ArrowProjectiles {
     arrow.pierceExitPoint = this.farFaceExit(root, contact, arrow.direction);
   }
 
-  /**
-   * Sweep the tip trigger forward by `travel`.
-   * @returns true when this advance must stop (recycled, or debug paused at contact).
-   */
-  private resolveTrigger(arrow: Arrow, travel: number,kind='箭尖扫掠'): boolean {
-    if (!arrow.active || travel <= 0 || !this.targets.length) return false;
+  /** Sweep to the next new enemy. Return distance consumed at contact, or null.
+   * Each contact is a time event, so both pause and exit slowdown use only the
+   * remaining simulation time, even with multiple targets in a long frame. */
+  private resolveTrigger(arrow:Arrow,travel:number,kind='箭尖扫掠'):number|null{
+    if(!arrow.active||travel<=0||!this.targets.length)return null;
     if(this.debug?.enabled)this.debug.sweep(this.origin,this.origin.clone().addScaledVector(arrow.direction,travel));
-    this.ray.set(this.origin, arrow.direction);
-    this.ray.near = 0;
-    this.ray.far = travel;
-    this.hits.length = 0;
-    this.ray.intersectObjects(this.targets, true, this.hits);
-    if (!this.hits.length) return false;
-
-    for (const intersection of this.hits) {
-      const id = this.targetId(intersection.object);
-      if (!id || arrow.hitIds.has(id)) continue;
+    this.ray.set(this.origin,arrow.direction);this.ray.near=0;this.ray.far=travel;
+    this.hits.length=0;this.ray.intersectObjects(this.targets,true,this.hits);
+    const atBirth=kind==='出生时箭身重叠';let birthContact=false;
+    for(const intersection of this.hits){
+      const id=this.targetId(intersection.object);if(!id||arrow.hitIds.has(id))continue;
       this.debug?.capture(arrow.object,arrow.direction,this.tip*this.scale,this.origin,travel,intersection.point,id,kind);
-      arrow.hitIds.add(id);
-      this.lastHit = id;
-      this.hitCount++;
-      const hit: ArrowHit = {
-        id,
-        point: intersection.point.clone(),
-        direction: arrow.direction.clone(),
-      };
-      // Non-pierce: pin at contact, fire onHit, then linger (or recycle at once if linger is 0).
-      if (!arrow.pierce) {
-        arrow.object.position.copy(intersection.point).addScaledVector(arrow.direction, -this.tip * this.scale);
-        arrow.distance += intersection.distance;
-        if (this.hitLinger <= 0) {
-          this.recycle(arrow);
-          this.onHit?.(hit);
-        } else {
-          arrow.lingerRemaining = this.hitLinger;
-          this.onHit?.(hit);
-        }
-        return true;
-      }
-      // First pierce only: wait until tip passes the far face of this body, then slow.
-      this.beginPierceExitWatch(arrow, intersection.object, intersection.point);
-      this.onHit?.(hit);
-      // In diagnostic pause mode preserve a piercing arrow at the first contact.
-      if(this.debug?.enabled&&this.debug.paused){
+      arrow.hitIds.add(id);this.lastHit=id;this.hitCount++;
+      const hit:ArrowHit={id,point:intersection.point.clone(),direction:arrow.direction.clone()};
+      if(!arrow.pierce){
         arrow.object.position.copy(intersection.point).addScaledVector(arrow.direction,-this.tip*this.scale);
         arrow.distance+=intersection.distance;
-        return true;
+        if(this.hitLinger<=0)this.recycle(arrow);else arrow.lingerRemaining=this.hitLinger;
+        this.onHit?.(hit);return intersection.distance;
       }
+      this.beginPierceExitWatch(arrow,intersection.object,intersection.point);
+      // A point-blank arrow can be born with its shaft already inside a body.
+      // Never rewind it to that surface or count overlap length as travelled.
+      if(!atBirth){
+        arrow.object.position.copy(intersection.point).addScaledVector(arrow.direction,-this.tip*this.scale);
+        arrow.distance+=intersection.distance;
+      }
+      arrow.piercePauseRemaining+=this.piercePause;
+      if(this.piercePause>0){
+        arrow.piercePauseTarget=this.practiceRoot(intersection.object);
+        arrow.piercePauseTarget?.getWorldPosition(arrow.piercePauseTargetPosition);
+      }
+      this.onHit?.(hit);
+      if(!atBirth||!arrow.active||(this.debug?.enabled&&this.debug.paused))return atBirth?0:intersection.distance;
+      birthContact=true;
     }
-    return false;
+    return birthContact?0:null;
   }
 
-  private advance(arrow: Arrow, dt: number) {
-    if (!arrow.active || dt <= 0) return;
-
-    // Non-pierce linger: stay pinned; no sweep / no travel until timer ends.
-    if (arrow.lingerRemaining > 0) {
-      arrow.lingerRemaining -= dt;
-      if (arrow.lingerRemaining <= 0) this.recycle(arrow);
+  /** Follow translation only: recoil must not rotate or scale the arrow.
+   * Capture before onHit so immediate recoil is included, including parent movement. */
+  private followPausedTarget(arrow:Arrow){
+    const target=arrow.piercePauseTarget;
+    if(!target)return;
+    if(!target.parent||!this.targets.includes(target)){
+      arrow.piercePauseTarget=null;
       return;
     }
+    target.getWorldPosition(this.exitScratch);
+    this.exitScratch.sub(arrow.piercePauseTargetPosition);
+    arrow.object.position.add(this.exitScratch);
+    // Keep the watched far face aligned: recoil alone must not count as exiting.
+    if(arrow.pierceExitTarget===target)arrow.pierceExitPoint?.add(this.exitScratch);
+    arrow.piercePauseTargetPosition.add(this.exitScratch);
+  }
 
-    const travel = arrow.speed * dt;
-
-    // Trigger starts at the current tip and sweeps along the flight direction.
-    this.origin.copy(arrow.object.position).addScaledVector(arrow.direction, this.tip * this.scale);
-    if (this.resolveTrigger(arrow, travel)) return;
-
-    arrow.object.position.addScaledVector(arrow.direction, travel);
-    arrow.distance += travel;
-
-    this.tryApplyAfterPierceSpeed(arrow);
-    if (!arrow.active) return;
-
+  private advance(arrow:Arrow,dt:number){
+    if(!arrow.active||dt<=0)return;
+    if(arrow.lingerRemaining>0){arrow.lingerRemaining-=dt;if(arrow.lingerRemaining<=0)this.recycle(arrow);return;}
+    let remaining=dt;
+    while(arrow.active&&remaining>1e-12){
+      // A disappearing target still applies its exit speed, but does not cancel
+      // the entry pause that is already in progress.
+      if(arrow.piercePauseRemaining>0)this.followPausedTarget(arrow);
+      this.tryApplyAfterPierceSpeed(arrow);
+      const resisting=arrow.piercePauseRemaining>0;
+      this.origin.copy(arrow.object.position).addScaledVector(arrow.direction,this.tip*this.scale);
+      const speed=resisting?this.pierceEntrySpeed:arrow.speed;
+      let flightTime=resisting?Math.min(remaining,arrow.piercePauseRemaining):remaining;
+      if(arrow.pierceExitPoint&&speed>0){
+        const untilExit=this.exitScratch.copy(arrow.pierceExitPoint).sub(this.origin).dot(arrow.direction)/speed;
+        if(untilExit>0)flightTime=Math.min(flightTime,untilExit);
+      }
+      // Consume only elapsed time, even if a new body interrupts this segment.
+      const pauseBefore=arrow.piercePauseRemaining;
+      const travel=speed*flightTime,contact=this.resolveTrigger(arrow,travel);
+      const spent=contact!==null?contact/speed:flightTime;
+      if(resisting&&arrow.active){
+        arrow.piercePauseRemaining=Math.max(0,arrow.piercePauseRemaining-Math.min(spent,pauseBefore));
+        if(arrow.piercePauseRemaining<=1e-12){arrow.piercePauseRemaining=0;arrow.piercePauseTarget=null;}
+      }
+      if(contact!==null){
+        if(!arrow.active||!arrow.pierce||(this.debug?.enabled&&this.debug.paused))return;
+        remaining=Math.max(0,remaining-contact/speed);
+        continue;
+      }
+      arrow.object.position.addScaledVector(arrow.direction,travel);arrow.distance+=travel;
+      remaining=Math.max(0,remaining-flightTime);this.tryApplyAfterPierceSpeed(arrow);
+    }
   }
 
   update(dt: number) {
@@ -376,6 +415,8 @@ export class ArrowProjectiles {
       speedAfterPierce: this.speedAfterPierce,
       pierce: this.pierce,
       hitLinger: this.hitLinger,
+      piercePauseMs:this.piercePause*1000,
+      pierceEntrySpeed:this.pierceEntrySpeed,
       fired: this.fired,
       hits: this.hitCount,
       lastHit: this.lastHit,
@@ -390,6 +431,7 @@ export class ArrowProjectiles {
         pierce: a.pierce,
         afterPierceApplied: a.afterPierceApplied,
         lingerRemaining: a.lingerRemaining,
+        piercePauseRemaining:a.piercePauseRemaining,
         hitIds: [...a.hitIds],
       })),
     };
