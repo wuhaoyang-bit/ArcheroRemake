@@ -137,7 +137,7 @@ test('pierce slows only after the tip passes the first body far face, then keeps
   assert.ok(snap);
   assert.equal(snap.afterPierceApplied, true);
   assert.equal(snap.speed, 10);
-  near(snap.tip[2], 5.5, .15);
+  assert.ok(Math.abs(snap.tip[2] - 5.5) < .15, `tip z ${snap.tip[2]} not near far face`);
 
   const distAtSlow = snap.distance;
   arrows.update(.1);

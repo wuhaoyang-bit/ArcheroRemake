@@ -86,7 +86,7 @@ export class ArrowProjectiles {
   private allocate() {
     const object = this.template.clone(true);
     object.name = 'ArcheroArrow';
-    const paint=new THREE.Mesh(this.paintGeometry,this.paintMaterial);paint.name='ArrowPaintPayload';paint.position.z=this.tip;paint.scale.setScalar(ARROW_TRAIL_DEFAULTS.arrowPaintRadius);object.add(paint);
+    const paint=new THREE.Mesh(this.paintGeometry,this.paintMaterial);paint.name='ArrowPaintPayload';paint.visible=!!ARROW_TRAIL_DEFAULTS.arrowPaintEnabled;paint.position.z=this.tip;paint.scale.setScalar(ARROW_TRAIL_DEFAULTS.arrowPaintRadius);object.add(paint);
     object.visible = false;
     object.scale.setScalar(this.scale);
     this.scene.add(object);

@@ -1,5 +1,5 @@
 export const ARROW_TRAIL_DEFAULTS={
-  arrowTrailColor:0xffdd32,arrowPaintEnabled:1,arrowPaintColor:0xffdd32,arrowPaintRadius:.16,arrowPaintOffset:0,
+  arrowTrailColor:0xffdd32,arrowPaintEnabled:0,arrowPaintColor:0xffdd32,arrowPaintRadius:.16,arrowPaintOffset:0,
   arrowTrailEnabled:1,arrowTrailLength:3.2,arrowTrailWidth:.18,
   arrowTrailOpacity:.9,arrowTrailTaper:.8,arrowTrailFade:.65,
 };
