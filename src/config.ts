@@ -1,3 +1,4 @@
+import {SLIME_FRAGMENTS_DEFAULTS,SLIME_FRAGMENTS_LIMITS} from './slime-fragments-config.ts';
 import type {EyeHitCurveKey} from './eye-hit-config.ts';
 import {SHOCKWAVE_DEFAULTS,SHOCKWAVE_LIMITS,DEFAULT_SHOCKWAVE_SPEED_CURVE} from './burst-shockwave-config.ts';
 import { CAMERA_SHAKE_DEFAULTS, CAMERA_SHAKE_LIMITS } from './camera-shake-config.ts';
@@ -15,7 +16,7 @@ export const DESIGN_WIDTH = 390;
 export const ASPECT = 9 / 19.5;
 
 export const DEFAULTS = {
-  ...HIT_DEFAULTS,
+  ...HIT_DEFAULTS,...SLIME_FRAGMENTS_DEFAULTS,
   ...SHOCKWAVE_DEFAULTS,burstShockwaveSpeedCurve:DEFAULT_SHOCKWAVE_SPEED_CURVE,
   ...CAMERA_ZOOM_DEFAULTS,
   ...CAMERA_SHAKE_DEFAULTS,
@@ -92,7 +93,7 @@ export const LOCK_TURN_KEYS = {
   lockSmoothTime: 'smoothTime', lockSmoothSnapAngle: 'smoothSnapAngle',
 } as const;
 export const LIMITS: Record<SettingKey, [number, number, number]> = {
-  ...HIT_LIMITS,
+  ...HIT_LIMITS,...SLIME_FRAGMENTS_LIMITS,
   ...SHOCKWAVE_LIMITS,
   ...CAMERA_ZOOM_LIMITS,
   ...CAMERA_SHAKE_LIMITS,
@@ -138,6 +139,7 @@ export const LIMITS: Record<SettingKey, [number, number, number]> = {
 
 export function sanitize(key: SettingKey, value: number): number {
   if (!Number.isFinite(value)) return DEFAULTS[key];
+  if(['slimeFragmentsSubsteps','slimeFragmentsIterations','slimeFragmentsMaxBursts'].includes(key))value=Math.round(value);
   if(key.startsWith('cameraShake')&&(key.endsWith('Enabled')||key.endsWith('Tier')||key.endsWith('Formula')||key.endsWith('Duration')))value=Math.round(value);
   if ((key.startsWith('hit') || key.startsWith('juice') || key.startsWith('spray')) && key.endsWith('Enabled')) return value >= .5 ? 1 : 0;
   if(key==='cameraZoomShotEnabled'||key==='cameraZoomHitEnabled')return value>=.5?1:0;

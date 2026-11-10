@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three/webgpu';
+import { ARROW_TRAIL_DEFAULTS } from '../src/arrow-trail-config.ts';
 import { ArrowProjectiles, ARROW_SPEED } from '../src/arrow-projectiles.ts';
 
 const near = (a: number, b: number) => assert.ok(Math.abs(a - b) < 1e-6, `${a} != ${b}`);
@@ -15,17 +16,19 @@ function enemy(scene: THREE.Scene, z: number, id: string) {
 }
 const origin = new THREE.Vector3(0, 1, 0), aim = new THREE.Vector3(0, 1, 20);
 
-test('constant speed and direction are independent of update rate; wall recycles misses', () => {
+test('constant speed and direction are independent of update rate; camera view recycles misses', () => {
   for (const hz of [30, 60, 120]) {
     const { arrows } = fixture();
-    arrows.setRoomBounds(16, 38);
+
     arrows.fire(origin, aim, Infinity);
     aim.x = 10; // A later target change must not turn an existing arrow.
     for (let i = 0; i < hz / 5; i++) arrows.update(1 / hz);
     const active = arrows.snapshot().active;
     assert.equal(active.length, 1); near(active[0].position[2], ARROW_SPEED * .2); near(active[0].position[0], 0);
-    // Tip past ±roomLength/2 despawns; no range budget.
+    // Flight continues beyond the room; render preparation reclaims offscreen arrows.
     for (let i = 0; i < hz; i++) arrows.update(1 / hz);
+    assert.equal(arrows.snapshot().active.length, 1);
+    arrows.prepare(topCamera());
     assert.equal(arrows.snapshot().active.length, 0); aim.x = 0;
   }
 });
@@ -34,7 +37,7 @@ test('arrow tip hits the first surface, with no tunnelling at large time steps',
   const { scene, arrows } = fixture();
   arrows.setHitLinger(0);
   const first = enemy(scene, 5, 'near'), second = enemy(scene, 10, 'far');
-  arrows.setRoomBounds(16, 38);
+
   arrows.setTargets([second, first]); arrows.fire(origin, aim, Infinity);
   arrows.update(.079); assert.equal(arrows.snapshot().active.length, 1);
   arrows.update(.002); assert.equal(arrows.snapshot().active.length, 0);
@@ -47,7 +50,7 @@ test('pool reuses objects and shared resources; setTargets does not clear flying
   const { scene, arrows } = fixture();
   arrows.setHitLinger(0);
   const target = enemy(scene, 1, 'close'); arrows.setTargets([target]);
-  arrows.setRoomBounds(16, 38);
+
   for (let i = 0; i < 40; i++) { arrows.fire(origin, aim, Infinity); arrows.update(.1); }
   assert.equal(arrows.snapshot().allocated, 4); assert.equal(arrows.snapshot().hits, 40);
   const objects = scene.children.filter(o => o.name === 'ArcheroArrow') as THREE.Mesh[];
@@ -62,14 +65,14 @@ test('pool reuses objects and shared resources; setTargets does not clear flying
 });
 
 test('new arrow advances only by time remaining after release', () => {
-  const { arrows } = fixture(); arrows.setRoomBounds(16, 38); arrows.fire(origin, aim, Infinity, .01);
+  const { arrows } = fixture(); arrows.fire(origin, aim, Infinity, .01);
   near(arrows.snapshot().active[0].distance, .5);
 });
 
 test('scaled arrows collide at the scaled tip and pooled arrows retain the new size', () => {
   const { scene, arrows } = fixture();
   arrows.setHitLinger(0);
-  arrows.setRoomBounds(16, 38);
+
   arrows.setTargets([enemy(scene, 5, 'near')]);
   arrows.setScale(6); arrows.fire(origin, aim, Infinity);
   arrows.update(.029); assert.equal(arrows.snapshot().active.length, 1);
@@ -84,7 +87,7 @@ test('scaled arrows collide at the scaled tip and pooled arrows retain the new s
 test('speed changes apply to arrows already in flight and keep swept collision at maximum speed', () => {
   const { scene, arrows } = fixture();
   arrows.setHitLinger(0);
-  arrows.setRoomBounds(16, 38);
+
   arrows.setTargets([enemy(scene, 10, 'target')]);
   arrows.setSpeed(10); arrows.fire(origin, aim, Infinity); arrows.update(.2);
   near(arrows.snapshot().active[0].distance, 2);
@@ -93,16 +96,18 @@ test('speed changes apply to arrows already in flight and keep swept collision a
   assert.equal(arrows.snapshot().hits, 1); assert.equal(arrows.snapshot().active.length, 0);
 });
 
-test('pierce damages each enemy once, keeps flying, and only despawns on the room wall', () => {
+test('pierce damages each enemy once, keeps flying, and only despawns beyond the camera view', () => {
   const { scene, arrows } = fixture();
   const hits: string[] = [];
   arrows.onHit = hit => hits.push(hit.id);
   arrows.setPierce(true);
-  arrows.setRoomBounds(16, 20);
+
   arrows.setTargets([enemy(scene, 5, 'near'), enemy(scene, 10, 'far')]);
   arrows.fire(origin, aim, 32); // Short legacy range must not matter.
   for (let i = 0; i < 40; i++) arrows.update(.05);
   assert.deepEqual(hits, ['near', 'far']);
+  assert.equal(arrows.snapshot().active.length, 1);
+  arrows.prepare(topCamera());
   assert.equal(arrows.snapshot().hits, 2);
   assert.equal(arrows.snapshot().active.length, 0);
 });
@@ -114,7 +119,7 @@ test('pierce slows only after the tip passes the first body far face, then keeps
   arrows.setPierce(true);
   arrows.setSpeed(50);
   arrows.setSpeedAfterPierce(10);
-  arrows.setRoomBounds(16, 38);
+
   const nearEnemy = enemy(scene, 5, 'near');
   const farEnemy = enemy(scene, 14, 'far');
   arrows.setTargets([nearEnemy, farEnemy]);
@@ -159,7 +164,7 @@ test('removing the pierce target before exit applies after-pierce speed immediat
   arrows.setPierce(true);
   arrows.setSpeed(40);
   arrows.setSpeedAfterPierce(8);
-  arrows.setRoomBounds(16, 38);
+
   const target = enemy(scene, 4, 'only');
   arrows.setTargets([target]);
   arrows.fire(origin, aim, Infinity);
@@ -178,11 +183,13 @@ test('pierce still hits a far mid-flight enemy beyond the old range budget', () 
   const hits: string[] = [];
   arrows.onHit = hit => hits.push(hit.id);
   arrows.setPierce(true);
-  arrows.setRoomBounds(16, 38);
+
   arrows.setTargets([enemy(scene, -17, 'far')]);
   arrows.fire(new THREE.Vector3(0, 1, 16), new THREE.Vector3(0, 1, -17), 32);
   for (let i = 0; i < 80; i++) arrows.update(.02);
   assert.deepEqual(hits, ['far']);
+  assert.equal(arrows.snapshot().active.length, 1);
+  arrows.prepare(topCamera());
   assert.equal(arrows.snapshot().active.length, 0);
 });
 
@@ -192,7 +199,7 @@ test('without pierce a mid-flight hit deals damage then the arrow disappears', (
   arrows.onHit = hit => hits.push(hit.id);
   arrows.setPierce(false);
   arrows.setHitLinger(0);
-  arrows.setRoomBounds(16, 38);
+
   arrows.setTargets([enemy(scene, 8, 'near'), enemy(scene, 14, 'far')]);
   arrows.fire(origin, aim, Infinity);
   arrows.update(.1);
@@ -211,7 +218,7 @@ test('non-pierce linger pins the arrow at contact then recycles after the linger
   arrows.onHit = hit => hits.push(hit.id);
   arrows.setPierce(false);
   arrows.setHitLinger(1 / 60);
-  arrows.setRoomBounds(16, 38);
+
   arrows.setTargets([enemy(scene, 8, 'near'), enemy(scene, 14, 'far')]);
   arrows.fire(origin, aim, Infinity);
   arrows.update(.1);
@@ -232,7 +239,7 @@ test('non-pierce linger pins the arrow at contact then recycles after the linger
   assert.deepEqual(hits, ['near']);
 });
 
-test('arrow never despawns from range alone when walls are unbounded', () => {
+test('arrow never despawns from range alone without a camera visibility check', () => {
   const { arrows } = fixture();
   arrows.setPierce(true);
   arrows.fire(origin, aim, 5);
@@ -243,7 +250,7 @@ test('arrow never despawns from range alone when walls are unbounded', () => {
 
 test('flight stays horizontal at bow height even when aim height differs', () => {
   const { arrows } = fixture();
-  arrows.setRoomBounds(16, 38);
+
   const from = new THREE.Vector3(0, 2.4, 0);
   arrows.fire(from, new THREE.Vector3(0, 0.2, 10), Infinity);
   const first = arrows.snapshot().active[0];
@@ -257,7 +264,7 @@ test('flight stays horizontal at bow height even when aim height differs', () =>
 });
 
 test('trail grows from the actual scaled tail, tapers to a point and clears on recycle',()=>{
-  const {scene,arrows}=fixture(),camera=new THREE.PerspectiveCamera();camera.position.set(0,24,24);
+  const {scene,arrows}=fixture(),camera=new THREE.PerspectiveCamera();camera.position.set(0,24,24);camera.lookAt(0,0,0);camera.far=500;camera.updateProjectionMatrix();
   arrows.setScale(2);arrows.fire(origin,aim);arrows.prepare(camera);
   const trails=scene.children.filter(o=>o.name==='ArrowTailTrail') as THREE.Mesh[];
   assert.equal(trails.filter(t=>t.visible).length,0);
@@ -266,7 +273,49 @@ test('trail grows from the actual scaled tail, tapers to a point and clears on r
   const p=trail.geometry.getAttribute('position');
   near(Math.hypot(p.getX(0)-p.getX(1),p.getY(0)-p.getY(1),p.getZ(0)-p.getZ(1)),.36);
   near(p.getZ(24),-.5);near(p.getX(24),p.getX(25));near(p.getY(24),p.getY(25));
-  arrows.update(1);arrows.prepare(camera);near(p.getZ(24),-6.4);
+  arrows.update(.15);arrows.prepare(camera);near(p.getZ(24),-6.4);
   arrows.clear();assert.equal(trails.some(t=>t.visible),false);
   arrows.fire(origin,aim);arrows.prepare(camera);assert.equal(trails.some(t=>t.visible),false);
+});
+
+function topCamera(halfWidth=10,halfHeight=10){
+  const camera=new THREE.OrthographicCamera(-halfWidth,halfWidth,halfHeight,-halfHeight,.1,200);
+  camera.position.set(0,50,0);camera.up.set(0,0,-1);camera.lookAt(0,0,0);camera.updateMatrixWorld();return camera;
+}
+
+test('arrow crosses the room edge and remains alive until its complete trail leaves the view',()=>{
+  const {arrows,scene}=fixture(),camera=topCamera(30,30);
+  arrows.setSpeed(10);arrows.fire(origin,aim);
+  arrows.update(2.5);arrows.prepare(camera);assert.equal(arrows.snapshot().active.length,1); // beyond old room wall
+  arrows.update(.7);arrows.prepare(camera);assert.equal(arrows.snapshot().active.length,1); // arrow outside, trail still inside
+  arrows.update(.2);arrows.prepare(camera);assert.equal(arrows.snapshot().active.length,0);
+  assert.equal(scene.children.some(o=>o.name==='ArrowTailTrail'&&o.visible),false);
+  arrows.fire(origin,aim);arrows.prepare(camera);assert.equal(arrows.snapshot().allocated,4);assert.equal(arrows.snapshot().active.length,1);
+});
+
+test('complete scaled arrow and trail determine recycling on all four screen edges',()=>{
+  for(const [x,z] of [[1,0],[-1,0],[0,1],[0,-1]])for(const scale of [1,2]){
+    const {arrows}=fixture(),camera=topCamera();arrows.setScale(scale);arrows.setSpeed(10);
+    arrows.fire(origin,new THREE.Vector3(x*20,1,z*20));
+    arrows.update((10+scale*.6)/10);arrows.prepare(camera);
+    assert.equal(arrows.snapshot().active.length,1,'tail is still on screen');
+    arrows.update((scale*3.2+.1)/10);arrows.prepare(camera);
+    assert.equal(arrows.snapshot().active.length,0,'entire ribbon is outside');
+  }
+});
+
+test('hidden trails do not delay recycling, but the arrow shaft must finish exiting',()=>{
+  for(const settings of [{arrowTrailEnabled:0},{arrowTrailOpacity:0},{arrowTrailWidth:0}]){
+    const {arrows}=fixture(),camera=topCamera(),c={...ARROW_TRAIL_DEFAULTS,...settings};arrows.setSpeed(10);arrows.fire(origin,aim);
+    arrows.update(1.02);arrows.prepare(camera,c);assert.equal(arrows.snapshot().active.length,1);
+    arrows.update(.05);arrows.prepare(camera,c);assert.equal(arrows.snapshot().active.length,0);
+  }
+});
+
+test('recycling follows the current camera zoom and portrait viewport',()=>{
+  const {arrows}=fixture(),camera=topCamera(3,10);camera.zoom=.5;camera.updateProjectionMatrix();
+  arrows.setSpeed(10);arrows.fire(origin,new THREE.Vector3(20,1,0));arrows.update(.7);arrows.prepare(camera);
+  assert.equal(arrows.snapshot().active.length,1); // tail x=3.3 inside zoomed-out width 6
+  camera.zoom=1;camera.updateProjectionMatrix();arrows.prepare(camera);
+  assert.equal(arrows.snapshot().active.length,0); // same tail now beyond portrait width 3
 });

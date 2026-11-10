@@ -34,7 +34,7 @@ export type ArrowHit = { id: string; point: THREE.Vector3; direction: THREE.Vect
  * Straight-line arrows with a tip trigger.
  * Despawn rules (only these):
  * 1. Non-pierce enemy hit — optional linger pin, then recycle
- * 2. Tip leaves the room boundary wall AABB
+ * 2. Arrow mesh and its complete trail leave the camera view
  * 3. Explicit clear() on room rebuild / reset
  * Object-pool recycle never runs for any other reason while the arrow is flying.
  */
@@ -66,9 +66,10 @@ export class ArrowProjectiles {
   private pierce = false;
   /** Non-pierce hit linger before recycle (seconds). 0 = immediate despawn. */
   private hitLinger = 1 / 60;
-  /** Room boundary half-extents; tip outside this AABB despawns. */
-  private wallX = Infinity;
-  private wallZ = Infinity;
+  private viewFrustum = new THREE.Frustum();
+  private viewProjection = new THREE.Matrix4();
+  private visibleBounds = new THREE.Box3();
+  private meshBounds = new THREE.Box3();
 
   static async load(scene: THREE.Scene) {
     const gltf = await new GLTFLoader().loadAsync(`${import.meta.env.BASE_URL}models/archero-arrow.glb`);
@@ -134,15 +135,6 @@ export class ArrowProjectiles {
     this.hitLinger = seconds;
   }
 
-  /**
-   * Boundary wall = walkable room half-size, plus a small band so a bow near the
-   * edge does not despawn on the first frame before the tip reaches the wall mesh.
-   */
-  setRoomBounds(width: number, length: number) {
-    const margin = 1.25;
-    this.wallX = Math.max(0, width / 2) + margin;
-    this.wallZ = Math.max(0, length / 2) + margin;
-  }
 
   setScale(scale: number) {
     if (scale === this.scale) return;
@@ -223,9 +215,6 @@ export class ArrowProjectiles {
     return null;
   }
 
-  private outsideWalls(point: THREE.Vector3) {
-    return Math.abs(point.x) > this.wallX + 1e-6 || Math.abs(point.z) > this.wallZ + 1e-6;
-  }
 
   /** Far-face exit along `dir` from a contact point on/inside the AABB. */
   private farFaceExit(target: THREE.Object3D, contact: THREE.Vector3, dir: THREE.Vector3) {
@@ -338,28 +327,46 @@ export class ArrowProjectiles {
     this.tryApplyAfterPierceSpeed(arrow);
     if (!arrow.active) return;
 
-    this.tipPoint.copy(arrow.object.position).addScaledVector(arrow.direction, this.tip * this.scale);
-    if (this.outsideWalls(this.tipPoint)) this.recycle(arrow);
   }
 
   update(dt: number) {
     for (const arrow of this.pool){if(this.debug?.enabled&&this.debug.paused)break;this.advance(arrow, dt);}
   }
 
-  prepare(camera:THREE.Camera,settings:ArrowTrailSettings=ARROW_TRAIL_DEFAULTS){
+  prepare(camera:THREE.Camera,settings:ArrowTrailSettings=ARROW_TRAIL_DEFAULTS,recycleOffscreen=true){
+    camera.updateWorldMatrix(true,false);
+    this.viewProjection.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse);
+    this.viewFrustum.setFromProjectionMatrix(this.viewProjection,camera.coordinateSystem,camera.reversedDepth);
     this.paintMaterial.color.setHex(settings.arrowPaintColor);
     for(const arrow of this.pool){
       if(!arrow.active)continue;
       arrow.paint.visible=!!settings.arrowPaintEnabled;arrow.paint.scale.setScalar(settings.arrowPaintRadius);arrow.paint.position.set(0,0,this.tip+settings.arrowPaintOffset);
       this.tipPoint.copy(arrow.object.position).addScaledVector(arrow.direction,this.tail*this.scale);
       arrow.trail.update(this.tipPoint,arrow.direction,arrow.distance,this.scale,camera,settings);
+      // Check after rebuilding the ribbon, using the current render camera (including
+      // zoom/aspect changes). Crossing the room boundary does not end flight.
+      if(recycleOffscreen&&!this.intersectsView(arrow.object)&&!this.intersectsView(arrow.trail.mesh))this.recycle(arrow);
     }
+  }
+
+  private intersectsView(object:THREE.Object3D){
+    if(!object.visible)return false;
+    object.updateWorldMatrix(true,true);
+    this.visibleBounds.makeEmpty();
+    object.traverseVisible(child=>{
+      if(!(child instanceof THREE.Mesh))return;
+      const geometry=child.geometry;
+      if(!geometry.boundingBox)geometry.computeBoundingBox();
+      this.meshBounds.copy(geometry.boundingBox!).applyMatrix4(child.matrixWorld);
+      this.visibleBounds.union(this.meshBounds);
+    });
+    return !this.visibleBounds.isEmpty()&&this.viewFrustum.intersectsBox(this.visibleBounds);
   }
 
   prepareWarmup(count:number,camera:THREE.Camera){
     while(this.pool.length<count)this.allocate();
     for(const arrow of this.pool){arrow.active=true;arrow.object.visible=true;arrow.object.position.set(0,1,0);arrow.direction.set(0,0,-1);arrow.object.quaternion.setFromUnitVectors(this.forward,arrow.direction);arrow.distance=2;}
-    this.prepare(camera,ARROW_TRAIL_DEFAULTS);
+    this.prepare(camera,ARROW_TRAIL_DEFAULTS,false);
   }
 
   snapshot() {

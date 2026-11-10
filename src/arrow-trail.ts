@@ -41,6 +41,8 @@ export class ArrowTrail {
       }
     }
     this.positions.needsUpdate=true;
+    // Dynamic ribbon extents are also used for projectile recycling.
+    this.mesh.geometry.computeBoundingBox();
   }
   clear(){this.mesh.visible=false;}
 }

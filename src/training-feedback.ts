@@ -29,7 +29,7 @@ export class TrainingFeedback {
   onFilled?:(id:string)=>void;
   /** Fires once when a dummy leaves feedback and enters winding. */
   onWindup?:(id:string)=>void;
-  onBurst?:(center:T.Vector3,feet:T.Vector3,settings:BurstSettings,color?:T.Color)=>void;
+  onBurst?:(center:T.Vector3,feet:T.Vector3,settings:BurstSettings,color?:T.Color,body?:T.Mesh)=>void;
   private worldRotation=new T.Quaternion();
   private bendLocalDir=new T.Vector3();
   private bendInverseRot=new T.Quaternion();
@@ -182,7 +182,7 @@ export class TrainingFeedback {
       this.onWindup?.(d.root.userData.practiceTarget as string);
     }
     this.apply(d,c,dt);
-    if(exploded){const center=new T.Box3().setFromObject(d.visual).getCenter(new T.Vector3());const feet=new T.Vector3(d.response.position.x,.025,d.response.position.z);if(d.monster?.inflation)this.eyeDebris.emit(d.monster.inflation.eyes,center,c,d.root.userData.practiceTarget);d.monster?.inflation?.eyeHit.reset();d.root.visible=false;this.onBurst?.(center,feet,d.burst.config!,d.monster?.inflation?.copyColor(new T.Color()));}
+    if(exploded){const center=new T.Box3().setFromObject(d.visual).getCenter(new T.Vector3());const feet=new T.Vector3(d.response.position.x,.025,d.response.position.z);if(d.monster?.inflation)this.eyeDebris.emit(d.monster.inflation.eyes,center,c,d.root.userData.practiceTarget);d.monster?.inflation?.eyeHit.reset();d.root.visible=false;this.onBurst?.(center,feet,d.burst.config!,d.monster?.inflation?.copyColor(new T.Color()),d.monster?.inflation?.body);}
   }}
   /** Yellow slime only: knock travel or post-knock stun blocks voluntary chase. Other displacement still applies. */
   private blocksSlimeWalk(d:Dummy){return d.response.knockingBack||(this.isYellowSlime(d)&&d.response.afterKnockStun);}

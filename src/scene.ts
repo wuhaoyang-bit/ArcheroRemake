@@ -1,3 +1,4 @@
+import {SlimeFragmentEffects} from './slime-fragment-effects.ts';
 import {BurstShockwaveEffects} from './burst-shockwave.ts';
 import {HitSplashEffects} from './hit-splash-effects.ts';
 import { finishGpuWarmup } from './gpu-warmup.ts';
@@ -164,6 +165,7 @@ export class GameScene {
   spray?: DirectionalSpray;
   hitSplash?: HitSplashEffects;
   burstEffects?: LushBurstEffects;
+  slimeFragments?: SlimeFragmentEffects;
   private practiceRevision=-1;
   private monsterRosterSignature='';
   private trainingVisual?: THREE.Group;
@@ -223,13 +225,15 @@ export class GameScene {
     const progress=[0,0,0,0,0,0,0],weights=[.05,.05,.45,.18,.08,.1,.05];
     const loaded=(i:number,value=1)=>{progress[i]=value;report(.08+.52*progress.reduce((n,p,j)=>n+p*weights[j],0),'正在加载角色、箭矢与特效资源');};
     const track=<V,>(i:number,promise:Promise<V>)=>promise.then(value=>{loaded(i);return value;});
-    const [juice,spray,burstEffects,character,arrows,monsters,bowRelease,hitSplash]=await Promise.all([
+    const [juice,spray,burstEffects,character,arrows,monsters,bowRelease,hitSplash,slimeFragments]=await Promise.all([
       track(0,JuiceParticles.load(this.scene)),
       track(1,DirectionalSpray.load(this.scene)),
       track(2,LushBurstEffects.load(this.scene,p=>loaded(2,p),this.slimeEnvironment)),
       track(3,loadCharacter()),track(4,ArrowProjectiles.load(this.scene)),track(5,TrainingMonsterFactory.load()),track(6,BowReleaseEffects.load(this.scene)),
       HitSplashEffects.load(this.scene),
+      SlimeFragmentEffects.load(this.scene,this.slimeEnvironment),
     ]);
+    this.slimeFragments=slimeFragments;
     this.hitSplash=hitSplash;this.juice=juice;this.spray=spray;spray.follow=false;
     juice.resolveColor=hitSplash.resolveColor=(id,out)=>this.feedback?.currentColor(id,out)??null;this.burstEffects=burstEffects;this.monsterFactory=monsters;
     report(.6,'正在准备场景');await breathe();
@@ -327,10 +331,11 @@ export class GameScene {
     this.scene.add(eyeWarmGroup);const eyeWarmFeedback=new TrainingFeedback(eyeWarmGroup,eyeWarmTargets,this.roomSize,this.roomLength);eyeWarmFeedback.prepareEyeDebris(this.controller.settings);
     try{
       report(.82,'正在准备爆炸与地面液体');await breathe();
+      this.slimeFragments.prepareWarmup(this.controller.settings.slimeFragmentsMaxBursts);
       this.burstEffects.prepareWarmup(LIMITS.monsterCount[1],this.controller.settings,this.camera,this.roomSize,this.roomLength);
       await compile(.82,.98,'正在准备爆炸与地面液体');
       await this.shockwave.warmup(this.controller.settings);await finishGpuWarmup(this.renderer);
-    }finally{this.burstEffects.clear();eyeWarmGroup.visible=false; /* Retain warmed eye materials so their GPU pipelines stay cached. */}
+    }finally{this.slimeFragments.finishWarmup();this.burstEffects.clear();eyeWarmGroup.visible=false; /* Retain warmed eye materials so their GPU pipelines stay cached. */}
     this.sync(0);this.renderer.render(this.scene,this.camera);await finishGpuWarmup(this.renderer);
     this.startup.warmed=true;report(1,'准备完成');
 
@@ -360,7 +365,7 @@ export class GameScene {
   private setRoom() {
     this.controller.resetTargetExclusions();
     this.hitDebug.clear();this.deferredDebugHits=[];
-    this.hitSplash?.clear();this.juice?.clear();this.spray?.clear();this.burstEffects?.clear();
+    this.hitSplash?.clear();this.juice?.clear();this.spray?.clear();this.burstEffects?.clear();this.slimeFragments?.clear();
     this.bowRelease?.clear();
     this.shockwave?.clear();
     this.cameraZoom.reset();this.cameraShake.reset();this.applyCameraFeedback();
@@ -383,17 +388,17 @@ export class GameScene {
       this.feedback.onWindup=()=>{
         this.slimeBurstWindupSfx.play(this.controller.settings);
       };
-      this.feedback.onBurst=(center,feet,c,color)=>{
+      this.feedback.onBurst=(center,feet,c,color,body)=>{
         this.slimeBurstWindupSfx.stop();
         this.slimeBurstDeathSfx.play(this.controller.settings);
         this.cameraShake.trigger(this.controller.settings);
         this.shockwave?.emit(center,this.controller.settings);
         this.burstEffects?.emit(center,feet,c,Math.random,color);
+        if(body)this.slimeFragments?.emit(body,this.controller.settings,color);
       };
     }
     this.scene.add(this.room);
     this.arrows?.clear();
-    this.arrows?.setRoomBounds(this.roomSize, this.roomLength);
     this.arrows?.setTargets(this.feedback?.proxies ?? []);
   }
 
@@ -404,7 +409,7 @@ export class GameScene {
     this.arrows?.clear();
     this.slimeBurstWindupSfx.stop();
     this.slimeBurstDeathSfx.stop();
-    this.hitSplash?.clear();this.juice?.clear();this.spray?.clear();this.burstEffects?.clear();
+    this.hitSplash?.clear();this.juice?.clear();this.spray?.clear();this.burstEffects?.clear();this.slimeFragments?.clear();
     this.bowRelease?.clear();
     this.shockwave?.clear();
     this.cameraZoom.reset();this.cameraShake.reset();this.applyCameraFeedback();
@@ -419,6 +424,7 @@ export class GameScene {
   }
 
   advanceFeedback(dt:number){
+    this.slimeFragments?.update(dt,this.controller.settings);
     if(this.needsRoomRefresh())this.setRoom();
     // Advance existing shake before explosion callbacks so a new pulse starts at frame zero.
     this.cameraShake.update(dt,this.controller.settings);
@@ -538,7 +544,6 @@ export class GameScene {
     this.arrows?.setPierce(!!ctl.settings.arrowPierce);
     this.arrows?.setSpeedAfterPierce(ctl.settings.arrowSpeedAfterPierce);
     this.arrows?.setHitLinger(ctl.settings.arrowHitLinger);
-    this.arrows?.setRoomBounds(ctl.settings.roomSize, ctl.settings.roomLength);
     if (!ctl.combatTraining || ctl.activeAttackRequest === null) this.pendingShots.length = 0;
     this.queuePendingShots(dt);
     this.arrows?.update(dt);
@@ -574,6 +579,7 @@ export class GameScene {
     this.juice?.prepare(this.camera,this.controller.settings);
     this.spray?.prepare(this.camera);
     this.arrows?.prepare(this.camera,this.controller.settings);
+    this.slimeFragments?.prepare(this.controller.settings);
     if(this.shockwave)this.shockwave.render(this.controller.settings);else this.renderer.render(this.scene,this.camera);
   }
 }

@@ -1,0 +1,110 @@
+[
+  {
+    "piece": 0,
+    "kind": "surface",
+    "maxRestError": 7.262473232789835e-15,
+    "maxExteriorWeight": 9.090573661207912e-05
+  },
+  {
+    "piece": 0,
+    "kind": "nodes",
+    "maxRestError": 3.6418022968069345e-15,
+    "maxExteriorWeight": 4.6329666194555585e-05
+  },
+  {
+    "piece": 1,
+    "kind": "surface",
+    "maxRestError": 6.125373197167204e-15,
+    "maxExteriorWeight": 8.454252079070912e-05
+  },
+  {
+    "piece": 1,
+    "kind": "nodes",
+    "maxRestError": 8.997602480567051e-15,
+    "maxExteriorWeight": 5.871224808529085e-05
+  },
+  {
+    "piece": 2,
+    "kind": "surface",
+    "maxRestError": 7.042700434902163e-15,
+    "maxExteriorWeight": 0.00018781548900559386
+  },
+  {
+    "piece": 2,
+    "kind": "nodes",
+    "maxRestError": 6.125373197167204e-15,
+    "maxExteriorWeight": 6.569566713254815e-05
+  },
+  {
+    "piece": 3,
+    "kind": "surface",
+    "maxRestError": 9.152482600100037e-15,
+    "maxExteriorWeight": 8.455016244757196e-05
+  },
+  {
+    "piece": 3,
+    "kind": "nodes",
+    "maxRestError": 4.657646926676369e-15,
+    "maxExteriorWeight": 6.043319551274351e-05
+  },
+  {
+    "piece": 4,
+    "kind": "surface",
+    "maxRestError": 1.2051929894162959e-14,
+    "maxExteriorWeight": 0.0002542322050660406
+  },
+  {
+    "piece": 4,
+    "kind": "nodes",
+    "maxRestError": 3.984447981536823e-15,
+    "maxExteriorWeight": 0.00017583530289044802
+  },
+  {
+    "piece": 5,
+    "kind": "surface",
+    "maxRestError": 1.0513759286957937e-14,
+    "maxExteriorWeight": 0.00035422199515799946
+  },
+  {
+    "piece": 5,
+    "kind": "nodes",
+    "maxRestError": 6.526751786450488e-15,
+    "maxExteriorWeight": 0.00020147050122298893
+  },
+  {
+    "piece": 6,
+    "kind": "surface",
+    "maxRestError": 6.06572053902698e-15,
+    "maxExteriorWeight": 0.00021745492458435933
+  },
+  {
+    "piece": 6,
+    "kind": "nodes",
+    "maxRestError": 5.0831364465159854e-15,
+    "maxExteriorWeight": 0.00013973572425118874
+  },
+  {
+    "piece": 7,
+    "kind": "surface",
+    "maxRestError": 8.478499276892386e-15,
+    "maxExteriorWeight": 0.0003542362138833077
+  },
+  {
+    "piece": 7,
+    "kind": "nodes",
+    "maxRestError": 8.884559321017418e-15,
+    "maxExteriorWeight": 0.00026592465945385335
+  },
+  {
+    "piece": 8,
+    "kind": "surface",
+    "maxRestError": 4.946419125159538e-15,
+    "maxExteriorWeight": 0.0
+  },
+  {
+    "piece": 8,
+    "kind": "nodes",
+    "maxRestError": 1.9301603260928013e-15,
+    "maxExteriorWeight": 0.0
+  }
+]
