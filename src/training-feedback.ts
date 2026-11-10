@@ -242,14 +242,19 @@ export class TrainingFeedback {
    * Check: root.rotation.y=0 → outDir (0,0,−1); y=π/2 → outDir (−1,0,0).
    * Non-slime fallback: hit-cylinder radius along −facing at aimHeight.
    */
-  sprayBackAnchor(id:string,outOrigin:T.Vector3,outDir:T.Vector3){
+  sprayFrontAnchor(id:string,outOrigin:T.Vector3,outDir:T.Vector3){
+    const d=this.dummies.find(d=>d.root.userData.practiceTarget===id);
+    if(!d||d.burst.phase!=='alive'||!d.root.visible)return false;
+    return this.sprayBackAnchor(id,outOrigin,outDir,true);
+  }
+  sprayBackAnchor(id:string,outOrigin:T.Vector3,outDir:T.Vector3,front=false){
     const d=this.dummies.find(d=>d.root.userData.practiceTarget===id);if(!d)return false;
     d.root.updateWorldMatrix(true,true);
     // Facing from root yaw only — same basis as walk lean; independent of hit squash matrix.
     const fy=d.root.rotation.y;
     this.sprayFwd.set(Math.sin(fy),0,Math.cos(fy));
     if(this.sprayFwd.lengthSq()<1e-12)this.sprayFwd.set(0,0,1);else this.sprayFwd.normalize();
-    outDir.set(-this.sprayFwd.x,0,-this.sprayFwd.z);
+    outDir.copy(this.sprayFwd).multiplyScalar(front?1:-1);
     if(this.isYellowSlime(d)&&d.monster?.inflation){
       const body=d.monster.inflation.body;
       body.updateWorldMatrix(true,false);
@@ -260,7 +265,7 @@ export class TrainingFeedback {
       this.sprayLocal.set(
         (box.min.x+box.max.x)*.5,
         (box.min.y+box.max.y)*.5,
-        box.min.z,
+        front?box.max.z:box.min.z,
       );
       outOrigin.copy(this.sprayLocal).applyMatrix4(body.matrixWorld);
       return true;

@@ -225,6 +225,7 @@ type Wave = {
 };
 
 type Pending = {
+  front?: boolean;
   id: string;
   remaining: number;
   settings: HitSettings;
@@ -367,12 +368,49 @@ export class DirectionalSpray {
     this.pending.push({ id, remaining: c.sprayDelay, settings: snap });
   }
 
+  scheduleFront(id:string,c:HitSettings,resolve:SprayAnchorResolve){
+    if(!c.sprayFrontEnabled)return;
+    const settings={...c,juiceSpeedCurve:c.juiceSpeedCurve.map(p=>({...p})),spraySpeedCurve:c.spraySpeedCurve.map(p=>({...p}))};
+    if(c.sprayDelay<=0)this.fireFrontResolved(id,settings,resolve);
+    else this.pending.push({id,remaining:c.sprayDelay,settings,front:true});
+  }
+
+  private fireFrontResolved(id:string,c:HitSettings,resolve:SprayAnchorResolve){
+    if(!resolve(id,this.originScratch,this.dirScratch))return;
+    // Resolver returns the current outward front normal; emitFront expects inward.
+    this.emitFront(this.originScratch,this.dirScratch.clone().negate(),c);
+  }
+
   private fireResolved(id: string, snap: HitSettings, resolve: SprayAnchorResolve) {
     if (!resolve(id, this.originScratch, this.dirScratch)) return;
     this.applyFromSettings(snap);
     const at = this.originScratch.clone();
     at.y += snap.sprayHeight;
     this.emit(at, this.dirScratch);
+  }
+
+  /** Separate pool/state, shared original sprite texture. */
+  createSibling(){return new DirectionalSpray(this.scene,this.texture);}
+
+  /** Contact-point side droplets, split left/right with a slight outward bias. */
+  emitFront(point:T.Vector3,incoming:T.Vector3,c:HitSettings){
+    if(!c.sprayFrontEnabled)return;
+    this.applyFromSettings({...c,sprayEnabled:1,sprayMode:0,sprayFlat:0,sprayDelay:0,
+      sprayCount:c.sprayFrontCount,spraySpeed:c.spraySpeed*c.sprayFrontSpeedScale,
+      spraySpeedJitter:c.spraySpeedJitter*c.sprayFrontSpeedScale,
+      spraySize:c.spraySize*c.sprayFrontSizeScale,spraySizeJitter:c.spraySizeJitter*c.sprayFrontSizeScale,
+      sprayLife:c.sprayFrontLife,sprayLifeJitter:Math.min(.04,c.sprayFrontLife*.15),
+      sprayRadius:0,sprayFanSpread:12,sprayFanSpeedScale:1,sprayFanSizeScale:1});
+    const forward=incoming.clone().setY(0).normalize();
+    if(forward.lengthSq()<1e-8)forward.set(0,0,1);
+    const side=new T.Vector3().crossVectors(forward,WORLD_UP).normalize();
+    const origin=point.clone().addScaledVector(forward,-.04);
+    const count=Math.max(1,Math.round(c.sprayFrontCount));
+    for(const [sign,n] of [[1,Math.ceil(count/2)],[-1,Math.floor(count/2)]]){
+      if(!n)continue;
+      const direction=side.clone().multiplyScalar(sign).addScaledVector(forward,-.4).addScaledVector(WORLD_UP,.15).normalize();
+      this.emitLayer(origin,direction,'blood',n);
+    }
   }
 
   emit(origin:T.Vector3,direction:T.Vector3){
@@ -464,7 +502,7 @@ export class DirectionalSpray {
     }
     this.pending = this.pending.filter((p) => p.remaining > 1e-9);
     for (const p of ready) {
-      if (!resolve) continue;
+      if (!resolve||p.front) continue;
       this.fireResolved(p.id, p.settings, resolve);
     }
 
@@ -489,6 +527,8 @@ export class DirectionalSpray {
         }
       }
     }
+    // Newly due front droplets start at the freshly resolved position, age zero.
+    if(resolve)for(const p of ready)if(p.front)this.fireFrontResolved(p.id,p.settings,resolve);
   }
 
   prepare(camera: T.Camera) {

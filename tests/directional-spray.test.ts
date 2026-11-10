@@ -47,3 +47,39 @@ test('single layers and lifetime cleanup do not leave an extra layer visible',()
   spray.update(6);assert.equal(spray.activeCount(),0);
  }
 });
+
+test('front droplets are subtle, lateral, immediate and independent of rear settings',()=>{
+ const scene=new T.Scene(),rear=new DirectionalSpray(scene),front=rear.createSibling();
+ rear.applyFromSettings({...HIT_DEFAULTS,sprayMode:1,sprayCount:20});
+ const point=new T.Vector3(2,2,3),incoming=new T.Vector3(0,0,1);
+ front.emitFront(point,incoming,{...HIT_DEFAULTS,sprayEnabled:0,sprayDelay:2});
+ assert.equal(front.activeCount(),4);assert.equal(rear.activeCount(),0);assert.equal(rear.params.count,20);
+ assert.equal(front.params.size,HIT_DEFAULTS.spraySize*.3);
+ assert.equal(front.params.speed,HIT_DEFAULTS.spraySpeed*.25);
+ assert.equal(front.params.life,.3);assert.deepEqual(point.toArray(),[2,2,3]);
+ front.update(.05);front.prepare(new T.PerspectiveCamera());
+ const positions:T.Vector3[]=[];
+ for(const mesh of scene.children as T.InstancedMesh[])for(let i=0;i<mesh.count;i++){
+  const m=new T.Matrix4();mesh.getMatrixAt(i,m);positions.push(new T.Vector3().setFromMatrixPosition(m));
+ }
+ assert.ok(positions.some(p=>p.x<point.x));assert.ok(positions.some(p=>p.x>point.x));
+ assert.ok(positions.every(p=>p.z<point.z));
+ front.update(1);assert.equal(front.activeCount(),0);
+ front.emitFront(point,incoming,{...HIT_DEFAULTS,sprayFrontEnabled:0});assert.equal(front.activeCount(),0);
+});
+
+test('delayed front droplets resolve the latest target position and facing at emission',()=>{
+ const spray=new DirectionalSpray(new T.Scene());
+ let position=new T.Vector3(0,2,0),normal=new T.Vector3(0,0,1),calls=0;
+ const resolve=(_id:string,out:T.Vector3,dir:T.Vector3)=>{calls++;out.copy(position);dir.copy(normal);return true;};
+ const settings={...HIT_DEFAULTS,sprayDelay:.2};spray.scheduleFront('moving',settings,resolve);
+ assert.equal(calls,0);spray.update(.1,resolve);assert.equal(spray.activeCount(),0);
+ position=new T.Vector3(5,2,8);normal=new T.Vector3(1,0,0);settings.sprayFrontCount=9;
+ spray.update(.1,resolve);assert.equal(calls,1);assert.equal(spray.activeCount(),4);
+ assert.deepEqual(spray.lastEmit!.origin,[5.04,2,8]);
+ assert.equal(spray.sampleRemain()!.u,0);
+ const emitted=[...spray.lastEmit!.origin];position.x=99;spray.update(.01,resolve);
+ assert.deepEqual(spray.lastEmit!.origin,emitted);
+ spray.clear();spray.scheduleFront('gone',settings,resolve);spray.update(.3,()=>false);assert.equal(spray.activeCount(),0);
+ spray.scheduleFront('reset',settings,resolve);spray.clear();spray.update(.3,resolve);assert.equal(spray.activeCount(),0);
+});
