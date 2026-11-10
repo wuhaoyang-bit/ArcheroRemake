@@ -1,0 +1,551 @@
+{
+  "version": 1,
+  "sourceCommit": "2f553d08685672d08b41d39f58c197619b213bf9",
+  "settings": {
+    "eyeHitEnabled": 1,
+    "eyeHitPull": 3,
+    "eyeHitPullTime": 0.12,
+    "eyeHitHoldTime": 0.005,
+    "eyeHitReturnTime": 0.04,
+    "eyeHitDepth": 1.25,
+    "eyeHitAbsorbTime": 0.075,
+    "eyeHitRestoreSpeed": 2,
+    "eyeHitReferenceSpeed": 12,
+    "eyeHitMinimumStrength": 0.45,
+    "eyeHitTetherEnabled": 1,
+    "eyeHitTetherRoot": 0.7,
+    "eyeHitTetherNeck": 0.24,
+    "eyeHitTetherTip": 0.65,
+    "slimeEyeDeformEnabled": 1,
+    "slimeEyeDeformSpeed": 12,
+    "slimeEyeDeformPower": 1.25,
+    "slimeEyeFlightStretch": 0.3,
+    "slimeEyeAnticipationTime": 0.075,
+    "slimeEyeSquash": 0.6,
+    "slimeEyeSquashTime": 0.15,
+    "slimeEyeSquashHold": 0.18,
+    "slimeEyeReboundStretch": 0.38,
+    "slimeEyeRecoverTime": 0.14,
+    "slimeEyeReboundPeak": 0.22,
+    "slimeEyeSettle": 0.12,
+    "slimeEyeWallCollision": 1,
+    "slimeEyeMonsterCollision": 1,
+    "slimeEyeCollisionBounce": 0.85,
+    "slimeEyeKickStrength": 0.7,
+    "slimeEyeEjectEnabled": 1,
+    "slimeEyeEjectSpeed": 20,
+    "slimeEyeEjectGravity": 20,
+    "slimeEyeCurveTime": 0.9,
+    "slimeEyeGroundFriction": 0.12,
+    "slimeEyeRollDrag": 2,
+    "slimeEyeEjectBounce": 0.6,
+    "slimeEyeEjectSpin": 10,
+    "slimeEyesEnabled": 1,
+    "slimeEyeSize": 0.25,
+    "slimeEyeSpacing": 0.88,
+    "slimeEyeX": 0,
+    "slimeEyeY": 1.15,
+    "slimeEyeZ": 0.985,
+    "slimeEyeWidth": 1,
+    "slimeEyeHeight": 1,
+    "slimeEyeDepth": 1,
+    "slimePupilSize": 0.47,
+    "slimePupilAspect": 1,
+    "slimePupilX": 0,
+    "slimePupilY": 0,
+    "slimeEyeRoughness": 0.22,
+    "slimeEyeGloss": 0.12,
+    "slimeColorEnabled": 1,
+    "slimeColorStartR": 255,
+    "slimeColorStartG": 230,
+    "slimeColorStartB": 66,
+    "slimeColorEndR": 255,
+    "slimeColorEndG": 200,
+    "slimeColorEndB": 0,
+    "slimeColorTime": 0.25,
+    "slimeColorPower": 1,
+    "slimeHeavyThreshold": 0.5,
+    "slimeSlowEnabled": 1,
+    "slimeSlowMultiplier": 0.65,
+    "slimeBreathEnabled": 1,
+    "slimeBreathFrequency": 1.2,
+    "slimeBreathAmplitude": 0.04,
+    "slimeBreathFade": 0.15,
+    "slimeMovePeriod": 1.2,
+    "slimeMovePause": 0.12,
+    "slimeMovePeak": 1.35,
+    "slimeMoveValley": 0.35,
+    "slimeMovePeakAt": 0.74,
+    "slimeWalkEnabled": 1,
+    "slimeWalkRestSx": 1.08,
+    "slimeWalkRestSy": 0.94,
+    "slimeWalkPeakSx": 1.15,
+    "slimeWalkPeakSy": 0.67,
+    "slimeWalkPauseSx": 1.1,
+    "slimeWalkPauseSy": 0.92,
+    "slimeWalkIdleSx": 1.15,
+    "slimeWalkIdleSy": 0.9,
+    "slimeWalkMaxLean": 0.18,
+    "slimeWalkLeanRate": 2.11,
+    "slimeWalkLeanDamp": 0.28,
+    "slimeWalkLeanUpperFreqScale": 0.55,
+    "slimeWalkLeanUpperDamp": 0.38,
+    "slimeWalkScaleFreq": 2.4,
+    "slimeWalkScaleDamp": 0.35,
+    "slimeWalkEyeFollowFreq": 4.5,
+    "slimeWalkEyeFollowDamp": 0.32,
+    "slimeInflationEnabled": 1,
+    "slimeInjectionAmount": 20,
+    "slimeCapacity": 100,
+    "slimeMaxScale": 1.35,
+    "slimeBulge": 0.65,
+    "slimeInflationFrequency": 5.5,
+    "slimeInflationDamping": 0.55,
+    "liquidDropSize": 1.6,
+    "liquidEjectSpeed": 13,
+    "liquidSpeedJitter": 3,
+    "liquidGravity": 30,
+    "liquidCurveTime": 0.9,
+    "puddleRenderer": 2,
+    "liquidDropCount": 8,
+    "liquidRippleStrength": 1,
+    "liquidFootsteps": 1,
+    "puddleCanvasShapes": 7,
+    "puddleCurveShapes": 1,
+    "burstEnabled": 1,
+    "burstColorPulseEnabled": 1,
+    "burstColorPulseAmount": 4,
+    "burstEyeEnabled": 1,
+    "burstEyeOut": 0.55,
+    "burstEyeAngle": 15,
+    "burstEyePoseTime": 5,
+    "burstFeedbackDelay": -2,
+    "burstOnset": 0.1,
+    "burstScaleStart": 0,
+    "burstScaleEnd": 1,
+    "burstBulgeStart": 0,
+    "burstBulgeEnd": 1,
+    "burstDuration": 1.2,
+    "burstFrequencyStart": 4,
+    "burstFrequencyEnd": 16,
+    "burstFrequencyPower": 2,
+    "burstAmplitudeStart": 0.24,
+    "burstAmplitudeEnd": 0.03,
+    "burstAmplitudePower": 1,
+    "burstPhaseStart": 0,
+    "burstPhaseEnd": 90,
+    "burstScale": 1.4,
+    "burstScalePower": 1.5,
+    "burstBulge": 0.8,
+    "burstBulgePower": 1.5,
+    "burstFxDelay": 0,
+    "burstFxScale": 1.75,
+    "burstFxSpeed": 1,
+    "burstFxX": 0,
+    "burstFxY": 0,
+    "burstFxZ": 0,
+    "burstColorR": 1,
+    "burstColorG": 0.87,
+    "burstColorB": 0,
+    "puddleEnabled": 1,
+    "puddleHighlightEnabled": 1,
+    "puddleHighlightStrength": 0.3,
+    "puddleHighlightSize": 0.32,
+    "puddleHighlightX": -0.15,
+    "puddleHighlightZ": -0.16,
+    "puddleGradientEnabled": 1,
+    "puddleGradientStrength": 0.12,
+    "puddleGradientAngle": -45,
+    "puddleShadowEnabled": 1,
+    "puddleShadowStrength": 0.18,
+    "puddleShadowSoftness": 0.06,
+    "puddleShadowX": 0.03,
+    "puddleShadowZ": 0.05,
+    "puddleDelay": 0,
+    "puddleSize": 4,
+    "puddleStart": 0,
+    "puddleFrequency": 5.5,
+    "puddleDamping": 0.55,
+    "puddleVelocity": 0,
+    "puddleSpeed": 1,
+    "puddleShape": 0,
+    "puddleRotation": 0,
+    "puddleRotationRange": 180,
+    "puddleSizeRange": 0,
+    "puddleX": 0,
+    "puddleZ": 0,
+    "puddleLifetime": 0,
+    "puddleFade": 1,
+    "puddleColorR": 1,
+    "puddleColorG": 0.87,
+    "puddleColorB": 0,
+    "puddleRoughness": 0.05,
+    "puddleNoiseScale": 13,
+    "puddleNoiseRange": 1,
+    "puddleOuterPower": 10,
+    "puddleInnerPower": 2,
+    "puddleDistortion": 0.05,
+    "puddleFlowSpeed": 0.3,
+    "puddleNormal": 1,
+    "puddleCenterNormal": 0.03,
+    "puddleEdgeColor": 0.9,
+    "puddleReflection": 0.1,
+    "burstLayer0Enabled": 1,
+    "burstLayer0Count": 1,
+    "burstLayer0Size": 1.7,
+    "burstLayer0Speed": 1,
+    "burstLayer0Opacity": 1,
+    "burstLayer1Enabled": 1,
+    "burstLayer1Count": 1,
+    "burstLayer1Size": 1,
+    "burstLayer1Speed": 1,
+    "burstLayer1Opacity": 1,
+    "burstLayer2Enabled": 1,
+    "burstLayer2Count": 1,
+    "burstLayer2Size": 1,
+    "burstLayer2Speed": 1,
+    "burstLayer2Opacity": 1,
+    "burstLayer3Enabled": 1,
+    "burstLayer3Count": 1,
+    "burstLayer3Size": 1,
+    "burstLayer3Speed": 1,
+    "burstLayer3Opacity": 1,
+    "burstLayer4Enabled": 1,
+    "burstLayer4Count": 1,
+    "burstLayer4Size": 1,
+    "burstLayer4Speed": 1,
+    "burstLayer4Opacity": 1,
+    "burstLayer5Enabled": 1,
+    "burstLayer5Count": 1,
+    "burstLayer5Size": 1,
+    "burstLayer5Speed": 1,
+    "burstLayer5Opacity": 1,
+    "eyeHitPullCurve": [
+      {
+        "time": 0,
+        "progress": 260
+      },
+      {
+        "time": 25,
+        "progress": 180
+      },
+      {
+        "time": 65,
+        "progress": 45
+      },
+      {
+        "time": 100,
+        "progress": 0
+      }
+    ],
+    "eyeHitReturnCurve": [
+      {
+        "time": 0,
+        "progress": 0
+      },
+      {
+        "time": 35,
+        "progress": 70
+      },
+      {
+        "time": 100,
+        "progress": 260
+      }
+    ],
+    "eyeHitAbsorbCurve": [
+      {
+        "time": 0,
+        "progress": 260
+      },
+      {
+        "time": 40,
+        "progress": 80
+      },
+      {
+        "time": 80,
+        "progress": 10
+      },
+      {
+        "time": 100,
+        "progress": 0
+      }
+    ],
+    "slimeTrailEnabled": 1,
+    "slimeTrailWidth": 1.45,
+    "slimeTrailLifetime": 3,
+    "slimeTrailFade": 1.2,
+    "slimeStrandEnabled": 1,
+    "slimeStrandCount": 2,
+    "slimeStrandWidth": 0.24,
+    "slimeStrandLength": 3,
+    "slimeStrandRetract": 0.3,
+    "hitBendEnabled": 1,
+    "hitBendMax": 0.4,
+    "hitBendFormTime": 0.1,
+    "hitBendFollowDelay": 0,
+    "hitBendFollowTime": 0.12,
+    "hitBendFollowAmount": 0.85,
+    "hitBendSpringFreq": 4.5,
+    "hitBendSpringDamp": 0.28,
+    "hitBendFootLockY": 0.1,
+    "hitBendPeakY": 1.15,
+    "hitBendWaistY": 0.575,
+    "hitKnockEnabled": 1,
+    "hitRimEnabled": 1,
+    "hitSquashEnabled": 1,
+    "hitSquashMode": 1,
+    "hitSquashCompensation": 1,
+    "hitKnockTime": 0.2,
+    "hitKnockDistance": 3,
+    "hitKnockStun": 0.25,
+    "hitKnockCurveMode": 1,
+    "hitKnockCurve": [
+      {
+        "time": 0,
+        "progress": 0
+      },
+      {
+        "time": 7.74,
+        "progress": 28.47
+      },
+      {
+        "time": 19.62,
+        "progress": 50.86
+      },
+      {
+        "time": 34.48,
+        "progress": 72.54
+      },
+      {
+        "time": 48.28,
+        "progress": 82.52
+      },
+      {
+        "time": 61.58,
+        "progress": 90.64
+      },
+      {
+        "time": 73.49,
+        "progress": 95.13
+      },
+      {
+        "time": 89.24,
+        "progress": 98.26
+      },
+      {
+        "time": 100,
+        "progress": 100
+      }
+    ],
+    "hitRimTime": 0.16,
+    "hitRimFadeStart": 0.08,
+    "hitRimStrength": 1,
+    "hitRimBrightness": 1.4,
+    "hitRimWidth": 0.65,
+    "hitSquashTime": 2,
+    "hitSquashAmount": 0.45,
+    "hitCompressTime": 0.1,
+    "hitReleaseTime": 0.1,
+    "hitSpringFrequency": 5.2,
+    "hitSpringDamping": 0.25,
+    "slimeEyeSpeedCurve": [
+      {
+        "time": 0,
+        "progress": 120
+      },
+      {
+        "time": 100,
+        "progress": 8
+      }
+    ],
+    "liquidSpeedCurve": [
+      {
+        "time": 0,
+        "progress": 120
+      },
+      {
+        "time": 20,
+        "progress": 120
+      },
+      {
+        "time": 100,
+        "progress": 8
+      }
+    ],
+    "juiceSpeedCurve": [
+      {
+        "time": 0,
+        "progress": 100
+      },
+      {
+        "time": 25,
+        "progress": 100
+      },
+      {
+        "time": 30.74,
+        "progress": 83.32
+      },
+      {
+        "time": 34.24,
+        "progress": 61.19
+      },
+      {
+        "time": 37.44,
+        "progress": 40.95
+      },
+      {
+        "time": 40.59,
+        "progress": 22.32
+      },
+      {
+        "time": 44.52,
+        "progress": 11.07
+      },
+      {
+        "time": 60,
+        "progress": 8
+      },
+      {
+        "time": 100,
+        "progress": 4
+      }
+    ],
+    "hitSplashSheetsEnabled": 1,
+    "hitSplashSheetsScale": 1,
+    "hitSplashSheetsSpeed": 1,
+    "hitSplashSheetsDelay": 0,
+    "hitSplashSheetsHeight": 0,
+    "juiceEnabled": 0,
+    "juiceDelay": 0,
+    "juiceCount": 14,
+    "juiceSpeed": 9,
+    "juiceSpeedJitter": 4,
+    "juiceRadius": 0.34,
+    "juiceLife": 0.7,
+    "juiceSize": 1.1,
+    "juiceSizeJitter": 0.7,
+    "juiceColor": 16768306,
+    "juiceCurve": 6,
+    "juiceDragRel": 0.6,
+    "juiceDepthTest": 1,
+    "juiceHeight": 0.4,
+    "spraySpeedCurve": [
+      {
+        "time": 0,
+        "progress": 102.33
+      },
+      {
+        "time": 8.1,
+        "progress": 102.13
+      },
+      {
+        "time": 18.47,
+        "progress": 90.71
+      },
+      {
+        "time": 29.52,
+        "progress": 65.35
+      },
+      {
+        "time": 36.64,
+        "progress": 36.19
+      },
+      {
+        "time": 41.91,
+        "progress": 12.87
+      },
+      {
+        "time": 48.52,
+        "progress": 8.73
+      },
+      {
+        "time": 60,
+        "progress": 8
+      },
+      {
+        "time": 100,
+        "progress": 4
+      }
+    ],
+    "sprayEnabled": 1,
+    "sprayDelay": 0.12,
+    "sprayMode": 0,
+    "sprayFlat": 0,
+    "sprayGravity": 14.6,
+    "sprayDebugDir": 0,
+    "sprayCount": 8,
+    "spraySpeed": 11.3,
+    "spraySpeedJitter": 1.5,
+    "spraySize": 0.83,
+    "spraySizeJitter": 0.15,
+    "sprayLife": 0.7,
+    "sprayLifeJitter": 0.2,
+    "spraySpreadDeg": 65,
+    "sprayRadius": 0.3,
+    "sprayHeight": 0.1,
+    "sprayCurve": 6,
+    "sprayDragRel": 0.55,
+    "burstShockwaveEnabled": 1,
+    "burstShockwaveRadius": 3.5,
+    "burstShockwaveDuration": 0.7,
+    "burstShockwaveWidth": 1.5,
+    "burstShockwaveStrength": 4,
+    "burstShockwaveFadePower": 1.5,
+    "burstShockwaveSpeedCurve": [
+      {
+        "time": 0,
+        "progress": 100
+      },
+      {
+        "time": 25,
+        "progress": 56.25
+      },
+      {
+        "time": 50,
+        "progress": 25
+      },
+      {
+        "time": 75,
+        "progress": 6.25
+      },
+      {
+        "time": 100,
+        "progress": 0
+      }
+    ],
+    "cameraZoomShotEnabled": 0,
+    "cameraZoomHitEnabled": 0,
+    "cameraZoomShotAmount": 1,
+    "cameraZoomHitAmount": 1,
+    "cameraZoomMaxAmount": 12,
+    "cameraZoomAttack": 0.02,
+    "cameraZoomHold": 0,
+    "cameraZoomPower": 3,
+    "cameraZoomFrequency": 8,
+    "cameraZoomDamping": 0.25,
+    "cameraShakeEnabled": 1,
+    "cameraShakeTier": 2,
+    "cameraShakeWeakFormula": 0,
+    "cameraShakeWeakA0": 2,
+    "cameraShakeWeakDuration": 9,
+    "cameraShakeWeakOmega": 0.9,
+    "cameraShakeWeakP": 3,
+    "cameraShakeWeakN": 2,
+    "cameraShakeWeakDecay": 0.1111111111111111,
+    "cameraShakeMidFormula": 0,
+    "cameraShakeMidA0": 4,
+    "cameraShakeMidDuration": 9,
+    "cameraShakeMidOmega": 0.9,
+    "cameraShakeMidP": 3,
+    "cameraShakeMidN": 2,
+    "cameraShakeMidDecay": 0.1111111111111111,
+    "cameraShakeStrongFormula": 0,
+    "cameraShakeStrongA0": 8,
+    "cameraShakeStrongDuration": 9,
+    "cameraShakeStrongOmega": 0.9,
+    "cameraShakeStrongP": 3,
+    "cameraShakeStrongN": 2,
+    "cameraShakeStrongDecay": 0.1111111111111111,
+    "monsterScale": 1.3
+  }
+}

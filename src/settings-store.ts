@@ -1,3 +1,4 @@
+import type {SlimePresetDocument} from './slime-presets.ts';
 import {EYE_HIT_CURVE_KEYS,validateEyeHitCurve} from './eye-hit-config.ts';
 import { validateJuiceSpeedCurve } from './juice-speed-curve.ts';
 import { validateProgressCurve, validateSwitchCurve, validateStrokeCurve } from './lock-rings.ts';
@@ -6,7 +7,7 @@ import { validateAnchorCurve } from './anchor-follow.ts';
 import { exponentialCurve, validateCurve } from './turn-curve.ts';
 import { DEFAULTS, LIMITS, LOCK_TURN_KEYS, sanitize, type Settings, type SettingKey } from './config.ts';
 
-export type SettingsDocument = { version: 1; settings: Settings };
+export type SettingsDocument = { version: 1; settings: Settings; slimePresets?:SlimePresetDocument };
 
 type AndroidSettingsBridge = { readSettings(): string; writeSettings(document: string): string };
 declare global { interface Window { ArcheroAndroid?: AndroidSettingsBridge } }
@@ -76,22 +77,24 @@ export function settingsDocument(settings: Settings): SettingsDocument {
   return { version: 1, settings: parseSettingsDocument({ version: 1, settings }, true) };
 }
 
-export async function loadSettings(): Promise<Settings> {
-  if (isAndroidApp()) return parseSettingsDocument(readBridgeResult(window.ArcheroAndroid!.readSettings()).document);
-  const response = await fetch(`${import.meta.env.BASE_URL}params.json`, { cache: 'no-store' });
-  if (!response.ok) throw new Error('无法读取 params.json');
-  return parseSettingsDocument(await response.json());
+export async function loadSettingsBundle():Promise<{settings:Settings;slimePresets?:unknown}>{
+ let raw:unknown;
+ if(isAndroidApp())raw=readBridgeResult(window.ArcheroAndroid!.readSettings()).document;
+ else{const response=await fetch(`${import.meta.env.BASE_URL}params.json`,{cache:'no-store'});if(!response.ok)throw new Error('无法读取 params.json');raw=await response.json();}
+ return {settings:parseSettingsDocument(raw),slimePresets:(raw as {slimePresets?:unknown}).slimePresets};
 }
+export async function loadSettings():Promise<Settings>{return (await loadSettingsBundle()).settings;}
 
-export async function saveSettings(settings: Settings): Promise<void> {
+export async function saveSettings(settings: Settings,slimePresets?:SlimePresetDocument): Promise<void> {
+  const document:SettingsDocument={...settingsDocument(settings),...(slimePresets?{slimePresets}: {})};
   if (isAndroidApp()) {
-    readBridgeResult(window.ArcheroAndroid!.writeSettings(JSON.stringify(settingsDocument(settings))));
+    readBridgeResult(window.ArcheroAndroid!.writeSettings(JSON.stringify(document)));
     return;
   }
   const response = await fetch(`${import.meta.env.BASE_URL}__save-params`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(settingsDocument(settings)),
+    body: JSON.stringify(document),
   });
   const body = await response.json().catch(() => null) as { ok?: boolean; error?: string } | null;
   if (!response.ok || !body?.ok) throw new Error(body?.error || '保存服务不可用，请通过项目开发服务或 preview 运行');

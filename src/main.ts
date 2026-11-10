@@ -1,3 +1,4 @@
+import {SlimePresets,SOFT_DISABLED_EFFECTS} from './slime-presets.ts';
 import {SLIME_FRAGMENTS_CONTROLS} from './slime-fragments-config.ts';
 import {SHOCKWAVE_CONTROLS,SHOCKWAVE_CURVE_OPTIONS} from './burst-shockwave-config.ts';
 import {CameraShakeEditor} from './camera-shake-editor.ts';
@@ -37,7 +38,7 @@ import './styles.css';
 import { ASPECT, DEFAULTS, DESIGN_WIDTH, LIMITS, type SettingKey } from './config.ts';
 import { MovementController, wrapAngle } from './controller.ts';
 import { GameScene } from './scene.ts';
-import { loadSettings, saveSettings } from './settings-store.ts';
+import { loadSettingsBundle, saveSettings } from './settings-store.ts';
 import { SettingsHistory } from './settings-history.ts';
 import type { Settings } from './config.ts';
 
@@ -167,6 +168,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
         <div class="game-top"><div class="game-label"><i></i><span id="training-label">移动试验场</span></div><div class="training-actions"><div class="training-arena-buttons"><button id="reset-dummies" class="training-arena-button" data-ui hidden>重置怪物</button><button id="switch-training" class="training-arena-button" data-ui aria-pressed="false" disabled>障碍物训练场</button><button id="switch-monster-training" class="training-arena-button" data-ui aria-pressed="false" disabled>怪物训练场</button><button id="switch-locking-training" class="training-arena-button" data-ui aria-pressed="false" disabled>锁定训练场</button></div><button id="open-settings" class="mobile-only" data-ui aria-label="打开调试面板">调参 <span>☷</span></button></div></div><div id="targeting-hud" class="targeting-hud" hidden></div><div id="training-result" role="status" aria-live="polite" hidden></div>
         <div id="hit-debug-toolbar" data-ui hidden><div><button id="hit-debug-pause">暂停</button><button id="hit-debug-step">下一帧 · 1/60s</button></div><output id="hit-debug-readout">等待命中</output></div><div class="state-pill"><i></i><span id="game-state">准备中</span></div>
         <div class="joystick" id="joystick" aria-hidden="true"><div class="joystick-visual"><div class="joystick-ring"><span class="chevron top"></span><span class="chevron right"></span><span class="chevron bottom"></span><span class="chevron left"></span></div><div class="knob"></div></div><div class="threshold"></div></div>
+        <button id="slime-mode-toggle" class="training-arena-button slime-mode-toggle" type="button" data-ui aria-pressed="false" hidden disabled><span>软体/硬体切换</span><small id="slime-mode-label">当前：硬体</small></button>
         <div class="game-hint" id="game-hint">按住任意位置，拖动开始移动</div>
         <div class="loading" id="loading"><span class="loader"></span><strong>正在准备试验场</strong><p id="loading-stage">正在准备资源</p><progress id="loading-progress" value="0" max="100" aria-label="游戏加载进度"></progress><span id="loading-percent">0%</span></div>
       </div>
@@ -260,6 +262,7 @@ element('move-model').addEventListener('change', () => {
 const modeNames = { idle: '待机', 'in-place': '原地跑步', moving: '移动中' };
 let ready = false, uiTime = 0, frameCount = 0, fpsTime = 0, lastFrame = 0, viewScale = 1;
 let history: SettingsHistory | undefined, saving = false;
+let slimePresets:SlimePresets|undefined;
 element('hit-debug-enabled').addEventListener('change',()=>{
  game.hitDebug.enabled=element<HTMLInputElement>('hit-debug-enabled').checked;
  game.hitDebug.paused=false;game.hitDebug.stepRequested=false;
@@ -279,13 +282,22 @@ function showStoreStatus(message: string, error = false) {
   storeStatus.textContent = message;
   storeStatus.classList.toggle('store-error', error);
 }
+function syncSlimeMode(){
+ const soft=slimePresets?.mode==='soft',button=element<HTMLButtonElement>('slime-mode-toggle');
+ button.hidden=controller.training!=='monsters';button.disabled=!ready||saving;
+ button.setAttribute('aria-pressed',String(soft));button.dataset.mode=soft?'soft':'hard';
+ element('slime-mode-label').textContent=soft?'当前：软体':'当前：硬体';
+ for(const key of SOFT_DISABLED_EFFECTS)document.querySelectorAll<HTMLInputElement>(`[data-setting="${key}"]`).forEach(input=>{input.disabled=!ready||soft;input.title=soft?'软体模式关闭后加入的效果，切回硬体可调试。':'';});
+}
 function settingsChanged() {
+ if(slimePresets?.mode==='soft')for(const key of SOFT_DISABLED_EFFECTS)if(controller.settings[key as SettingKey]!==0){controller.set(key as SettingKey,0);syncSettings();}
+ slimePresets?.capture(controller.settings);
   eyeHitPreview.render();
   smoothPreviews.forEach(preview => preview.render());
   game.spray?.setDebugDir(!!controller.settings.sprayDebugDir);
   history?.record(controller.settings);
   updateHistoryButtons();
-  showStoreStatus(saving ? '保存中…另有新修改' : history?.dirty ? '有未保存的修改' : '与基准参数一致');
+  showStoreStatus(saving ? '保存中…另有新修改' : (slimePresets?.dirty(controller.settings)??history?.dirty) ? '有未保存的修改' : '与基准参数一致');
 }
 function updateHistoryButtons() {
   element<HTMLButtonElement>('undo-settings').disabled = !history?.canUndo;
@@ -365,6 +377,7 @@ function switchTraining(training: MovementController['training']) {
   element('switch-monster-training').textContent = monsters ? '返回普通训练场' : '怪物训练场';
   element('switch-monster-training').setAttribute('aria-pressed', String(monsters));
   element('reset-dummies').hidden=!(locking||monsters);
+  syncSlimeMode();
   element('training-label').textContent = obstacles ? '障碍物训练场' : monsters ? '怪物训练场' : locking ? '锁定训练场' : '移动试验场';
   element('switch-training').textContent = obstacles ? '返回普通训练场' : '障碍物训练场';
   element('switch-locking-training').textContent = locking ? '返回普通训练场' : '锁定训练场';
@@ -375,6 +388,14 @@ function switchTraining(training: MovementController['training']) {
   game.sync(0); drawJoystick(); updateTelemetry();
 }
 element('switch-monster-training').addEventListener('click',()=>switchTraining(controller.training === 'monsters' ? 'free' : 'monsters'));
+element('slime-mode-toggle').addEventListener('click',()=>{
+ if(!ready||saving||!slimePresets||controller.training!=='monsters')return;
+ endEdit();captureRelease();
+ applySettings(slimePresets.toggle(controller.settings));
+ // Never allow undo to cross a mode switch and mix two incompatible effect sets.
+ history=new SettingsHistory(slimePresets.baseline());history.record(controller.settings);
+ game.resetDummies();syncSettings();settingsChanged();updateTelemetry();game.render();
+});
 element('reset-dummies').addEventListener('click',()=>{if(ready){game.resetDummies();updateTelemetry();}});
 element('switch-training').addEventListener('click', () => {
   switchTraining(controller.training === 'obstacles' ? 'free' : 'obstacles');
@@ -486,6 +507,7 @@ function syncSettings() {
     const [min, max] = LIMITS[key]; input.style.setProperty('--fill', `${(value - min) / (max - min) * 100}%`);
   });
   syncDeathMaskUi();
+  syncSlimeMode();
   drawJoystick();
 }
 function syncDeathMaskUi() {
@@ -571,14 +593,16 @@ for (const id of ['undo-settings', 'restore']) element(id).addEventListener('cli
 saveButton.addEventListener('click', async () => {
   if (saving) return;
   const snapshot = structuredClone(controller.settings);
-  saving = true; saveButton.disabled = true; showStoreStatus('保存中…');
+  const bundle=slimePresets?.saveBundle(snapshot);
+  saving = true; saveButton.disabled = true;syncSlimeMode(); showStoreStatus('保存中…');
   try {
-    await saveSettings(snapshot);
+    await saveSettings(bundle?.settings??snapshot,bundle?.slimePresets);
+    if(bundle)slimePresets?.markSaved(bundle);
     history?.saved(snapshot); updateHistoryButtons();
     showStoreStatus(history?.dirty ? '已保存；另有新修改未保存' : '已写入 params.json');
   } catch (error) {
     showStoreStatus(`保存失败：${error instanceof Error ? error.message : '请重试'}`, true);
-  } finally { saving = false; saveButton.disabled = false; }
+  } finally { saving = false; saveButton.disabled = false;syncSlimeMode(); }
 });
 element('open-settings').addEventListener('click', () => document.body.classList.add('settings-open'));
 element('close-settings').addEventListener('click', () => document.body.classList.remove('settings-open'));
@@ -676,7 +700,8 @@ function frame(time: number) {
 async function start() {
   layout(); syncSettings();
   try {
-    const loaded = await loadSettings();
+    const loadedBundle = await loadSettingsBundle(),loaded=loadedBundle.settings;
+    slimePresets=new SlimePresets(loaded,loadedBundle.slimePresets);
     for (const key of Object.keys(LIMITS) as SettingKey[]) controller.set(key, loaded[key]);
     controller.setRecoilSpeedCurve(loaded.recoilSpeedCurve);
     controller.setShockwaveSpeedCurve(loaded.burstShockwaveSpeedCurve);
@@ -695,6 +720,7 @@ async function start() {
   } catch (error) {
     showStoreStatus(`${error instanceof Error ? error.message : '读取失败'}，暂用默认值`, true);
   }
+  slimePresets??=new SlimePresets(controller.settings);
   history = new SettingsHistory(controller.settings);
   updateHistoryButtons();
   // Saved tuning never restores a previous game session or its anchor memory.
@@ -708,7 +734,7 @@ async function start() {
   saveButton.disabled = false;slimeColors.setEnabled(true);
   try {
     await game.init((progress,stage)=>{element<HTMLProgressElement>('loading-progress').value=progress*100;element('loading-percent').textContent=`${Math.round(progress*100)}%`;element('loading-stage').textContent=stage;});
-    ready = true;cameraShakeEditor.setEnabled(true);element<HTMLButtonElement>('shockwave-preview').disabled=false;
+    ready = true;syncSlimeMode();cameraShakeEditor.setEnabled(true);element<HTMLButtonElement>('shockwave-preview').disabled=false;
     element<HTMLButtonElement>('switch-training').disabled = false;
     element<HTMLButtonElement>('switch-monster-training').disabled = false;
     element<HTMLButtonElement>('switch-locking-training').disabled = false;
@@ -729,7 +755,7 @@ async function start() {
           return !!ok;
         },
         stepInspection: (dt:number) => {game.advanceFeedback(dt);game.sync(dt);game.render();},
-        snapshot: () => ({ ...controller.snapshot(), settings: { ...controller.settings }, center: { ...controller.center }, cameraZoom:game.cameraZoom.snapshot(controller.settings), cameraShake:game.cameraShake.snapshot(), shockwave:game.shockwave?.snapshot(), cameraView:game.camera.view?{...game.camera.view}:null, cameraZ: game.cameraZ, cameraX: game.camera.position.x, footNdc: game.player.position.clone().project(game.camera).toArray(), anchorNdc: game.anchor.position.clone().project(game.camera).toArray(), trainingTargets: game.trainingTargetsSnapshot(), feedback: game.feedback?.snapshot() ?? [], bowRelease:game.bowRelease?.snapshot(), juice:game.juice?.snapshot(), spray:{active:game.spray?.activeCount()??0,curve:game.spray?.curve,mode:game.spray?.mode,params:game.spray?{...game.spray.params}:null,lastEmit:game.spray?.lastEmit??null}, burstEffects:game.burstEffects?.snapshot(),slimeFragments:game.slimeFragments?.snapshot(), attack: game.animation.snapshot(), arrows: game.arrows?.snapshot(), arrowFireSfx: { active: game.arrowFireSfx.activeCount }, bodyHitSfx: { active: game.bodyHitSfx.activeCount }, slimeHitSfx: { active: game.slimeHitSfx.activeCount, pending: game.slimeHitSfx.pendingCount }, slimeBurstWindupSfx: { active: game.slimeBurstWindupSfx.activeCount }, slimeBurstDeathSfx: { active: game.slimeBurstDeathSfx.activeCount }, runWeight: game.blend.weight, runTime: game.run.time, runTimeScale: game.run.getEffectiveTimeScale(), idleTimeScale: game.idle.getEffectiveTimeScale(), debug: { hit:game.hitDebug.snapshot(), headingVisible: game.headingGuide.visible, heading: game.headingGuide.rotation.y, anchorVisible: game.anchor.visible, anchorOutlineVisible: game.anchor.visible && game.anchorOutline.visible, lockRangeVisible: game.lockRangeGuide.visible, lockRangeRadius: game.lockRangeGuide.scale.x, rings: game.rings.state.snapshot(), candidateMarkerVisible: game.candidateMarker.visible }, gpuMemory:{...game.renderer.info.memory}, startup:{...game.startup}, renderer: 'webgpu', ready }),
+        snapshot: () => ({ ...controller.snapshot(),slimeMode:slimePresets?.mode??'hard', settings: { ...controller.settings }, center: { ...controller.center }, cameraZoom:game.cameraZoom.snapshot(controller.settings), cameraShake:game.cameraShake.snapshot(), shockwave:game.shockwave?.snapshot(), cameraView:game.camera.view?{...game.camera.view}:null, cameraZ: game.cameraZ, cameraX: game.camera.position.x, footNdc: game.player.position.clone().project(game.camera).toArray(), anchorNdc: game.anchor.position.clone().project(game.camera).toArray(), trainingTargets: game.trainingTargetsSnapshot(), feedback: game.feedback?.snapshot() ?? [], bowRelease:game.bowRelease?.snapshot(), juice:game.juice?.snapshot(), spray:{active:game.spray?.activeCount()??0,curve:game.spray?.curve,mode:game.spray?.mode,params:game.spray?{...game.spray.params}:null,lastEmit:game.spray?.lastEmit??null}, burstEffects:game.burstEffects?.snapshot(),slimeFragments:game.slimeFragments?.snapshot(), attack: game.animation.snapshot(), arrows: game.arrows?.snapshot(), arrowFireSfx: { active: game.arrowFireSfx.activeCount }, bodyHitSfx: { active: game.bodyHitSfx.activeCount }, slimeHitSfx: { active: game.slimeHitSfx.activeCount, pending: game.slimeHitSfx.pendingCount }, slimeBurstWindupSfx: { active: game.slimeBurstWindupSfx.activeCount }, slimeBurstDeathSfx: { active: game.slimeBurstDeathSfx.activeCount }, runWeight: game.blend.weight, runTime: game.run.time, runTimeScale: game.run.getEffectiveTimeScale(), idleTimeScale: game.idle.getEffectiveTimeScale(), debug: { hit:game.hitDebug.snapshot(), headingVisible: game.headingGuide.visible, heading: game.headingGuide.rotation.y, anchorVisible: game.anchor.visible, anchorOutlineVisible: game.anchor.visible && game.anchorOutline.visible, lockRangeVisible: game.lockRangeGuide.visible, lockRangeRadius: game.lockRangeGuide.scale.x, rings: game.rings.state.snapshot(), candidateMarkerVisible: game.candidateMarker.visible }, gpuMemory:{...game.renderer.info.memory}, startup:{...game.startup}, renderer: 'webgpu', ready }),
       } });
     }
   } catch (error) {

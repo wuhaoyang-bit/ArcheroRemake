@@ -1,3 +1,4 @@
+import {SlimePresets} from '../src/slime-presets.ts';
 import { readFile, writeFile, rename, mkdir, rm } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -21,7 +22,9 @@ export function settingsMiddleware(file: string) {
     };
     if (url === '/params.json' && req.method === 'GET') {
       void readFile(file, 'utf8').then(raw => {
-        send(200, settingsDocument(parseSettingsDocument(JSON.parse(raw))));
+        const input=JSON.parse(raw),settings=parseSettingsDocument(input),document=settingsDocument(settings);
+        if(input.slimePresets)document.slimePresets=new SlimePresets(settings,input.slimePresets).saveBundle(settings).slimePresets;
+        send(200,document);
       }).catch(() => send(500, { ok: false, error: '读取 params.json 失败' }));
       return;
     }
@@ -48,13 +51,18 @@ export function settingsMiddleware(file: string) {
           raw += chunk.toString();
         }
       } catch { if (!res.destroyed) send(400, { ok: false, error: '未能完整接收参数' }); return; }
-      let settings;
-      try { settings = parseSettingsDocument(JSON.parse(raw), true); }
+      let settings,input;
+      try { input=JSON.parse(raw);settings = parseSettingsDocument(input, true); }
       catch (error) { send(400, { ok: false, error: error instanceof Error ? error.message : '参数无效' }); return; }
       const temp = join(dirname(file), `.params-${randomUUID()}.tmp`);
       try {
         await mkdir(dirname(file), { recursive: true });
-        await writeFile(temp, `${JSON.stringify(settingsDocument(settings), null, 2)}\n`, 'utf8');
+        const document=settingsDocument(settings);
+        // Older standalone tuning pages only post root settings. Retain the saved
+        // soft preset rather than silently deleting it on their next save.
+        const presets=input.slimePresets??await readFile(file,'utf8').then(raw=>JSON.parse(raw).slimePresets).catch(()=>undefined);
+        if(presets)document.slimePresets=new SlimePresets(settings,presets).saveBundle(settings).slimePresets;
+        await writeFile(temp, `${JSON.stringify(document, null, 2)}\n`, 'utf8');
         await rename(temp, file);
         send(200, { ok: true });
       } catch {

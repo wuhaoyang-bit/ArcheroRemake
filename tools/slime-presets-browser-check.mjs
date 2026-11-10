@@ -1,0 +1,35 @@
+import {chromium} from '@playwright/test';
+import assert from 'node:assert/strict';
+import {readFile,mkdir} from 'node:fs/promises';
+const source=JSON.parse(await readFile('public/params.json','utf8'));
+let persisted={...source,settings:{...source.settings,monsterCount:1,monsterSpeed:0,slimeInjectionAmount:100,slimeFragmentsEnabled:1,hitSplashParticlesCount:7,hitSplashParticlesScale:.25,arrowSpeed:125,recoilDistance:.31}},saved;
+const browser=await chromium.launch({channel:'chrome',headless:true,args:['--enable-unsafe-webgpu']});
+try{
+ const page=await browser.newPage({viewport:{width:1440,height:1050}}),errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
+ await page.route('**/params.json',r=>r.fulfill({json:persisted}));await page.route('**/__save-params',async r=>{saved=r.request().postDataJSON();persisted=saved;await r.fulfill({json:{ok:true}});});
+ const ready=async()=>{await page.waitForFunction(()=>window.__ARCHERO__?.snapshot().ready,null,{timeout:120000});await page.evaluate(()=>window.__ARCHERO__.pauseForInspection(true));};
+ const state=()=>page.evaluate(()=>window.__ARCHERO__.snapshot());
+ const set=async(key,value)=>{await page.locator('#value-'+key).evaluate((el,v)=>{el.value=String(v);el.dispatchEvent(new Event('change',{bubbles:true}));},value);};
+ await page.goto('http://localhost:5173');await ready();const button=page.locator('#slime-mode-toggle');assert.equal(await button.isVisible(),false);
+ await page.locator('#switch-monster-training').click();assert.equal(await button.isVisible(),true);assert.equal((await state()).slimeMode,'hard');
+ const protectedKeys=await page.evaluate(()=>[...new Set([...document.querySelectorAll('#settings-category-shooting [data-setting]')].map(el=>el.dataset.setting)),'recoilSpeedCurve','hitSplashParticlesEnabled','hitSplashParticlesCount','hitSplashParticlesScale','hitSplashParticlesHeight']);
+ const hard=await state(),checkProtected=s=>{for(const key of protectedKeys)assert.deepEqual(s.settings[key],hard.settings[key],key);};
+ await set('slimeFragmentsSoftness',1.4);
+ const id=(await state()).feedback[0].id;await page.evaluate(id=>window.__ARCHERO__.testSlimeHit(id),id);
+ await page.evaluate(()=>{const api=window.__ARCHERO__;for(let i=0;i<600;i++){api.stepInspection(1/120);if(api.snapshot().slimeFragments.active)return;}throw Error('No hard fragment burst');});
+ await button.click();let soft=await state();assert.equal(soft.slimeMode,'soft');assert.equal(soft.slimeFragments.active,0);assert.equal(soft.settings.slimeFragmentsEnabled,0);assert.equal(soft.settings.slimeMaxScale,1.35);assert.equal(soft.settings.slimeBulge,.65);assert.equal(soft.settings.burstScale,1.4);assert.equal(soft.settings.slimeTrailEnabled,1);checkProtected(soft);
+ assert.equal(await page.locator('#value-slimeFragmentsEnabled').isDisabled(),true);
+ const before=soft.slimeFragments.emitted;await page.evaluate(()=>{const api=window.__ARCHERO__,id=api.snapshot().feedback[0].id;for(let i=0;i<10;i++)api.testSlimeHit(id);for(let i=0;i<600;i++)api.stepInspection(1/120);});assert.equal((await state()).slimeFragments.emitted,before);
+ await set('slimeBulge',.8);await page.locator('#save-settings').click();await page.waitForFunction(()=>document.querySelector('#store-status').textContent.includes('已写入'));
+ assert.equal(saved.settings.slimeFragmentsEnabled,1);assert.equal(saved.settings.slimeFragmentsSoftness,1.4);assert.equal(saved.settings.slimeBulge,hard.settings.slimeBulge);assert.equal(saved.slimePresets.soft.slimeBulge,.8);assert.equal(saved.settings.hitSplashParticlesCount,7);assert.equal(saved.settings.hitSplashParticlesScale,.25);
+ await button.click();const back=await state();assert.equal(back.slimeMode,'hard');assert.equal(back.settings.slimeFragmentsSoftness,1.4);assert.equal(back.settings.slimeBulge,hard.settings.slimeBulge);checkProtected(back);
+ await button.click();assert.equal((await state()).settings.slimeBulge,.8);
+ await page.locator('#switch-monster-training').click();assert.equal(await button.isVisible(),false);await page.locator('#switch-monster-training').click();assert.equal((await state()).slimeMode,'soft');
+ await page.reload();await ready();assert.equal((await state()).slimeMode,'hard');assert.equal((await state()).settings.slimeFragmentsSoftness,1.4);
+ await page.locator('#switch-monster-training').click();await mkdir('analysis/slime-presets',{recursive:true});await page.screenshot({path:'analysis/slime-presets/hard-desktop.png'});
+ await button.click();assert.equal((await state()).settings.slimeBulge,.8);checkProtected(await state());await page.screenshot({path:'analysis/slime-presets/soft-desktop.png'});
+ await page.setViewportSize({width:390,height:844});await page.waitForTimeout(250);
+ const box=await button.boundingBox(),view=await page.locator('#viewport').boundingBox();assert.ok(box.x>view.x+view.width/2);assert.ok(box.y>view.y+view.height/2);assert.ok(box.x+box.width<=view.x+view.width&&box.y+box.height<=view.y+view.height);
+ await button.click();assert.equal((await state()).slimeMode,'hard');await page.screenshot({path:'analysis/slime-presets/hard-mobile.png'});
+ assert.deepEqual(errors,[]);console.log('Mode switch: historical preset, protected controls, cleanup, no soft chunks, independent drafts, save/reload and mobile placement passed');
+}finally{await browser.close();}

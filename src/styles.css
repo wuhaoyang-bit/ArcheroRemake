@@ -192,3 +192,9 @@ input[type=range]::-moz-range-thumb { width: 9px; height: 9px; border-radius: 50
 #loading-progress::-webkit-progress-value { background:#315e2e; border-radius:10px; transition:width .15s; }
 #loading-progress::-moz-progress-bar { background:#315e2e; border-radius:10px; }
 #loading-percent { margin-top:8px; font-size:12px; font-variant-numeric:tabular-nums; }
+
+/* Explicit UI ownership keeps the mode switch from engaging the movement stick. */
+.slime-mode-toggle { position:absolute;z-index:3;right:12px;bottom:max(64px,calc(env(safe-area-inset-bottom) + 48px));min-width:112px;min-height:48px;display:flex;flex-direction:column;align-items:center;gap:5px;font-size:11px; }
+.slime-mode-toggle small { font-size:10px;color:#e6f5bb; }
+.slime-mode-toggle[hidden] { display:none; }
+.slime-mode-toggle:focus-visible { outline:2px solid #fff9dc;outline-offset:3px; }

@@ -1,3 +1,4 @@
+import {SLIME_FRAGMENTS_DEFAULTS} from '../src/slime-fragments-config.ts';
 import { CAMERA_ZOOM_DEFAULTS } from '../src/camera-zoom-config.ts';
 import {SHOCKWAVE_DEFAULTS,DEFAULT_SHOCKWAVE_SPEED_CURVE} from '../src/burst-shockwave-config.ts';
 import { CAMERA_SHAKE_DEFAULTS } from '../src/camera-shake-config.ts';
@@ -20,7 +21,7 @@ import { MovementController } from '../src/controller.ts';
 
 test('requested defaults match the screenshot, with speed 16 / upper limit 30 and independent Run rate', () => {
   assert.deepEqual(DEFAULTS, {
-    ...HIT_DEFAULTS,
+    ...HIT_DEFAULTS,...SLIME_FRAGMENTS_DEFAULTS,
     ...SHOCKWAVE_DEFAULTS,burstShockwaveSpeedCurve:DEFAULT_SHOCKWAVE_SPEED_CURVE,
     ...CAMERA_ZOOM_DEFAULTS,
     ...CAMERA_SHAKE_DEFAULTS,
