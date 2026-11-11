@@ -287,6 +287,7 @@ export class GameScene {
       this.cameraZoom.trigger('shot',this.controller.settings,elapsed);
     };
     this.arrows.debug=this.hitDebug;
+    this.arrows.entryDurationMsForHit=id=>this.feedback?.willHitTriggerBurst(id,this.controller.settings)?this.controller.settings.arrowFinalHitEntryMs:undefined;
     this.arrows.bindToBody=(id,position,rotation,direction)=>this.feedback?.bindArrow(id,position,rotation,direction)??null;
     this.arrows.setTargets(this.feedback?.proxies ?? []);
     this.applyArrowHit=hit=>{

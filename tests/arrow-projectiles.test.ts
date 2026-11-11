@@ -535,3 +535,15 @@ test('mode 2 analytic slowdown is frame independent and thin-body fitting retain
   const shot=arrows.snapshot().active[0];near(shot.tip[2],2.35);assert.equal(shot.lodged,true);near(shot.embedEntrySpeed!,0);
  }
 });
+
+test('per-hit entry duration overrides all modes, including zero, before hit callback',()=>{
+ for(const mode of [0,1,2])for(const duration of [0,20,150]){
+  const {scene,arrows}=fixture();arrows.setPierce(true);arrows.setPierceMode(mode);arrows.setSpeed(10);arrows.setPiercePause(200);arrows.setEmbedMotion(3,300,50);
+  let before=true;arrows.entryDurationMsForHit=id=>{assert.equal(id,'gel');assert.equal(before,true);return duration;};arrows.onHit=()=>{before=false;};
+  arrows.setTargets([enemy(scene,2,'gel')]);arrows.fire(origin,aim,Infinity);arrows.update(.1);
+  assert.equal(before,false);
+  if(duration>0){arrows.update(duration/2000);assert.ok(arrows.snapshot().active[0].piercePauseRemaining>0);}
+  arrows.update(duration/2000+.001);near(arrows.snapshot().active[0].piercePauseRemaining,0);
+  if(mode===2)assert.equal(arrows.snapshot().active[0].lodged,true);
+ }
+});

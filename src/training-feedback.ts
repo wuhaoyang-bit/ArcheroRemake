@@ -132,6 +132,13 @@ export class TrainingFeedback {
     walk.applied=true;
   }
   get proxies(){return this.dummies.filter(d=>d.burst.phase==='alive').map(d=>d.proxy);}
+  willHitTriggerBurst(id:string,c:FeedbackSettings){
+    const d=this.dummies.find(d=>d.root.userData.practiceTarget===id),state=d?.monster?.inflation?.state;
+    const allowed=this.options.allowFullBurst==='settings'?!c.burstSuppressed:this.options.allowFullBurst&&!!c.burstEnabled;
+    if(!allowed||!state||d?.burst.phase!=='alive')return false;
+    const added=c.slimeInflationEnabled?Math.min(Math.max(0,c.slimeInjectionAmount),Math.max(0,c.slimeCapacity-state.amount)):0;
+    return state.amount+added>=c.slimeCapacity;
+  }
   hit(id:string,direction:Point,settings:FeedbackSettings){const d=this.dummies.find(d=>d.root.userData.practiceTarget===id);if(!d||d.burst.phase!=='alive')return false;d.monster?.animation?.hit(settings.monsterHitSpeed ?? 1);d.monster?.inflation?.state.hit(settings);d.response.hit(direction,settings);d.bendSnap=this.isYellowSlime(d)?snapshotHitBend(settings):null;d.response.update(0,settings);this.apply(d,settings);
     const v=new T.Vector3(d.response.direction.x,0,d.response.direction.z),p=d.response.position,b=d.response.bounds;
     let travel=settings.hitKnockDistance;

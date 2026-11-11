@@ -1014,6 +1014,7 @@
     "arrowSpeedAfterPierce": 90,
     "arrowHitLinger": 0.01,
     "arrowPiercePauseMs": 65,
+    "arrowFinalHitEntryMs": 40,
     "arrowPierceEntrySpeed": 10,
     "arrowPierceGravity": 0,
     "arrowEmbedSpeed": 50,

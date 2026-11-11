@@ -61,6 +61,8 @@ export class ArrowProjectiles {
   debug?:HitDebug;
   bindToBody?:(id:string,position:THREE.Vector3,rotation:THREE.Quaternion,direction:THREE.Vector3)=>ArrowBodyAttachment|null;
   onHit?: (hit: ArrowHit) => void;
+  /** Resolve before hit feedback changes fullness; undefined keeps the normal mode duration. */
+  entryDurationMsForHit?:(id:string)=>number|undefined;
   onFire?: (position: THREE.Vector3, direction: THREE.Vector3, elapsed: number) => void;
   private pool: Arrow[] = [];
   private paintGeometry=new THREE.SphereGeometry(1,24,16);
@@ -343,6 +345,8 @@ export class ArrowProjectiles {
         if(this.hitLinger<=0)this.recycle(arrow);else arrow.lingerRemaining=this.hitLinger;
         this.onHit?.(hit);return intersection.distance;
       }
+      const durationOverride=this.entryDurationMsForHit?.(id);
+      const entryDuration=durationOverride!==undefined&&Number.isFinite(durationOverride)?Math.max(0,durationOverride)/1000:undefined;
       this.beginPierceExitWatch(arrow,intersection.object,intersection.point);
       // A point-blank arrow can be born with its shaft already inside a body.
       // Never rewind it to that surface or count overlap length as travelled.
@@ -354,8 +358,8 @@ export class ArrowProjectiles {
         arrow.responseMode=this.pierceMode;
         arrow.gravityArmed=arrow.responseMode===1;
         if(arrow.responseMode===2){
-          arrow.embedDuration=this.embedDuration;arrow.embedBrake=this.embedBrake;arrow.embedSpeed=this.embedSpeed;
-          arrow.piercePauseRemaining=this.embedDuration;
+          arrow.embedDuration=entryDuration??this.embedDuration;arrow.embedBrake=this.embedBrake;arrow.embedSpeed=this.embedSpeed;
+          arrow.piercePauseRemaining=arrow.embedDuration;
           const root=this.practiceRoot(intersection.object);
           if(root){
             arrow.embedLimit=intersection.point.clone().lerp(this.farFaceExit(root,intersection.point,arrow.direction),.85);
@@ -366,8 +370,8 @@ export class ArrowProjectiles {
           }
         }
       }
-      if(arrow.responseMode!==2)arrow.piercePauseRemaining+=this.piercePause;
-      if(this.piercePause>0||arrow.responseMode===2){
+      if(arrow.responseMode!==2)arrow.piercePauseRemaining+=entryDuration??this.piercePause;
+      if(arrow.piercePauseRemaining>0||arrow.responseMode===2){
         arrow.piercePauseTarget=this.practiceRoot(intersection.object);
         arrow.piercePauseTarget?.getWorldPosition(arrow.piercePauseTargetPosition);
       }
