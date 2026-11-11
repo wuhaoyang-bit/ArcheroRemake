@@ -208,7 +208,7 @@ const cameraZoomPreview=new CameraZoomPreview(element('camera-zoom-preview'),()=
 const cameraShakeEditor=new CameraShakeEditor(element('camera-shake-editor'),()=>controller.settings,values=>{
   for(const [key,value] of Object.entries(values))controller.set(key as SettingKey,value);
   syncSettings();settingsChanged();
-},tier=>{if(ready){game.cameraShake.trigger(controller.settings,tier);game.render();}});
+},(tier,extraMode)=>{if(ready){if(extraMode!==undefined){game.cameraShake.reset();game.cameraShake.extra.trigger(controller.settings,extraMode);}else game.cameraShake.trigger(controller.settings,tier);game.render();}});
 const shockwaveEditor=new ProgressCurveEditor(element('burst-shockwave-speed-editor'),()=>controller.settings.burstShockwaveSpeedCurve,points=>{controller.setShockwaveSpeedCurve(points);settingsChanged();},true,false,false,false,SHOCKWAVE_CURVE_OPTIONS);
 element('shockwave-preview').onclick=()=>{if(ready)game.previewShockwave();};
 const recoilEditor=new ProgressCurveEditor(element('recoil-speed-curve-editor'),()=>controller.settings.recoilSpeedCurve,points=>{controller.setRecoilSpeedCurve(points);settingsChanged();},true,false,false,false,{title:'射击后坐速度曲线',x:'后坐时间进度',y:'相对速度',max:300,defaults:DEFAULT_RECOIL_CURVE,validate:validateJuiceSpeedCurve,help:'横轴：后坐时间 0–100%；纵轴：相对速度权重。曲线决定快慢分布，总距离始终由后坐距离控制；全零曲线不产生位移。双击加点、拖动调整或编辑数值，下一支箭生效。'});

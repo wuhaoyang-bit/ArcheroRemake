@@ -150,6 +150,7 @@ export const LIMITS: Record<SettingKey, [number, number, number]> = {
 export function sanitize(key: SettingKey, value: number): number {
   if (!Number.isFinite(value)) return DEFAULTS[key];
   if(['slimeFragmentsSubsteps','slimeFragmentsIterations','slimeFragmentsMaxBursts'].includes(key))value=Math.round(value);
+  if(key==='cameraShakeExtraMode')value=Math.round(value);
   if(key.startsWith('cameraShake')&&(key.endsWith('Enabled')||key.endsWith('Tier')||key.endsWith('Formula')||key.endsWith('Duration')))value=Math.round(value);
   if ((key.startsWith('hit') || key.startsWith('juice') || key.startsWith('spray')) && key.endsWith('Enabled')) return value >= .5 ? 1 : 0;
   if(key==='cameraZoomShotEnabled'||key==='cameraZoomHitEnabled')return value>=.5?1:0;

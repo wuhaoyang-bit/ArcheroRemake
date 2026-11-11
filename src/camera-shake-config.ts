@@ -1,15 +1,17 @@
+import {SHAKE_SPRING_DEFAULTS,SHAKE_SPRING_LIMITS,type ShakeSpringSettings} from './camera-shake-spring.ts';
 export const SHAKE_TIERS = ['weak', 'mid', 'strong'] as const;
 export type ShakeTierId = typeof SHAKE_TIERS[number];
 export const SHAKE_LABELS = {weak: '弱', mid: '中', strong: '强'};
 const PREFIX = {weak: 'Weak', mid: 'Mid', strong: 'Strong'} as const;
 export type ShakeField = 'Formula' | 'A0' | 'Duration' | 'Omega' | 'P' | 'N' | 'Decay';
 export type ShakeTierKey = `cameraShake${typeof PREFIX[ShakeTierId]}${ShakeField}`;
-export type CameraShakeSettings = Record<ShakeTierKey | 'cameraShakeEnabled' | 'cameraShakeTier', number>;
+export type CameraShakeSettings = ShakeSpringSettings & Record<ShakeTierKey | 'cameraShakeEnabled' | 'cameraShakeTier', number>;
 export type CameraShakeKey = keyof CameraShakeSettings;
 export const shakeKey = (tier: ShakeTierId, field: ShakeField): ShakeTierKey => `cameraShake${PREFIX[tier]}${field}`;
 
 // SmashBroCER's defaults: 9 frames at 60 Hz, with 2 / 4 / 8 pixel amplitudes.
 export const CAMERA_SHAKE_DEFAULTS: CameraShakeSettings = {
+  ...SHAKE_SPRING_DEFAULTS,
   cameraShakeEnabled: 1, cameraShakeTier: 1,
   ...Object.fromEntries(SHAKE_TIERS.flatMap((tier, i) => Object.entries({
     Formula: i === 2 ? 1 : 0, A0: 2 ** (i + 1), Duration: 9,
@@ -26,6 +28,7 @@ export const SHAKE_FIELDS: {field: ShakeField; label: string; unit: string; limi
   {field:'Decay',label:'Trauma 每帧衰减',unit:'/帧',limits:[.001,.5,.001],hint:'Trauma 从 1 线性递减；可在修改持续帧数后单独微调。持续帧数到达时停止。'},
 ];
 export const CAMERA_SHAKE_LIMITS: Record<CameraShakeKey, [number, number, number]> = {
+  ...SHAKE_SPRING_LIMITS,
   cameraShakeEnabled: [0,1,1], cameraShakeTier: [0,2,1],
   ...Object.fromEntries(SHAKE_TIERS.flatMap(tier => SHAKE_FIELDS.map(f => [shakeKey(tier, f.field), f.limits]))) as Record<ShakeTierKey, [number, number, number]>,
 };

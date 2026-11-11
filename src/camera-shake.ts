@@ -1,3 +1,4 @@
+import {ScreenSpringFeedback} from './camera-shake-spring.ts';
 import {SHAKE_TIERS, shakeKey, type CameraShakeSettings, type ShakeTierId} from './camera-shake-config.ts';
 
 export type ShakeTier = {formula: number; A0: number; duration: number; omega: number; p: number; n: number; decayPerFrame: number};
@@ -20,6 +21,7 @@ export function shakeOffset(t: ShakeTier, i: number, kind: ShakeTierId, phase=0)
 
 /** One pulse, restarted by each explosion. Visual state never changes gameplay coordinates. */
 export class CameraShakeFeedback {
+  readonly extra=new ScreenSpringFeedback();
   private config: ShakeTier | null=null;
   private tier: ShakeTierId='mid';
   private age=0;
@@ -27,17 +29,20 @@ export class CameraShakeFeedback {
   private triggers=0;
   trigger(c: CameraShakeSettings, tier=SHAKE_TIERS[c.cameraShakeTier], random=Math.random) {
     if(!c.cameraShakeEnabled)return;
+    this.extra.trigger(c);
     this.tier=tier;this.config=readShakeTier(c,tier);this.age=0;
     this.phase=tier==='weak'?0:random()*Math.PI*2;this.triggers++;
   }
   update(dt: number, c: CameraShakeSettings) {
-    if(!c.cameraShakeEnabled){this.config=null;this.age=0;return;}
-    if(!this.config||!Number.isFinite(dt)||dt<0)return;
+    if(!c.cameraShakeEnabled){this.extra.reset();this.config=null;this.age=0;return;}
+    if(!Number.isFinite(dt)||dt<0)return;
+    this.extra.update(dt);
+    if(!this.config)return;
     this.age+=dt;
     if(this.frame>=this.config.duration)this.config=null;
   }
   private get frame(){return Math.floor(this.age*60+1e-8);}
   offset(){return this.config?shakeOffset(this.config,this.frame,this.tier,this.phase):{x:0,y:0};}
-  reset(){this.config=null;this.age=0;this.phase=0;this.triggers=0;}
-  snapshot(){return {active:!!this.config,tier:this.tier,frame:this.frame,phase:this.phase,offset:this.offset(),triggers:this.triggers};}
+  reset(){this.extra.reset();this.config=null;this.age=0;this.phase=0;this.triggers=0;}
+  snapshot(){return {extra:this.extra.snapshot(),active:!!this.config||this.extra.snapshot().active,tier:this.tier,frame:this.frame,phase:this.phase,offset:this.offset(),triggers:this.triggers};}
 }

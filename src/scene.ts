@@ -521,7 +521,9 @@ export class GameScene {
 
   private applyCameraFeedback(){
     const c=this.controller.settings;this.cameraZoom.update(0,c);
-    const zoom=this.cameraZoom.value(c);
+    this.cameraShake.update(0,c);
+    const extra=this.cameraShake.extra.value();
+    const zoom=this.cameraZoom.value(c)*extra.scale;
     if(this.camera.zoom!==zoom){this.camera.zoom=zoom;this.camera.updateProjectionMatrix();}
     this.cameraShake.update(0,c);
     const shake=this.cameraShake.offset(),height=DESIGN_WIDTH/this.aspect;
@@ -529,6 +531,13 @@ export class GameScene {
     // The frustum offset scales with viewport width and remains independent of zoom.
     if(shake.x||shake.y)this.camera.setViewOffset(DESIGN_WIDTH,height,-shake.x,shake.y,DESIGN_WIDTH,height);
     else if(this.camera.view?.enabled)this.camera.clearViewOffset();
+    // Rebuild before screen-space rotation; never accumulate roll across renders.
+    this.camera.updateProjectionMatrix();
+    if(extra.rotation){
+      const angle=extra.rotation*Math.PI/180,cos=Math.cos(angle),sin=Math.sin(angle);
+      this.camera.projectionMatrix.premultiply(new THREE.Matrix4().set(cos,-sin/this.aspect,0,0,sin*this.aspect,cos,0,0,0,0,1,0,0,0,0,1));
+    }
+    this.camera.projectionMatrixInverse.copy(this.camera.projectionMatrix).invert();
   }
 
   sync(dt: number) {

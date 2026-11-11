@@ -1,3 +1,4 @@
+import {ShakeSpringEditor} from './camera-shake-spring-editor.ts';
 import {CAMERA_SHAKE_LIMITS, SHAKE_FIELDS, SHAKE_LABELS, SHAKE_TIERS, shakeKey, type CameraShakeKey, type CameraShakeSettings, type ShakeTierId} from './camera-shake-config.ts';
 import {readShakeTier, shakeEnvelope, shakeOffset} from './camera-shake.ts';
 import './camera-zoom-preview.css';
@@ -6,7 +7,8 @@ import './camera-shake-editor.css';
 export class CameraShakeEditor {
   private get tier(): ShakeTierId {return SHAKE_TIERS[this.read().cameraShakeTier];}
   private enabled=false;
-  constructor(private root:HTMLElement,private read:()=>CameraShakeSettings,private change:(values:Partial<CameraShakeSettings>)=>void,preview:(tier:ShakeTierId)=>void) {
+  private springEditor?:ShakeSpringEditor;
+  constructor(private root:HTMLElement,private read:()=>CameraShakeSettings,private change:(values:Partial<CameraShakeSettings>)=>void,preview:(tier:ShakeTierId,extraMode?:number)=>void) {
     const select=(key:CameraShakeKey,label:string,options:string[])=>`<div class="turn-model-field"><label for="value-${key}">${label}</label><select id="value-${key}" data-shake-setting="${key}">${options.map((text,i)=>`<option value="${i}">${text}</option>`).join('')}</select></div>`;
     root.innerHTML=select('cameraShakeEnabled','爆炸屏幕震动',['关闭','开启'])+select('cameraShakeTier','爆炸使用档位',['弱 · 纵向','中 · 横纵交织','强 · 衰减圆形'])+
       '<p class="threshold-help">所选档位同时用于实际爆炸、下方调参与预览。三档参数独立保存；切换档位或修改参数后，下次爆开生效。</p>'+
@@ -25,10 +27,13 @@ export class CameraShakeEditor {
       this.change(values);this.render();
     }));
     root.querySelector<HTMLButtonElement>('#camera-shake-preview')!.onclick=()=>preview(this.tier);
+    const extraRoot=document.createElement('div');root.append(extraRoot);
+    this.springEditor=new ShakeSpringEditor(extraRoot,read,change,mode=>preview(this.tier,mode));
     this.render();
   }
   setEnabled(enabled:boolean){this.enabled=enabled;this.render();}
   render(){
+    this.springEditor?.render();this.springEditor?.setEnabled(this.enabled);
     const c=this.read(),t=readShakeTier(c,this.tier);
     this.root.querySelectorAll<HTMLElement>('[data-shake-tier]').forEach(el=>el.hidden=el.dataset.shakeTier!==this.tier);
     this.root.querySelectorAll<HTMLElement>('[data-shake-field]').forEach(el=>{
