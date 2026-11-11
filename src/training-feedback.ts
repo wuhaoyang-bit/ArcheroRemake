@@ -13,7 +13,7 @@ import { HitResponse, knockInitialSpeed, type Point } from './hit-response.ts';
 import type { HitSettings } from './hit-feedback-config.ts';
 import type {SlimeTrailBody} from './slime-ground-trail.ts';
 import { snapshotHitBend, type HitBendSettings } from './hit-bend-config.ts';
-import { applyHorizontalBend, calculateBendWeights, horizontalBendAmount } from './hit-bend.ts';
+import { applyHorizontalBend, calculateBendWeights, horizontalBendAmount, hitBendReturnTravel } from './hit-bend.ts';
 import {
   SlimeWalkDeform,
   applyWalkShear,
@@ -184,7 +184,19 @@ export class TrainingFeedback {
     d.visual.matrixWorldNeedsUpdate=true;d.rim.value=d.response.rim(c);d.brightness.value=c.hitRimBrightness;d.power.value=8*Math.pow(.05,(c.hitRimWidth-.1)/.9);d.root.updateWorldMatrix(true,true);if(d.monster?.inflation){d.monster.inflation.eyeHit.apply(c,d.monster.inflation.copyColor(new T.Color()),d.burst.phase==='winding'||d.burst.phase==='gone'?burstEyePose(d.burst.age,d.burst.config!):undefined);d.root.updateWorldMatrix(true,true);}}
   update(dt:number,c:FeedbackSettings){if(this.eyeDebris.active)this.eyeDebris.setCollisions(this.width,this.length,this.dummies.filter(d=>d.burst.phase!=='gone'&&d.root.visible).map(d=>({id:d.root.userData.practiceTarget as string,box:new T.Box3().setFromObject(d.visual)})));this.eyeDebris.update(dt);for(const d of this.dummies){
     if(d.burst.phase==='gone')continue;
+    const previousHitAge=d.response.age;
     d.monster?.inflation?.eyeHit.update(dt);d.response.update(dt,c);d.monster?.inflation?.state.update(dt,c);
+    if(this.isYellowSlime(d)&&c.hitBendEnabled&&d.bendSnap){
+      const travel=hitBendReturnTravel(d.response.age,d.bendSnap)-hitBendReturnTravel(previousHitAge,d.bendSnap);
+      // Move the shared target position so collision, embedded arrows and effects follow the body.
+      const p=d.response.position,b=d.response.bounds,dir=d.response.direction;
+      const dx=-dir.x*travel,dz=-dir.z*travel;let fraction=1;
+      for(const [v,delta,limit] of [[p.x,dx,b.x],[p.z,dz,b.z]]){
+        if(delta>0)fraction=Math.min(fraction,(limit-v)/delta);
+        else if(delta<0)fraction=Math.min(fraction,(-limit-v)/delta);
+      }
+      fraction=Math.max(0,fraction);p.x+=dx*fraction;p.z+=dz*fraction;
+    }
     const complete=d.response.complete(c)&&(!d.monster?.inflation||!Number.isFinite(d.monster.inflation.state.age))&&!(d.monster?.animation?.snapshot().hitRemaining);
     const remaining=Math.max(d.response.remaining(c),d.monster?.inflation?.state.remaining??0,d.monster?.animation?.snapshot().hitRemaining??0);
     const wasWaiting=d.burst.phase==='feedback';

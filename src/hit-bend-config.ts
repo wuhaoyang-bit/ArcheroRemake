@@ -3,6 +3,7 @@
 export const HIT_BEND_DEFAULTS = {
   hitBendEnabled: 1,
   hitBendMax: 0.4,
+  hitBendReturnDistance: 0.12,
   hitBendFormTime: 0.1,
   hitBendFollowDelay: 0,
   hitBendFollowTime: 0.12,
@@ -17,6 +18,7 @@ export const HIT_BEND_DEFAULTS = {
 export const HIT_BEND_LIMITS: Record<keyof typeof HIT_BEND_DEFAULTS, [number, number, number]> = {
   hitBendEnabled: [0, 1, 1],
   hitBendMax: [0, 1.5, 0.01],
+  hitBendReturnDistance: [0, 0.5, 0.01],
   hitBendFormTime: [0.02, 0.5, 0.01],
   hitBendFollowDelay: [0, 0.5, 0.01],
   hitBendFollowTime: [0.02, 0.5, 0.01],
@@ -37,6 +39,7 @@ export const HIT_BEND_CONTROLS: [keyof HitBendSettings, string, string, string][
   ['hitBendFollowDelay', '弯曲 · 后仰延迟', 's', '成 C 满后到上半再转的间隔；0=立刻。修改后下次命中生效。'],
   ['hitBendFollowTime', '弯曲 · 后仰用时', 's', '方案 A 上半权重 0→1。修改后下次命中生效。'],
   ['hitBendFollowAmount', '弯曲 · 后仰幅度', '比例', '上半沿击退方向切向加算倍率。修改后下次命中生效。'],
+  ['hitBendReturnDistance', '弯曲 · 首次弹回位移', 'u', '从开始弹回到首次反向最大弯曲，整体沿弹回方向移动；默认 0.12，0 关闭。随弹簧节奏移动，结束后保留位置。'],
   ['hitBendSpringFreq', '弯曲 · 弹回频率', 'Hz', '欠阻尼弹簧，与受击缩放弹簧同公式。修改后下次命中生效。'],
   ['hitBendSpringDamp', '弯曲 · 弹回阻尼', '比例', '越小弹越久。修改后下次命中生效。'],
   ['hitBendFootLockY', '弯曲 · 脚锁高度', 'u', '底座坐标 yBase；此高度及以下水平位移为 0。修改后下次命中生效。'],
@@ -48,6 +51,7 @@ export function snapshotHitBend(c: HitBendSettings): HitBendSettings {
   return {
     hitBendEnabled: c.hitBendEnabled,
     hitBendMax: c.hitBendMax,
+    hitBendReturnDistance: c.hitBendReturnDistance,
     hitBendFormTime: c.hitBendFormTime,
     hitBendFollowDelay: c.hitBendFollowDelay,
     hitBendFollowTime: c.hitBendFollowTime,

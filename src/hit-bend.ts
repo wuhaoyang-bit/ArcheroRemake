@@ -99,3 +99,16 @@ export function applyHorizontalBend(
   }
   positionAttr.needsUpdate = true;
 }
+
+/** Cumulative travel during only the first spring return; later oscillations add no travel. */
+export function hitBendReturnTravel(age:number,p:HitBendSettings){
+  if(!Number.isFinite(age)||!p.hitBendEnabled||p.hitBendMax<=0)return 0;
+  const t=age-Math.max(1e-6,p.hitBendFormTime)-Math.max(0,p.hitBendFollowDelay)-Math.max(1e-6,p.hitBendFollowTime);
+  if(t<=0)return 0;
+  const f=p.hitBendSpringFreq,z=p.hitBendSpringDamp;
+  // Critical/overdamped springs have no reverse peak: follow their monotonic recovery.
+  const peak=z<1?Math.PI/(2*Math.PI*f*Math.sqrt(1-z*z)):Infinity;
+  const end=z<1?spring(1,0,peak,f,z).x:0;
+  const progress=(1-spring(1,0,Math.min(t,peak),f,z).x)/(1-end);
+  return (p.hitBendReturnDistance??0)*Math.max(0,Math.min(1,progress));
+}
