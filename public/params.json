@@ -492,7 +492,7 @@
     "sprayJetShare": 0.4,
     "sprayJetSpread": 10,
     "sprayFanSpread": 35,
-    "sprayCount": 8,
+    "sprayCount": 16,
     "spraySpeed": 11.3,
     "spraySpeedJitter": 1.5,
     "spraySize": 1.25,
