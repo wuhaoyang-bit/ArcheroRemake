@@ -11,7 +11,13 @@ export class SlimeInflationState{
   for(let tick=0;tick<=120*120;tick++){const t=tick/120,s=spring(this.from-this.target,0,t,this.frequency,this.damping);this.settleTime=t;if(Math.abs(s.x)<1e-5&&Math.abs(s.v)<1e-4)break;}
  }
  get remaining(){return Number.isFinite(this.age)?Math.max(0,this.settleTime-this.age):0;}
- hit(c:SlimeInflationSettings){if(!c.slimeInflationEnabled||c.slimeInjectionAmount<=0)return;this.amount+=Math.min(c.slimeInjectionAmount,Math.max(0,c.slimeCapacity-this.amount));this.target=Math.min(1,this.amount/c.slimeCapacity);this.begin(c);}
+ hit(c:SlimeInflationSettings){
+  if(!c.slimeInflationEnabled||c.slimeInjectionAmount<=0)return;
+  const added=Math.min(c.slimeInjectionAmount,Math.max(0,c.slimeCapacity-this.amount));
+  // Full bodies still receive ordinary hit feedback, but no new inflation pulse.
+  if(added<=0)return;
+  this.amount+=added;this.target=Math.min(1,this.amount/c.slimeCapacity);this.begin(c);
+ }
  update(dt:number,c:SlimeInflationSettings){
   const target=Math.min(1,this.amount/c.slimeCapacity);if(target!==this.target){this.target=target;this.begin(c);}
   const colorStep=c.slimeColorTime>0?1-Math.exp(-Math.max(0,dt)*3/c.slimeColorTime):1;

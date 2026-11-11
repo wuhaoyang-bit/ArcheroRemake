@@ -9,6 +9,7 @@ export const BURST_DEFAULTS={
  puddleCanvasShapes:7,
  puddleCurveShapes:7,
  burstEnabled:1,
+ burstSuppressed:1,
  burstColorPulseEnabled:1,
  burstColorPulseAmount:4,
  burstEyeEnabled:1,
@@ -133,6 +134,7 @@ export const BURST_LIMITS:Record<keyof BurstSettings,[number,number,number]>={
  burstEyeAngle:[0,45,1],
  burstEyePoseTime:[0,5,.01],
  burstEnabled:[0,1,1],
+ burstSuppressed:[0,1,1],
  burstColorPulseEnabled:[0,1,1],
  burstColorPulseAmount:[0,15,.5],
  burstFeedbackDelay:[-10, 3, 0.01],
@@ -240,6 +242,7 @@ export const BURST_LIMITS:Record<keyof BurstSettings,[number,number,number]>={
  burstLayer5Opacity:[0,1,0.05],
 };
 export const BURST_CONTROLS:[keyof BurstSettings,string,string,string][]=[
+ ['burstSuppressed','关闭蓄爆与爆炸','0/1','默认 1 开启：游戏中满液不蓄爆、不爆炸，仍可受击。0 关闭：恢复满液蓄爆与爆炸；已满液的怪物下次受击触发。开启会取消尚未完成的蓄爆。'],
  ['burstColorPulseEnabled','蓄爆伸缩变色','0/1','仅蓄爆时生效：膨胀略微变亮，收缩略微变深，保留当前配色。修改后下次蓄爆生效；逐帧页会重算当前时刻。'],
  ['burstColorPulseAmount','蓄爆颜色变化幅度','%','默认 4，最多增减 4 个明度百分点；随伸缩幅度和渐入同步变化。0 关闭颜色变化，不影响伸缩。'],
  ['burstEyeEnabled','蓄爆眼球姿态','0/1','蓄爆期间逐渐突出，左右眼分别朝斜上方外侧转动；独立于受击滞后开关。'],

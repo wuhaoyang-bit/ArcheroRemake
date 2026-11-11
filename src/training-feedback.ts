@@ -38,7 +38,7 @@ export class TrainingFeedback {
   private walkScaleMatrix=new T.Matrix4();
   private sprayFwd=new T.Vector3();
   private sprayLocal=new T.Vector3();
-  constructor(group:T.Group,targets:({id:string}&Point)[],private width:number,private length:number){
+  constructor(group:T.Group,targets:({id:string}&Point)[],private width:number,private length:number,private options:{allowFullBurst:boolean|'settings'}={allowFullBurst:true}){
     this.eyeDebris=new SlimeEyeDebris(group);
     for(const root of group.children.filter(o=>o.userData.practiceTarget)){
       const target=targets.find(t=>t.id===root.userData.practiceTarget)!;
@@ -138,7 +138,17 @@ export class TrainingFeedback {
     for(const [pos,dir,bound] of [[p.x,v.x,b.x],[p.z,v.z,b.z]])if(Math.abs(dir)>1e-8)travel=Math.min(travel,Math.max(0,((dir>0?bound:-bound)-pos)/dir));
     const speed=knockInitialSpeed(travel,settings),strength=Math.max(settings.eyeHitMinimumStrength,Math.min(1,speed/settings.eyeHitReferenceSpeed));
     d.monster?.inflation?.eyeHit.hit(v,strength,settings);this.apply(d,settings);
-    if(d.monster?.inflation&&d.monster.inflation.state.amount>=settings.slimeCapacity&&d.burst.fill(settings))this.onFilled?.(id);return true;}
+    if((this.options.allowFullBurst==='settings'?!settings.burstSuppressed:this.options.allowFullBurst)&&d.monster?.inflation&&d.monster.inflation.state.amount>=settings.slimeCapacity&&d.burst.fill(this.options.allowFullBurst==='settings'?{...settings,burstEnabled:1}:settings))this.onFilled?.(id);return true;}
+  cancelSuppressedBursts(c:FeedbackSettings){
+    const restored:string[]=[];
+    if(this.options.allowFullBurst!=='settings'||!c.burstSuppressed)return restored;
+    for(const d of this.dummies){
+      if(d.burst.phase!=='feedback'&&d.burst.phase!=='winding')continue;
+      d.burst.reset();d.burstBase=undefined;d.monster?.inflation?.invalidateShape();
+      this.apply(d,c);restored.push(d.root.userData.practiceTarget);
+    }
+    return restored;
+  }
   private apply(d:Dummy,c:FeedbackSettings,dt=0){
     let burstScale=1,colorLightness=0;let shape=c;
     if(d.burst.phase==='winding'||d.burst.phase==='gone'){const b=d.burst.config!,v=burstSample(d.burst.age,b),base=d.burstBase!;burstScale=v.scale;if(d.burst.phase==='winding')colorLightness=v.colorLightness;shape={...base,slimeBulge:base.slimeBulge+(Math.max(base.slimeBulge,b.burstBulge)-base.slimeBulge)*v.bulgeProgress};}

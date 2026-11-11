@@ -335,7 +335,7 @@ export class GameScene {
       await compile(.7,.82,'正在准备射箭与命中特效');
     }finally{this.arrows.clear();this.bowRelease.finishWarmup();this.juice.finishWarmup();this.spray?.finishWarmup();this.frontSpray?.clear();this.hitSplash.clear();}
     const eyeWarmTargets=[{id:'eye-warmup',label:'Eye warmup',x:0,z:0}],eyeWarmGroup=buildLockingTraining(this.roomSize,this.roomLength,eyeWarmTargets,()=>createTrainingCube(this.slimeEnvironment));
-    this.scene.add(eyeWarmGroup);const eyeWarmFeedback=new TrainingFeedback(eyeWarmGroup,eyeWarmTargets,this.roomSize,this.roomLength);eyeWarmFeedback.prepareEyeDebris(this.controller.settings);
+    this.scene.add(eyeWarmGroup);const eyeWarmFeedback=new TrainingFeedback(eyeWarmGroup,eyeWarmTargets,this.roomSize,this.roomLength,{allowFullBurst:false});eyeWarmFeedback.prepareEyeDebris(this.controller.settings);
     try{
       report(.82,'正在准备爆炸与地面液体');await breathe();
       this.slimeFragments.prepareWarmup(this.controller.settings.slimeFragmentsMaxBursts);
@@ -389,7 +389,7 @@ export class GameScene {
     this.trainingVisual = this.trainingMode === 'obstacles' ? buildTraining(this.roomSize, this.roomLength)
       : this.controller.combatTraining ? buildLockingTraining(this.roomSize, this.roomLength,this.controller.getPracticeTargets(),()=>this.trainingMode === 'monsters' ? createTrainingCube(this.slimeEnvironment) : this.monsterFactory!.create()) : undefined;
     if (this.trainingVisual) this.room.add(this.trainingVisual);
-    if(this.controller.combatTraining&&this.trainingVisual)this.feedback=new TrainingFeedback(this.trainingVisual,this.controller.getPracticeTargets(),this.roomSize,this.roomLength);
+    if(this.controller.combatTraining&&this.trainingVisual)this.feedback=new TrainingFeedback(this.trainingVisual,this.controller.getPracticeTargets(),this.roomSize,this.roomLength,{allowFullBurst:'settings'});
     if(this.feedback){
       this.feedback.onFilled=id=>{this.controller.notifyTargetDeath(id);this.arrows?.setTargets(this.feedback?.proxies??[]);};
       this.feedback.onWindup=()=>{
@@ -430,7 +430,14 @@ export class GameScene {
     this.sync(0);
   }
 
+  private syncBurstSuppression(){
+    const restored=this.feedback?.cancelSuppressedBursts(this.controller.settings)??[];
+    if(!restored.length)return;
+    for(const id of restored)this.controller.restoreTarget(id);
+    this.arrows?.setTargets(this.feedback?.proxies??[]);this.slimeBurstWindupSfx.stop();
+  }
   advanceFeedback(dt:number){
+    this.syncBurstSuppression();
     this.slimeFragments?.update(dt,this.controller.settings);
     if(this.needsRoomRefresh())this.setRoom();
     // Advance existing shake before explosion callbacks so a new pulse starts at frame zero.
@@ -525,6 +532,7 @@ export class GameScene {
   }
 
   sync(dt: number) {
+    this.syncBurstSuppression();
     const ctl = this.controller;
     if (this.needsRoomRefresh()) this.setRoom();
     if (this.viewWidth !== ctl.settings.viewWidth || this.offset !== ctl.settings.cameraOffset) this.projection();

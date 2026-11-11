@@ -8,7 +8,7 @@ export type SlimeSaveBundle={settings:Settings;slimePresets:SlimePresetDocument}
 /** Only slime presentation is mode-specific. Shooting/recoil, following droplets,
  * room/camera movement, targeting, monster count/speed and audio remain shared. */
 export function isSlimePresetKey(key:string){
- if(key.startsWith('hitSplashParticles'))return false;
+ if(key==='burstSuppressed'||key.startsWith('hitSplashParticles'))return false;
  return /^(slime|burst|liquid|puddle|eyeHit|hit|juice|spray|cameraShake|cameraZoom)/.test(key)||key==='monsterScale';
 }
 export const SLIME_PRESET_KEYS=(Object.keys(DEFAULTS) as (keyof Settings)[]).filter(isSlimePresetKey);

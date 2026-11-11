@@ -148,6 +148,10 @@ export class MovementController {
   /** Death integration hook: exclude once, and reacquire once only if this was the locked enemy.
    * Excluded targets also stop blocking movement/recoil; visuals are handled by the feedback system. */
   resetTargetExclusions(){this.deadTargetIds.clear();this.targeting.reselect();}
+  restoreTarget(id:string){
+    if(!this.deadTargetIds.delete(id))return;
+    this.targeting.reselect();this.updateTargeting(0,true);
+  }
   notifyTargetDeath(id: string) {
     if (!this.combatTraining || this.deadTargetIds.has(id)) return;
     this.deadTargetIds.add(id);
