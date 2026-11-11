@@ -46,7 +46,7 @@ type Arrow = {
   hitIds: Set<string>;
 };
 
-export type ArrowHit = { id: string; point: THREE.Vector3; direction: THREE.Vector3 };
+export type ArrowHit = { id: string; point: THREE.Vector3; direction: THREE.Vector3; responseMode?:number };
 
 /**
  * Straight-line arrows with a tip trigger.
@@ -371,6 +371,7 @@ export class ArrowProjectiles {
         arrow.piercePauseTarget=this.practiceRoot(intersection.object);
         arrow.piercePauseTarget?.getWorldPosition(arrow.piercePauseTargetPosition);
       }
+      hit.responseMode=arrow.responseMode??undefined;
       this.onHit?.(hit);
       if(!atBirth||!arrow.active||(this.debug?.enabled&&this.debug.paused))return atBirth?0:intersection.distance;
       birthContact=true;

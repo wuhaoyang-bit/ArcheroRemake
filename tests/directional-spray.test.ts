@@ -83,3 +83,15 @@ test('delayed front droplets resolve the latest target position and facing at em
  spray.clear();spray.scheduleFront('gone',settings,resolve);spray.update(.3,()=>false);assert.equal(spray.activeCount(),0);
  spray.scheduleFront('reset',settings,resolve);spray.clear();spray.update(.3,resolve);assert.equal(spray.activeCount(),0);
 });
+
+test('delayed sprays retain independent hit anchors instead of the global rear resolver',()=>{
+ const spray=new DirectionalSpray(new T.Scene()),settings={...HIT_DEFAULTS,sprayDelay:.1,sprayHeight:0,sprayMode:2};
+ const point=new T.Vector3(1,2,3),reverse=new T.Vector3(0,0,-1);
+ spray.schedule('one',settings,(_id,out,dir)=>{out.copy(point);dir.copy(reverse);return true;});
+ spray.schedule('two',{...settings,sprayDelay:.2},(_id,out,dir)=>{out.set(9,2,3);dir.set(-1,0,0);return true;});
+ point.x=4;
+ const rear=(_id:string,out:T.Vector3,dir:T.Vector3)=>{out.set(999,0,0);dir.set(0,0,1);return true;};
+ spray.update(.1,rear);assert.deepEqual(spray.lastEmit,{origin:[4,2,3],dir:[0,0,-1]});
+ spray.update(.1,rear);assert.deepEqual(spray.lastEmit,{origin:[9,2,3],dir:[-1,0,0]});
+ assert.equal(spray.layerSnapshot().length,4);
+});

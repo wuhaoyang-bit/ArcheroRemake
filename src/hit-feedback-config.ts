@@ -111,7 +111,7 @@ export const HIT_CONTROLS: [Exclude<keyof HitSettings,'hitKnockCurve'|'juiceSpee
 ];
 
 export const SPRAY_CONTROLS: typeof HIT_CONTROLS = [
- ['sprayEnabled','方向喷溅 · 开关','0/1','命中时在模型朝向背面（眼睛对面）中心锥形喷出；方向垂直于该面。'],
+ ['sprayEnabled','方向喷溅 · 开关','0/1','模式 0/1 从背面喷出；模式 2 从箭击中点沿箭行进反方向喷出。'],
  ['sprayDebugDir','方向粒子调试开关','0/1','1 时集中射流为青蓝色、扇形飞溅为橙红色；关闭恢复黄色果冻色。'],
  ['sprayFrontEnabled','前方侧向碎滴 · 开关','0/1','沿用方向喷溅延迟，到期从怪物当前前表面向两侧挤出；独立于背面喷溅开关。'],
  ['sprayFrontCount','前方碎滴 · 数量','个','左右合计，默认 4。'],
@@ -157,7 +157,7 @@ export const HIT_SPLASH_PARTICLE_CONTROLS: typeof HIT_CONTROLS = [
 ];
 
 export const HIT_SPLASH_BACK_CONTROLS: typeof HIT_CONTROLS = [
- ['hitSplashBackEnabled','液体飞溅-背后 · 开关','0/1','复制液片飞溅，在方向喷溅的背面生成点向外喷出；独立于方向粒子开关。'],
+ ['hitSplashBackEnabled','液体飞溅-背后 · 开关','0/1','复制液片飞溅；模式 0/1 在背面喷出，模式 2 改在箭击中点反向喷出。独立于方向粒子开关。'],
  ['hitSplashBackScale','背后飞溅 · 大小','倍','缩放背后液片和扩散范围。'],
  ['hitSplashBackSpeed','背后飞溅 · 播放速度','倍','液片运动、展开和消散的播放速度。'],
  ['hitSplashBackDelay','背后飞溅 · 延迟','s','从命中开始计时；生成位置沿用方向喷溅位置和高度偏移。'],

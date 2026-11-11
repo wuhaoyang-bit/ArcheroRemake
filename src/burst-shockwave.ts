@@ -32,7 +32,7 @@ export class BurstShockwaveEffects {
   emit(center:T.Vector3,c:ShockwaveSettings){this.state.emit(center,c);}
   update(dt:number,c:ShockwaveSettings){this.state.update(dt,c);}
   clear(){this.state.clear();this.projected=[];}
-  render(c:ShockwaveSettings,forcePass=false){
+  render(c:ShockwaveSettings,_forcePass=false){
     this.state.update(0,c);this.renderer.getSize(this.screen);
     const height=DESIGN_WIDTH*this.screen.y/Math.max(1,this.screen.x);this.size.value.set(DESIGN_WIDTH,height);
     this.camera.updateMatrixWorld();this.right.set(1,0,0).applyQuaternion(this.camera.quaternion);this.projected=[];
@@ -48,7 +48,11 @@ export class BurstShockwaveEffects {
       this.bands[i].value.set(x,y,radius,width/2);this.strengths[i].value=sample.strength;
       this.projected.push({x,y,radius,width,strength:sample.strength});
     }
-    if(forcePass||this.projected.some(w=>w.strength>0))this.pipeline.render();else this.renderer.render(this.scene,this.camera);
+    // Keep one output path even at zero ripple strength. Switching between the
+    // canvas and HDR pass also switches transmission framebuffer formats and
+    // material contexts at the exact explosion boundary. A zero-offset pass is
+    // visually neutral and avoids that intermittent render-state transition.
+    this.pipeline.render();
   }
   // Render under the loading overlay: compiling this pass in isolation can allocate
   // transmission framebuffer textures in the canvas format before the HDR pass is active.

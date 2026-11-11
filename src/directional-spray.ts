@@ -225,6 +225,7 @@ type Wave = {
 };
 
 type Pending = {
+  resolve?:SprayAnchorResolve;
   front?: boolean;
   id: string;
   remaining: number;
@@ -365,7 +366,7 @@ export class DirectionalSpray {
       this.fireResolved(id, snap, resolve);
       return;
     }
-    this.pending.push({ id, remaining: c.sprayDelay, settings: snap });
+    this.pending.push({ id, remaining: c.sprayDelay, settings: snap, resolve });
   }
 
   scheduleFront(id:string,c:HitSettings,resolve:SprayAnchorResolve){
@@ -502,8 +503,9 @@ export class DirectionalSpray {
     }
     this.pending = this.pending.filter((p) => p.remaining > 1e-9);
     for (const p of ready) {
-      if (!resolve||p.front) continue;
-      this.fireResolved(p.id, p.settings, resolve);
+      const anchor=p.resolve??resolve;
+      if (!anchor||p.front) continue;
+      this.fireResolved(p.id, p.settings, anchor);
     }
 
     this.shiftFollowers();

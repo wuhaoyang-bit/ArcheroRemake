@@ -1002,7 +1002,7 @@
     "arrowHitLinger": 0.01,
     "arrowPiercePauseMs": 20,
     "arrowPierceEntrySpeed": 10,
-    "arrowPierceGravity": 2,
+    "arrowPierceGravity": 0,
     "arrowEmbedSpeed": 50,
     "arrowEmbedDurationMs": 40,
     "arrowEmbedBrakePercent": 50,

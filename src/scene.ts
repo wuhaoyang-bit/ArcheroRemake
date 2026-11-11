@@ -291,6 +291,7 @@ export class GameScene {
     this.arrows.setTargets(this.feedback?.proxies ?? []);
     this.applyArrowHit=hit=>{
       if(!this.controller.combatTraining||!this.feedback)return;
+      const entrySpray=hit.responseMode===2?this.feedback.hitSprayAnchor(hit.id,hit.point,hit.direction):null;
       if(!this.feedback.hit(hit.id,hit.direction,this.controller.settings))return;
       const settings=this.controller.settings;
       if(this.feedback.isYellowSlimeTarget(hit.id)){
@@ -299,11 +300,13 @@ export class GameScene {
       }
       this.cameraZoom.trigger('hit',settings);
       const feet=this.feedback.feetOrigin(hit.id,this.juiceScratch);if(feet)this.hitSplash?.emit(hit.id,feet,settings);
-      this.hitSplash?.emitBack(hit.id,settings,(id,origin,dir)=>!!this.feedback?.sprayBackAnchor(id,origin,dir));
+      const sprayAnchor=entrySpray??((id:string,origin:THREE.Vector3,dir:THREE.Vector3)=>!!this.feedback?.sprayBackAnchor(id,origin,dir));
+      const spraySettings=entrySpray?{...settings,sprayHeight:0}:settings;
+      this.hitSplash?.emitBack(hit.id,spraySettings,sprayAnchor);
       this.juice?.schedule(hit.id,settings,id=>this.juiceOriginFor(id));
       this.frontSpray?.scheduleFront(hit.id,settings,(id,origin,dir)=>!!this.feedback?.sprayFrontAnchor(id,origin,dir));
-      // Back face of model facing (opposite eyes); cone outward ⊥ that face.
-      this.spray?.schedule(hit.id,settings,(id,origin,dir)=>!!this.feedback?.sprayBackAnchor(id,origin,dir));
+      // Mode 2: each entry point sprays against its arrow; other modes use the back face.
+      this.spray?.schedule(hit.id,spraySettings,sprayAnchor);
     };
     this.arrows.onHit=hit=>{
       if(this.hitDebug.enabled&&this.hitDebug.paused){this.deferredDebugHits.push(hit);return;}
